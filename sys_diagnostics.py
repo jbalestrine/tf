@@ -284,13 +284,14 @@ def _build_graph(
     edges: List[Dict] = []
     node_ids: Set[str] = set()
 
-    def add_node(nid: str, label: str, ntype: str, file: str = '',
+    def add_node(nid: str, label: Any, ntype: str, file: str = '',
                  line: int = 0, status: str = 'active', group: str = '') -> None:
         if nid not in node_ids:
             node_ids.add(nid)
+            label_text = str(label) if label is not None else ''
             nodes.append({
                 'id':     nid,
-                'label':  label[:48],   # truncate long labels
+                'label':  label_text[:48],   # truncate long labels
                 'type':   ntype,
                 'file':   file,
                 'line':   line,

@@ -1,0 +1,28 @@
+{
+  "entries": [
+    {
+      "id": "17742fe3-e995-46ff-8ba1-81843f4d3ef2",
+      "timestamp": "2026-09-22T02:28:39.882753",
+      "user": "system",
+      "action": "created",
+      "secret_name": "masterchiefx",
+      "details": "Secret masterchiefx created (type=password)"
+    },
+    {
+      "id": "0a95ec18-3594-493f-8727-667eddac031f",
+      "timestamp": "2026-09-22T02:28:45.040863",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "masterchiefx",
+      "details": ""
+    },
+    {
+      "id": "3671aad4-ff0e-4f46-acc1-1eb7a48235c6",
+      "timestamp": "2026-09-22T05:15:32.491211",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "masterchiefx",
+      "details": ""
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+<div class="section">
+    <h2>Core Scripts Library</h2>
+    <p style="color:#9aa4b2;margin-bottom:12px;">Legacy and blueprint scripts surfaced in GUI so they stay visible and reusable.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <input id="script-filter" placeholder="Filter by file name or extension" style="max-width:360px;" />
+        <a class="btn btn-info" href="/master-menu">Master Menu</a>
+        <a class="btn" href="/web_ide" target="_blank">Open Web IDE</a>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <input id="module-name" placeholder="Module name for import" style="max-width:280px;" />
+        <span style="font-size:12px;color:#9aa4b2;">Select a row, then use Dry Check, Run, or Import as Module.</span>
+    </div>
+    <div style="overflow:auto;max-height:70vh;">
+        <table id="scripts-table">
+            <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Path</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Bytes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in scripts %}
+                <tr data-name="{{ s.name|lower }}" data-ext="{{ s.ext|lower }}" data-path="{{ s.path }}">
+                    <td><code>{{ s.name }}</code></td>
+                    <td><code>{{ s.path }}</code></td>
+                    <td>{{ s.category }}</td>
+                    <td>{{ s.ext }}</td>
+                    <td>{{ s.size }}</td>
+                    <td>
+                        <a class="btn btn-sm" href="/sys/api/file?path={{ s.path|urlencode }}&raw=1" target="_blank">Raw</a>
+                        <a class="btn btn-sm btn-info" href="/sys/api/file?path={{ s.path|urlencode }}" target="_blank">JSON</a>
+                        <button class="btn btn-sm btn-info action-dry">Dry Check</button>
+                        <button class="btn btn-sm action-run">Run</button>
+                        <button class="btn btn-sm action-import">Import</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top:12px;">
+        <pre id="core-action-output" style="max-height:240px;overflow:auto;background:#0f172a;color:#e6eef8;padding:10px;border-radius:6px;">No action yet.</pre>
+    </div>
+</div>
+<script>
+(() => {
+    const input = document.getElementById('script-filter');
+    const rows = Array.from(document.querySelectorAll('#scripts-table tbody tr'));
+    const out = document.getElementById('core-action-output');
+    const moduleNameInput = document.getElementById('module-name');
+
+    async function postJson(url, payload) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        });
+        return await res.json();
+    }
+
+    function printResult(label, data) {
+        out.textContent = label + "\n\n" + JSON.stringify(data, null, 2);
+    }
+
+    input.addEventListener('input', () => {
+        const q = (input.value || '').trim().toLowerCase();
+        rows.forEach(r => {
+            const hit = !q || r.dataset.name.includes(q) || r.dataset.ext.includes(q) || r.dataset.path.toLowerCase().includes(q);
+            r.style.display = hit ? '' : 'none';
+        });
+    });
+
+    rows.forEach((r) => {
+        const path = r.dataset.path;
+        const dryBtn = r.querySelector('.action-dry');
+        const runBtn = r.querySelector('.action-run');
+        const importBtn = r.querySelector('.action-import');
+
+        dryBtn.addEventListener('click', async () => {
+            printResult('Dry check: ' + path, {ok: true, status: 'running'});
+            const result = await postJson('/api/core-scripts/dry-check', {path});
+            printResult('Dry check: ' + path, result);
+        });
+
+        runBtn.addEventListener('click', async () => {
+            printResult('Run: ' + path, {ok: true, status: 'running'});
+            const result = await postJson('/api/core-scripts/run', {path});
+            printResult('Run: ' + path, result);
+        });
+
+        importBtn.addEventListener('click', async () => {
+            const moduleName = (moduleNameInput.value || '').trim();
+            if (!moduleName) {
+                printResult('Import', {ok: false, error: 'module name required'});
+                return;
+            }
+            printResult('Import: ' + path + ' -> ' + moduleName, {ok: true, status: 'running'});
+            const result = await postJson('/api/core-scripts/import-module', {path, module_name: moduleName});
+            printResult('Import: ' + path + ' -> ' + moduleName, result);
+        });
+    });
+})();
+</script>

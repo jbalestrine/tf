@@ -76,6 +76,26 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 .schema-import summary:hover{color:var(--accent);}
 .schema-import textarea{width:100%;margin-top:8px;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:12px;height:100px;}
 
+/* ── Archetype cards ─────────────────────────────────────────────── */
+.archetype-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.archetype-card{
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:linear-gradient(145deg,#2a2a2a,#1f1f1f);
+  color:var(--text);
+  padding:10px;
+  text-align:left;
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.2px;
+}
+.archetype-card:hover{
+  border-color:var(--accent);
+  color:#fff;
+  box-shadow:0 0 0 1px rgba(76,175,80,.35),0 8px 20px rgba(0,0,0,.25);
+  transform:translateY(-1px);
+}
+
 /* ── Content / Preview Area ──────────────────────────────────────── */
 #content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 #preview-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
@@ -101,3 +121,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 .status-success{background:rgba(76,175,80,0.1);border:1px solid var(--accent);color:var(--accent2);}
 .status-error{background:rgba(244,67,54,0.1);border:1px solid var(--danger);color:var(--danger);}
 .status-info{background:rgba(33,150,243,0.1);border:1px solid var(--info);color:var(--info);}
+
+@media (max-width: 1100px){
+  #sidebar{width:300px;}
+}
+
+@media (max-width: 900px){
+  #main{flex-direction:column;}
+  #sidebar{width:100%;height:54vh;border-right:none;border-bottom:1px solid var(--border);}
+  #content{height:46vh;}
+  .archetype-grid{grid-template-columns:1fr;}
+  #topbar nav{overflow-x:auto;max-width:65vw;}
+}

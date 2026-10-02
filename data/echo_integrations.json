@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "lock_core_scopes": true,
+  "auto": {
+    "chat": true,
+    "web_ide": true,
+    "training": true
+  },
+  "modules": {
+    "rbac": true
+  }
+}

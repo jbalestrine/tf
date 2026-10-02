@@ -1,0 +1,21 @@
+{
+  "secrets": [
+    {
+      "id": "e05e381e-beeb-42b0-9f22-3ac9130f7fbd",
+      "name": "masterchiefx",
+      "type": "password",
+      "encrypted_value": "gAAAAABqskpHk_SkYiZWfHBJOO3jRKuwwRCeamIlpGys37K-WUUgTEppV6-X1a5NtuqlMu5EbDO6jZ7MyqHaFUr3sNoJD4WR_w==",
+      "rotation_days": 99,
+      "created": "2026-09-22T02:28:39.877063",
+      "updated": "2026-09-22T02:28:39.877074",
+      "last_accessed": "2026-09-22T05:15:32.490492",
+      "versions": [
+        {
+          "version": 1,
+          "timestamp": "2026-09-22T02:28:39.877076",
+          "encrypted_value": "gAAAAABqskpHS5r3Ubub6CnINFzhWxBnD53nGcB_G4zHM1_5OAdvxZsSnmJz59ySg3vgO4uu8JzAThNvxZWXQ9z89OvEQiVg1g=="
+        }
+      ]
+    }
+  ]
+}

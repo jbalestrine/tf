@@ -1,0 +1,37 @@
+{
+  "accounts": [
+    {
+      "id": "ce6cb701-f45c-4b04-b6c5-715f940ff9c6",
+      "name": "Azure Production",
+      "provider": "azure",
+      "credential_secret_id": "",
+      "region": "eastus",
+      "created": "2026-05-30T18:07:31.749563"
+    },
+    {
+      "id": "c9bd86d3-5873-47fb-8eb2-1c0ee9d33aeb",
+      "name": "AWS Staging",
+      "provider": "aws",
+      "credential_secret_id": "",
+      "region": "us-east-1",
+      "created": "2026-05-30T18:07:31.749578"
+    },
+    {
+      "id": "c96629b6-f848-44f2-92fb-5208e4592d00",
+      "name": "GCP Development",
+      "provider": "gcp",
+      "credential_secret_id": "",
+      "region": "us-central1",
+      "created": "2026-05-30T18:07:31.749583"
+    },
+    {
+      "id": "ebcca433-afbf-400a-bb7c-72e135478af3",
+      "name": "a",
+      "provider": "gcp",
+      "credential_secret_id": "0f025bb2-2889-4703-9113-b38b5af79163",
+      "region": "East US",
+      "subscription_id": null,
+      "created": "2026-08-19T05:30:19.782639"
+    }
+  ]
+}

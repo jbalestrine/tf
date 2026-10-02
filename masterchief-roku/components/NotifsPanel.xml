@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    NotifsPanel - notifications / alerts feed from /api/notifications
+-->
+<component name="NotifsPanel" extends="Group">
+    <interface>
+        <function name="load" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+
+        sub init()
+            m.baseUrl = "http://10.0.0.159:8080"
+            m.scrollOffset = 0
+            m.items = []
+            buildChrome()
+            m.task = createObject("roSGNode", "ApiTask")
+            m.task.observeField("result", "onResult")
+        end sub
+
+        sub buildChrome()
+            bg = m.top.createChild("Rectangle")
+            bg.translation = [0, 0]
+            bg.width  = 1280
+            bg.height = 596
+            bg.color  = "0x0D1117FF"
+
+            titleBar = m.top.createChild("Rectangle")
+            titleBar.translation = [36, 12]
+            titleBar.width  = 1208
+            titleBar.height = 40
+            titleBar.color  = "0x161B22FF"
+
+            titleLbl = m.top.createChild("Label")
+            titleLbl.translation = [52, 18]
+            titleLbl.text  = "[!]  NOTIFICATIONS"
+            titleLbl.font  = "font:MediumBoldSystemFont"
+            titleLbl.color = "0xE6EDF3FF"
+
+            m.statusLbl = m.top.createChild("Label")
+            m.statusLbl.translation = [900, 22]
+            m.statusLbl.text  = "Loading..."
+            m.statusLbl.font  = "font:SmallSystemFont"
+            m.statusLbl.color = "0x8B949EFF"
+
+            hdrBg = m.top.createChild("Rectangle")
+            hdrBg.translation = [36, 60]
+            hdrBg.width  = 1208
+            hdrBg.height = 28
+            hdrBg.color  = "0x21262DFF"
+
+            cols = [["SEVERITY", 52], ["TITLE", 200], ["SOURCE", 800], ["TIME", 1020]]
+            for each col in cols
+                h = m.top.createChild("Label")
+                h.translation = [col[1], 64]
+                h.text  = col[0]
+                h.font  = "font:SmallBoldSystemFont"
+                h.color = "0x58A6FFFF"
+            end for
+
+            m.rowGroup = m.top.createChild("Group")
+            m.rowGroup.translation = [0, 92]
+        end sub
+
+        function load(args as Dynamic)
+            m.statusLbl.text = "*  Fetching..."
+            m.task.url = m.baseUrl + "/api/notifications"
+        end function
+
+        sub onResult()
+            data = m.task.result
+            if data = invalid or data.doesExist("error")
+                errMsg = "no data"
+                if data <> invalid then errMsg = data.error
+                m.statusLbl.text = "X " + errMsg
+                return
+            end if
+
+            items = invalid
+            if type(data) = "roArray" then items = data
+            keys = ["notifications", "alerts", "data", "items"]
+            for each k in keys
+                if items = invalid and data.doesExist(k) and type(data[k]) = "roArray"
+                    items = data[k]
+                end if
+            end for
+            if items = invalid then items = []
+
+            m.items = items
+            m.scrollOffset = 0
+            renderRows()
+
+            dt = CreateObject("roDateTime")
+            dt.ToLocalTime()
+            m.statusLbl.text = "Updated " + str(dt.GetHours()).trim() + ":" + rp(dt.GetMinutes())
+        end sub
+
+        sub renderRows()
+            while m.rowGroup.getChildCount() > 0
+                m.rowGroup.removeChildIndex(0)
+            end while
+
+            maxRows = 12
+            rowH    = 38
+            y       = 0
+            endIdx  = m.scrollOffset + maxRows - 1
+            if endIdx >= m.items.count() then endIdx = m.items.count() - 1
+
+            for i = m.scrollOffset to endIdx
+                item = m.items[i]
+
+                sep = m.rowGroup.createChild("Rectangle")
+                sep.translation = [36, y + rowH - 1]
+                sep.width  = 1208
+                sep.height = 1
+                sep.color  = "0x21262DFF"
+
+                sev   = safeStr(item, "severity",  safeStr(item, "level",   safeStr(item, "type", "info")))
+                title = safeStr(item, "title",      safeStr(item, "message", safeStr(item, "text", "(no title)")))
+                src   = safeStr(item, "source",     safeStr(item, "service", safeStr(item, "channel", "-")))
+                ts    = safeStr(item, "created_at", safeStr(item, "timestamp", safeStr(item, "time", "")))
+
+                m_makeLbl(m.rowGroup, 52,   y + 9, UCase(sev),  sevColor(sev), 140)
+                m_makeLbl(m.rowGroup, 200,  y + 9, title,        "0xE6EDF3FF", 592)
+                m_makeLbl(m.rowGroup, 800,  y + 9, src,          "0x8B949EFF", 212)
+                m_makeLbl(m.rowGroup, 1020, y + 9, ts,           "0x8B949EFF", 212)
+
+                y = y + rowH
+            end for
+
+            if m.items.count() = 0
+                empty = m.rowGroup.createChild("Label")
+                empty.translation = [52, 20]
+                empty.text  = "No notifications."
+                empty.font  = "font:SmallSystemFont"
+                empty.color = "0x8B949EFF"
+            end if
+
+            if m.items.count() > maxRows
+                hint = m.rowGroup.createChild("Label")
+                hint.translation = [36, y + 4]
+                hint.text  = "^ v scroll  (" + str(m.items.count()).trim() + " total)"
+                hint.font  = "font:SmallSystemFont"
+                hint.color = "0x8B949EFF"
+            end if
+        end sub
+
+        sub m_makeLbl(grp as Object, x as Integer, y as Integer, text as String, color as String, w = 300 as Integer)
+            lbl = grp.createChild("Label")
+            lbl.translation = [x, y]
+            lbl.text  = text
+            lbl.font  = "font:SmallSystemFont"
+            lbl.color = color
+            lbl.width = w
+            lbl.truncateOnDelimiter = "..."
+        end sub
+
+        function onKeyEvent(key as String, press as Boolean) as Boolean
+            if not press then return false
+            if key = "down" and m.scrollOffset + 12 < m.items.count()
+                m.scrollOffset = m.scrollOffset + 1
+                renderRows()
+                return true
+            else if key = "up" and m.scrollOffset > 0
+                m.scrollOffset = m.scrollOffset - 1
+                renderRows()
+                return true
+            end if
+            return false
+        end function
+
+        function sevColor(s as String) as String
+            sl = LCase(s)
+            if sl = "critical" or sl = "error" or sl = "high" then return "0xF85149FF"
+            if sl = "warning" or sl = "warn" or sl = "medium" then return "0xD29922FF"
+            if sl = "success" or sl = "resolved" or sl = "low" then return "0x3FB950FF"
+            return "0x58A6FFFF"  ' info = blue
+        end function
+
+    ]]></script>
+</component>

@@ -4,6 +4,98 @@
 let activeTab = 'versions';
 const previewCache = {};          // file -> string
 
+const ARCHETYPES = {
+  landing_zone: {
+    module_name: 'azure_landing_zone',
+    backend_type: 'azurerm',
+    providers: [
+      { name: 'azurerm', source: 'hashicorp/azurerm', version: '>= 3.100.0' },
+      { name: 'random', source: 'hashicorp/random', version: '>= 3.6.0' }
+    ],
+    variables: [
+      { name: 'location', type: 'string', description: 'Primary Azure region', default: 'eastus2' },
+      { name: 'environment', type: 'string', description: 'Environment name', default: 'prod' },
+      { name: 'org_prefix', type: 'string', description: 'Naming prefix', default: 'mc' },
+      { name: 'subscription_id', type: 'string', description: 'Target subscription id', default: '' }
+    ],
+    resources: [
+      { type: 'azurerm_resource_group', name: 'platform' },
+      { type: 'azurerm_log_analytics_workspace', name: 'ops' },
+      { type: 'azurerm_virtual_network', name: 'hub' }
+    ],
+    outputs: [
+      { name: 'resource_group_name', value: 'azurerm_resource_group.platform.name', description: 'Platform resource group name' },
+      { name: 'vnet_id', value: 'azurerm_virtual_network.hub.id', description: 'Hub VNet id' }
+    ]
+  },
+  aks_platform: {
+    module_name: 'aks_platform',
+    backend_type: 'azurerm',
+    providers: [
+      { name: 'azurerm', source: 'hashicorp/azurerm', version: '>= 3.100.0' },
+      { name: 'kubernetes', source: 'hashicorp/kubernetes', version: '>= 2.25.0' }
+    ],
+    variables: [
+      { name: 'location', type: 'string', description: 'Azure region', default: 'eastus' },
+      { name: 'cluster_name', type: 'string', description: 'AKS cluster name', default: 'mc-aks' },
+      { name: 'node_count', type: 'number', description: 'System node count', default: '3' },
+      { name: 'kubernetes_version', type: 'string', description: 'AKS version', default: '1.30' }
+    ],
+    resources: [
+      { type: 'azurerm_resource_group', name: 'aks' },
+      { type: 'azurerm_kubernetes_cluster', name: 'main' },
+      { type: 'azurerm_container_registry', name: 'acr' }
+    ],
+    outputs: [
+      { name: 'cluster_id', value: 'azurerm_kubernetes_cluster.main.id', description: 'AKS cluster id' },
+      { name: 'kube_admin_config', value: 'azurerm_kubernetes_cluster.main.kube_admin_config_raw', description: 'Admin kubeconfig' }
+    ]
+  },
+  serverless_api: {
+    module_name: 'serverless_api',
+    backend_type: 's3',
+    providers: [
+      { name: 'aws', source: 'hashicorp/aws', version: '>= 5.0' }
+    ],
+    variables: [
+      { name: 'region', type: 'string', description: 'AWS region', default: 'us-east-1' },
+      { name: 'project_name', type: 'string', description: 'Project name', default: 'shock-api' },
+      { name: 'runtime', type: 'string', description: 'Lambda runtime', default: 'python3.12' },
+      { name: 'memory_size', type: 'number', description: 'Lambda memory MB', default: '512' }
+    ],
+    resources: [
+      { type: 'aws_iam_role', name: 'lambda_exec' },
+      { type: 'aws_lambda_function', name: 'api' },
+      { type: 'aws_apigatewayv2_api', name: 'http' }
+    ],
+    outputs: [
+      { name: 'api_endpoint', value: 'aws_apigatewayv2_api.http.api_endpoint', description: 'HTTP API endpoint' }
+    ]
+  },
+  data_platform: {
+    module_name: 'data_platform_foundation',
+    backend_type: 'azurerm',
+    providers: [
+      { name: 'azurerm', source: 'hashicorp/azurerm', version: '>= 3.100.0' }
+    ],
+    variables: [
+      { name: 'location', type: 'string', description: 'Azure region', default: 'westus2' },
+      { name: 'workspace_name', type: 'string', description: 'Synapse workspace name', default: 'mc-synapse' },
+      { name: 'storage_replication', type: 'string', description: 'Storage replication type', default: 'LRS' },
+      { name: 'enable_private_endpoints', type: 'bool', description: 'Use private endpoints', default: 'true' }
+    ],
+    resources: [
+      { type: 'azurerm_resource_group', name: 'data' },
+      { type: 'azurerm_storage_account', name: 'lake' },
+      { type: 'azurerm_synapse_workspace', name: 'analytics' }
+    ],
+    outputs: [
+      { name: 'storage_account_id', value: 'azurerm_storage_account.lake.id', description: 'Data lake storage id' },
+      { name: 'synapse_workspace_id', value: 'azurerm_synapse_workspace.analytics.id', description: 'Synapse workspace id' }
+    ]
+  }
+};
+
 // ── Sidebar toggle ──────────────────────────────────────────────────
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('collapsed');
@@ -18,16 +110,25 @@ function showTab(btn) {
 }
 
 // ── Add / Remove helpers ────────────────────────────────────────────
-function addProvider() {
+function addProvider(name, source, version) {
   const row = document.createElement('div');
   row.className = 'entry-row provider-row';
+  const pname = esc(name);
+  const psource = esc(source);
+  const pversion = esc(version);
   row.innerHTML = `
-    <input type="text" placeholder="Name" class="prov-name" oninput="livePreview()" />
-    <input type="text" placeholder="Source" class="prov-source" oninput="livePreview()" />
-    <input type="text" placeholder="Version" class="prov-version" oninput="livePreview()" />
+    <input type="text" placeholder="Name" class="prov-name" value="${pname}" oninput="livePreview()" />
+    <input type="text" placeholder="Source" class="prov-source" value="${psource}" oninput="livePreview()" />
+    <input type="text" placeholder="Version" class="prov-version" value="${pversion}" oninput="livePreview()" />
     <button class="btn danger" onclick="this.parentElement.remove();livePreview()">&#x2715;</button>`;
   document.getElementById('providers-list').appendChild(row);
   livePreview();
+}
+
+function setProviders(providers) {
+  const container = document.getElementById('providers-list');
+  container.innerHTML = '';
+  (providers || []).forEach(p => addProvider(p.name, p.source, p.version));
 }
 
 function addVariable(name, type, desc, def_val) {
@@ -75,7 +176,7 @@ function addOutput(name, value, desc) {
 function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;'); }
 
 // ── Clear all ───────────────────────────────────────────────────────
-function clearAll() {
+function clearAll(silent) {
   document.getElementById('module_name').value = 'my_module';
   document.getElementById('backend_type').value = '';
   document.getElementById('providers-list').innerHTML = `
@@ -86,8 +187,78 @@ function clearAll() {
     </div>`;
   ['vars-list','resources-list','outputs-list'].forEach(id => document.getElementById(id).innerHTML = '');
   document.getElementById('json-schema').value = '';
+  const archetypeSelect = document.getElementById('archetype_select');
+  if (archetypeSelect) archetypeSelect.value = '';
   livePreview();
-  setStatus('Form cleared', false);
+  if (!silent) setStatus('Form cleared', false);
+}
+
+function applyArchetypeSelection() {
+  const key = document.getElementById('archetype_select').value;
+  if (!key) {
+    setStatus('Pick an archetype first', true);
+    return;
+  }
+  applyArchetype(key);
+}
+
+function quickArchetype(key) {
+  const archetypeSelect = document.getElementById('archetype_select');
+  if (archetypeSelect) archetypeSelect.value = key;
+  applyArchetype(key);
+}
+
+function applyArchetype(key) {
+  const archetype = ARCHETYPES[key];
+  if (!archetype) {
+    setStatus('Unknown archetype selected', true);
+    return;
+  }
+
+  clearAll(true);
+  document.getElementById('module_name').value = archetype.module_name;
+  document.getElementById('backend_type').value = archetype.backend_type || '';
+
+  setProviders(archetype.providers);
+  document.getElementById('vars-list').innerHTML = '';
+  document.getElementById('resources-list').innerHTML = '';
+  document.getElementById('outputs-list').innerHTML = '';
+
+  (archetype.variables || []).forEach(v => addVariable(v.name, v.type, v.description, v.default));
+  (archetype.resources || []).forEach(r => addResource(r.type, r.name));
+  (archetype.outputs || []).forEach(o => addOutput(o.name, o.value, o.description));
+
+  livePreview();
+  setStatus(`Archetype loaded: ${key.replace('_', ' ')}`, false);
+}
+
+function injectArchetypeSchema() {
+  const key = document.getElementById('archetype_select').value;
+  if (!key || !ARCHETYPES[key]) {
+    setStatus('Select an archetype to inject schema', true);
+    return;
+  }
+
+  const props = {};
+  (ARCHETYPES[key].variables || []).forEach(v => {
+    const schemaType = v.type === 'bool' ? 'boolean' : (v.type === 'list' ? 'array' : (v.type === 'map' ? 'object' : v.type));
+    props[v.name] = {
+      type: schemaType || 'string',
+      description: v.description || ''
+    };
+    if (v.default !== '' && v.default != null) {
+      props[v.name].default = v.default;
+    }
+  });
+
+  const schema = {
+    title: `${key.replace('_', ' ')} module schema`,
+    type: 'object',
+    properties: props
+  };
+
+  document.getElementById('json-schema').value = JSON.stringify(schema, null, 2);
+  setStatus('Archetype schema injected into JSON Schema editor', false);
 }
 
 // ── Build spec from form ────────────────────────────────────────────

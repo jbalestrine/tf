@@ -1,0 +1,352 @@
+{
+  "users": [
+    {
+      "id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "password_hash": "edaff8989932296c768fdfb095b34e64fbb8cf7503b1b8e32516337b24e48e30",
+      "role": "admin",
+      "created": "2026-05-30T18:07:31.705796",
+      "active": true,
+      "api_keys": [
+        {
+          "id": "ff0dd25f-5878-4a10-8ad2-91e9874d20a7",
+          "key": "mc_85a0ea45e30449a3af21e0ed08ee6e85",
+          "created": "2026-09-22T05:16:06.015060"
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "id": "2a004e4e-6f29-47b4-82e1-aa67f439a1d3",
+      "username": "public",
+      "password_hash": "efa1f375d76194fa51a3556a97e641e61685f914d446979da50a551a4333ffd7",
+      "role": "viewer",
+      "created": "2026-05-30T18:07:31.705847",
+      "active": true,
+      "api_keys": []
+    }
+  ],
+  "roles": [
+    {
+      "name": "admin",
+      "permissions": [
+        "*"
+      ],
+      "builtin": true
+    },
+    {
+      "name": "developer",
+      "permissions": [
+        "dashboard",
+        "echo-chat",
+        "scripts",
+        "web_ide",
+        "resources",
+        "secrets_read",
+        "pipelines",
+        "marketplace",
+        "training"
+      ],
+      "builtin": true
+    },
+    {
+      "name": "operator",
+      "permissions": [
+        "dashboard",
+        "pipelines",
+        "processes",
+        "services",
+        "cloud",
+        "secrets_read",
+        "notifications"
+      ],
+      "builtin": true
+    },
+    {
+      "name": "viewer",
+      "permissions": [
+        "dashboard",
+        "echo-chat",
+        "scripts",
+        "web_ide",
+        "processes",
+        "services",
+        "addons",
+        "training",
+        "pipelines",
+        "cloud",
+        "secrets_read",
+        "secrets_write",
+        "resources",
+        "notifications",
+        "rbac",
+        "marketplace"
+      ],
+      "builtin": true
+    },
+    {
+      "name": "masterchiefx",
+      "permissions": [
+        "dashboard",
+        "echo-chat",
+        "scripts",
+        "web_ide",
+        "processes",
+        "services",
+        "addons",
+        "training",
+        "pipelines",
+        "cloud",
+        "secrets_read",
+        "secrets_write",
+        "resources",
+        "notifications",
+        "rbac",
+        "marketplace"
+      ],
+      "builtin": false
+    }
+  ],
+  "sessions": [
+    {
+      "id": "cceebb15-8e76-4dd3-9294-2b8eef3a25e4",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-08-19T05:05:47.728864",
+      "last_active": "2026-08-19T05:05:47.728890",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "c12d75b7-a67c-43b2-b940-a8b10272458d",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-08-19T09:17:18.542115",
+      "last_active": "2026-08-19T09:17:18.542122",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "f419693f-bc6a-4bee-8189-e91ee6090e0a",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T02:20:23.790941",
+      "last_active": "2026-09-22T02:20:23.790951",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "c443cb2f-ccdc-481d-ab0a-c960d1a8b01f",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T05:17:49.088896",
+      "last_active": "2026-09-22T05:17:49.088903",
+      "ip": "10.0.0.160"
+    },
+    {
+      "id": "1916cf5f-a9be-4f6a-b261-69625c501897",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T05:58:49.380748",
+      "last_active": "2026-09-22T05:58:49.380756",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "d81a0c14-0be5-4592-be11-d191ec8556c2",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T12:31:25.148696",
+      "last_active": "2026-09-22T12:31:25.148707",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "3fefe3d8-8d88-4323-9fa4-58c3d9428c35",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T14:48:40.421391",
+      "last_active": "2026-09-22T14:48:40.421423",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "d9efb999-b395-417a-9b82-d974d6131946",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T15:01:41.601124",
+      "last_active": "2026-09-22T15:01:41.601135",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "7389035e-3cb7-4a25-8d90-54cba99c4a06",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T18:52:10.766289",
+      "last_active": "2026-09-22T18:52:10.766299",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "0c6c22d4-fc6a-4dad-a7c4-8033c5b0e111",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-22T19:08:53.579553",
+      "last_active": "2026-09-22T19:08:53.579577",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "72e16184-e80c-4c65-9e29-004a9f0ada69",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-23T18:27:21.557843",
+      "last_active": "2026-09-23T18:27:21.557853",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "ce776a40-fc5e-4432-8fb8-e88eb183795b",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-23T19:52:25.321268",
+      "last_active": "2026-09-23T19:52:25.321281",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "4c221803-031f-4c4e-806d-e04b329fad5a",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-24T00:52:47.515014",
+      "last_active": "2026-09-24T00:52:47.515023",
+      "ip": "10.0.0.160"
+    },
+    {
+      "id": "61ae4f83-4f5d-4d5d-9273-e6fe7a63aec7",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-09-24T03:32:22.124553",
+      "last_active": "2026-09-24T03:32:22.124568",
+      "ip": "127.0.0.1"
+    }
+  ],
+  "audit_log": [
+    {
+      "id": "d270a3af-b108-481b-9cc5-d1489abd1273",
+      "timestamp": "2026-08-19T05:05:47.728918",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "898dfc89-95fd-487e-8028-ef3fd9b05922",
+      "timestamp": "2026-08-19T09:17:18.542157",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "88312e88-106f-4436-9bf8-238c988e150c",
+      "timestamp": "2026-09-22T02:20:23.790972",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "9337450f-e811-4a7b-ae29-1b3c05ef5a7d",
+      "timestamp": "2026-09-22T02:23:04.384289",
+      "user": "system",
+      "action": "user_updated",
+      "details": "User admin updated"
+    },
+    {
+      "id": "948b181f-7408-4722-9685-68b8e0782fd1",
+      "timestamp": "2026-09-22T02:29:56.281607",
+      "user": "system",
+      "action": "role_created",
+      "details": "Role masterchiefx created"
+    },
+    {
+      "id": "aaa16f86-b984-44d1-88e9-37572110c793",
+      "timestamp": "2026-09-22T05:16:06.015089",
+      "user": "admin",
+      "action": "api_key_generated",
+      "details": "API key generated for admin"
+    },
+    {
+      "id": "1ff8dd2c-30ad-48b3-b1fd-d7b1da3582bf",
+      "timestamp": "2026-09-22T05:17:49.088918",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "6c66ffef-965c-4328-a96d-5d09403b7184",
+      "timestamp": "2026-09-22T05:20:09.253233",
+      "user": "system",
+      "action": "role_updated",
+      "details": "Role viewer updated"
+    },
+    {
+      "id": "e3c8f483-e5f6-400c-a916-6e787b220b77",
+      "timestamp": "2026-09-22T05:58:49.380771",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "a4a9dc8a-a3ba-4bbf-a15c-aac9cddbae1f",
+      "timestamp": "2026-09-22T12:31:25.148728",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "4061e735-6de8-4c50-8b10-c395c02f326e",
+      "timestamp": "2026-09-22T14:48:40.421464",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "4d1b56db-f919-4d1a-8bb4-a055ea0f8206",
+      "timestamp": "2026-09-22T15:01:41.601157",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "1e269d7c-4281-4f02-ac3f-24ddf73d51d4",
+      "timestamp": "2026-09-22T18:52:10.766319",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "08c61238-4d31-48b4-8c46-1c6283a8b870",
+      "timestamp": "2026-09-22T19:08:53.579592",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "4b60234d-9e6f-4dba-81f6-a378fd839b95",
+      "timestamp": "2026-09-23T18:27:21.557875",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "42937922-dd72-46eb-837f-e3edec22c687",
+      "timestamp": "2026-09-23T19:52:25.321301",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "b6a308d7-ca1a-4b32-a615-5be5de22dd45",
+      "timestamp": "2026-09-24T00:52:47.515042",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "3d1c7f71-a269-4097-824d-151be133f824",
+      "timestamp": "2026-09-24T03:32:22.124601",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    }
+  ]
+}

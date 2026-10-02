@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blueprint Wizard</title>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #0f172a; color: #e2e8f0; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .btn { border: 0; border-radius: 8px; padding: 8px 12px; color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-blue { background: #0369a1; }
+    .btn-green { background: #166534; }
+    .btn-gray { background: #334155; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #1f2937; padding: 8px; text-align: left; font-size: 13px; }
+    input, select { background: #0b1220; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 6px 8px; }
+    .muted { color: #94a3b8; font-size: 12px; }
+    .ok { color: #86efac; }
+    .warn { color: #fca5a5; }
+    pre { max-height: 300px; overflow: auto; background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h2 style="margin:0">Blueprint Wizard</h2>
+      <div>
+        <a class="btn btn-gray" href="/master-menu">Master Menu</a>
+        <a class="btn btn-gray" href="/core-scripts">Core Scripts</a>
+        <button id="refresh" class="btn btn-blue">Refresh Analysis</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="summary">Loading...</div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <label>Function
+          <select id="fn"></select>
+        </label>
+        <label>Target Module File
+          <input id="module" value="main_extracted" />
+        </label>
+        <button id="dry" class="btn btn-blue">Dry Run</button>
+        <button id="apply" class="btn btn-green">Extract + Wire</button>
+      </div>
+      <div class="muted">Only non-decorated functions are extractable in this operation. Route functions stay in main.py for safety.</div>
+      <pre id="output"></pre>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Largest Functions (Top 25)</h3>
+      <table>
+        <thead>
+          <tr><th>Function</th><th>Lines</th><th>Extractable</th><th>Preview</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let summaryCache = null;
+
+    function setOutput(data) {
+      document.getElementById('output').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    function fillFunctions(items) {
+      const sel = document.getElementById('fn');
+      sel.innerHTML = '';
+      items.filter(x => x.extractable).forEach(item => {
+        const o = document.createElement('option');
+        o.value = item.name;
+        o.textContent = `${item.name} (${item.lines} lines)`;
+        sel.appendChild(o);
+      });
+    }
+
+    function fillRows(items) {
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = '';
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${item.name}</td><td>${item.lines}</td><td class="${item.extractable ? 'ok' : 'warn'}">${item.extractable ? 'yes' : 'no'}</td><td>${item.preview || ''}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function refresh() {
+      const res = await fetch('/api/blueprint/main/summary');
+      const j = await res.json();
+      summaryCache = j;
+      if (!j.ok) {
+        setOutput(j);
+        return;
+      }
+      document.getElementById('summary').innerHTML = `
+        <div><strong>File:</strong> ${j.file}</div>
+        <div><strong>Lines:</strong> ${j.line_count}</div>
+        <div><strong>Functions:</strong> ${j.function_count}</div>
+        <div><strong>Extractable:</strong> ${j.extractable_count}</div>
+        <div><strong>Route Handlers:</strong> ${j.route_function_count}</div>
+        <div><strong>Template Variables:</strong> ${j.template_variable_count}</div>
+      `;
+      fillFunctions(j.largest_functions || []);
+      fillRows(j.largest_functions || []);
+      setOutput('Ready. Choose a function and run Dry Run first.');
+    }
+
+    async function runExtract(apply) {
+      const fn = document.getElementById('fn').value;
+      const moduleName = document.getElementById('module').value.trim() || 'main_extracted';
+      if (!fn) {
+        setOutput({ok:false,error:'No extractable function selected'});
+        return;
+      }
+      const res = await fetch('/api/blueprint/main/extract', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({function_name: fn, module_name: moduleName, apply_changes: apply})
+      });
+      const j = await res.json();
+      setOutput(j);
+      if (j.ok && apply) {
+        await refresh();
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', refresh);
+    document.getElementById('dry').addEventListener('click', () => runExtract(false));
+    document.getElementById('apply').addEventListener('click', () => runExtract(true));
+
+    refresh();
+  </script>
+</body>
+</html>

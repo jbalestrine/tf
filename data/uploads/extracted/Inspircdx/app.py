@@ -15,7 +15,7 @@ CONFIG_FILE = Path(__file__).parent / "irc_config.json"
 def load_config():
     if CONFIG_FILE.exists():
         return json.loads(CONFIG_FILE.read_text())
-    return {"server": "localhost", "port": 6667, "channels": [], "nick": "MasterChief"}
+    return {"server": "localhost", "port": 6667, "channels": [], "nick": "Masterchief"}
 
 def save_config(cfg):
     CONFIG_FILE.write_text(json.dumps(cfg, indent=2))
@@ -29,7 +29,7 @@ def home():
 <h1>🌐 Inspircdx – IRC Integration</h1>
 <p>Server: <b>{{ cfg.server }}:{{ cfg.port }}</b></p>
 <p>Nick: <b>{{ cfg.nick }}</b></p>
-<p>Channels: <b>{{ cfg.channels | join(', ') or 'none' }}</b></p>
+<p>Channels: <b>{{ cfg.channels | join(', ') or '#echo' }}</b></p>
 <br>
 <a href="/status">📊 Status</a> &nbsp;
 <a href="/config">⚙️ Config</a>

@@ -1,0 +1,270 @@
+﻿
+=== FILE: C:\Users\echo\masterchief\.github\workflows\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\.github\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\ado\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\templates\backup\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\templates\deployment\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\templates\maintenance\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\templates\monitoring\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\templates\security\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\templates\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\ai_generator.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\manager.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\scheduler.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\validator.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\voice_scripter.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\scripts\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\ado_addon.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\jamroom_manager.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\jamroom___init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\shoutcast_manager.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\shoutcast___init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\addons\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\assets\images\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\assets\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\akamai_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\azure.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\certs_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\core_scripts.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\diagnostics_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\echo_control_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\echo_runtime_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\feature_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\gallery_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\ide.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\manager.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\mock.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\okta_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\ops_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\orphan_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\personality_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\resources_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\runtime_actions.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\scm_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\teams_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\terraform.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\tf_wizard_routes.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\ui_pages.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\wizard.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\blueprints\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\ado\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\templates\backup\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\templates\deployment\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\templates\maintenance\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\templates\monitoring\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\templates\security\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\templates\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\ai_generator.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\manager.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\scheduler.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\validator.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\voice_scripter.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\scripts\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\ado_addon.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\jamroom_manager.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\jamroom___init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\shoutcast_manager.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\shoutcast___init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\addons\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\assets\images\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\assets\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\blueprints\azure.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\blueprints\ide.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\blueprints\mock.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\blueprints\terraform.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\blueprints\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc\bot-engine\voice\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc\bot-engine\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc\__init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_bot.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_echo_commands.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_api.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_base.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_database.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_files.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_logs.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_metrics.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_streaming.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion_webhooks.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_ingestion___init__.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_voice_announcements.py ===
+
+
+=== FILE: C:\Users\echo\masterchief\build\lib\chatops\irc_bot-engine_voice_automation_action_executor.py ===
+

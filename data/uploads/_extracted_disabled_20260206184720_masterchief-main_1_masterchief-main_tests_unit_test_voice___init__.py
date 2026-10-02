@@ -1,1 +1,0 @@
-"""Voice system tests."""

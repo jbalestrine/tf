@@ -15,6 +15,21 @@
       "config": {},
       "enabled": true,
       "created": "2026-02-15T22:29:58.114970"
+    },
+    {
+      "id": "bfc788f7-54e8-453b-b85a-acf430415fc8",
+      "name": "yahoo",
+      "type": "email",
+      "config": {
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+        "smtp_user": "balestrinojoseph@gmail.com",
+        "smtp_pass": "Onirtselab!!",
+        "from_email": "josephbalestrine@yahoo.com",
+        "to_email": "josephbalestrine@yahoo.com"
+      },
+      "enabled": true,
+      "created": "2026-09-22T02:31:22.684398"
     }
   ]
 }

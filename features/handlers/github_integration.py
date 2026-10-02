@@ -24,8 +24,10 @@ from github_integration import github_integration
 github_bp = Blueprint('github_integration', __name__, url_prefix='/api/features/github')
 
 def register_routes(app):
-    """Register GitHub integration routes"""
+    """Register GitHub integration routes once per app."""
     print("DEBUG: Registering GitHub integration routes", file=sys.stderr)
+    if 'github_integration' in app.blueprints:
+        return
     app.register_blueprint(github_bp)
 
     @app.route('/github')

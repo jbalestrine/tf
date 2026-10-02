@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    PipelinesPanel - shows CI/CD pipeline list from /api/pipelines
+-->
+<component name="PipelinesPanel" extends="Group">
+    <interface>
+        <function name="load" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+        sub init()
+            m.baseUrl = "http://10.0.0.159:8080"
+            m.scrollOffset = 0
+            m.items = []
+            buildChrome()
+            ' ApiTask for data fetching
+            m.task = createObject("roSGNode", "ApiTask")
+            m.task.observeField("result", "onResult")
+        end sub
+
+        ' -- chrome (static UI) ---------------------------------------
+        sub buildChrome()
+            bg = m.top.createChild("Rectangle")
+            bg.translation = [0, 0]
+            bg.width  = 1280
+            bg.height = 596
+            bg.color  = "0x0D1117FF"
+
+            titleBar = m.top.createChild("Rectangle")
+            titleBar.translation = [36, 12]
+            titleBar.width  = 1208
+            titleBar.height = 40
+            titleBar.color  = "0x161B22FF"
+
+            titleLbl = m.top.createChild("Label")
+            titleLbl.translation = [52, 18]
+            titleLbl.text  = "[~]  PIPELINES"
+            titleLbl.font  = "font:MediumBoldSystemFont"
+            titleLbl.color = "0xE6EDF3FF"
+
+            m.statusLbl = m.top.createChild("Label")
+            m.statusLbl.translation = [900, 22]
+            m.statusLbl.text  = "Loading..."
+            m.statusLbl.font  = "font:SmallSystemFont"
+            m.statusLbl.color = "0x8B949EFF"
+
+            ' column headers
+            hdrBg = m.top.createChild("Rectangle")
+            hdrBg.translation = [36, 60]
+            hdrBg.width  = 1208
+            hdrBg.height = 28
+            hdrBg.color  = "0x21262DFF"
+
+            hdrName = m.top.createChild("Label")
+            hdrName.translation = [52, 64]
+            hdrName.text  = "NAME"
+            hdrName.font  = "font:SmallBoldSystemFont"
+            hdrName.color = "0x58A6FFFF"
+
+            hdrStatus = m.top.createChild("Label")
+            hdrStatus.translation = [480, 64]
+            hdrStatus.text  = "STATUS"
+            hdrStatus.font  = "font:SmallBoldSystemFont"
+            hdrStatus.color = "0x58A6FFFF"
+
+            hdrBranch = m.top.createChild("Label")
+            hdrBranch.translation = [680, 64]
+            hdrBranch.text  = "BRANCH"
+            hdrBranch.font  = "font:SmallBoldSystemFont"
+            hdrBranch.color = "0x58A6FFFF"
+
+            hdrLast = m.top.createChild("Label")
+            hdrLast.translation = [920, 64]
+            hdrLast.text  = "LAST RUN"
+            hdrLast.font  = "font:SmallBoldSystemFont"
+            hdrLast.color = "0x58A6FFFF"
+
+            ' scrollable rows container (we create Labels dynamically)
+            m.rowGroup = m.top.createChild("Group")
+            m.rowGroup.translation = [0, 92]
+        end sub
+
+        ' -- load (called by MainScene) --------------------------------
+        function load(args as Dynamic)
+            m.statusLbl.text = "*  Fetching..."
+            m.task.url = m.baseUrl + "/api/pipelines"
+        end function
+
+        ' -- data handler ---------------------------------------------
+        sub onResult()
+            data = m.task.result
+            if data = invalid
+                m.statusLbl.text = "No response"
+                return
+            end if
+            if data.doesExist("error")
+                m.statusLbl.text = "X " + data.error
+                return
+            end if
+
+            ' accept both {"pipelines":[...]} and a bare array
+            items = invalid
+            if type(data) = "roArray"
+                items = data
+            else if data.doesExist("pipelines") and type(data.pipelines) = "roArray"
+                items = data.pipelines
+            else if data.doesExist("data") and type(data.data) = "roArray"
+                items = data.data
+            end if
+            if items = invalid then items = []
+
+            m.items = items
+            m.scrollOffset = 0
+            renderRows()
+
+            dt = CreateObject("roDateTime")
+            dt.ToLocalTime()
+            m.statusLbl.text = "Updated " + str(dt.GetHours()).trim() + ":" + rp(dt.GetMinutes())
+        end sub
+
+        sub renderRows()
+            ' clear old rows
+            while m.rowGroup.getChildCount() > 0
+                m.rowGroup.removeChildIndex(0)
+            end while
+
+            maxRows = 12
+            rowH    = 38
+            y       = 0
+
+            endIdx = m.scrollOffset + maxRows - 1
+            if endIdx >= m.items.count() then endIdx = m.items.count() - 1
+
+            for i = m.scrollOffset to endIdx
+                item = m.items[i]
+
+                odd = m.rowGroup.createChild("Rectangle")
+                odd.translation = [36, y]
+                odd.width  = 1208
+                odd.height = rowH - 1
+                if i mod 2 = 0 then odd.color = "0x0D1117FF" else odd.color = "0x161B22FF"
+
+                name   = safeStr(item, "name",       safeStr(item, "id", "pipeline-" + str(i).trim()))
+                status = safeStr(item, "status",     safeStr(item, "state", "unknown"))
+                branch = safeStr(item, "branch",     safeStr(item, "ref",   "-"))
+                lastRun = safeStr(item, "last_run",  safeStr(item, "updated_at", "-"))
+
+                nameLbl = m.rowGroup.createChild("Label")
+                nameLbl.translation = [52, y + 9]
+                nameLbl.text  = name
+                nameLbl.font  = "font:SmallSystemFont"
+                nameLbl.color = "0xE6EDF3FF"
+                nameLbl.width = 420
+
+                statusLbl = m.rowGroup.createChild("Label")
+                statusLbl.translation = [480, y + 9]
+                statusLbl.text  = UCase(status)
+                statusLbl.font  = "font:SmallBoldSystemFont"
+                statusLbl.color = statusColor(status)
+
+                branchLbl = m.rowGroup.createChild("Label")
+                branchLbl.translation = [680, y + 9]
+                branchLbl.text  = branch
+                branchLbl.font  = "font:SmallSystemFont"
+                branchLbl.color = "0x8B949EFF"
+
+                lastLbl = m.rowGroup.createChild("Label")
+                lastLbl.translation = [920, y + 9]
+                lastLbl.text  = lastRun
+                lastLbl.font  = "font:SmallSystemFont"
+                lastLbl.color = "0x8B949EFF"
+
+                y = y + rowH
+            end for
+
+            ' scroll hint
+            if m.items.count() > maxRows
+                hint = m.rowGroup.createChild("Label")
+                hint.translation = [36, y + 4]
+                hint.text  = "^ v scroll  (" + str(m.items.count()).trim() + " total)"
+                hint.font  = "font:SmallSystemFont"
+                hint.color = "0x8B949EFF"
+            end if
+        end sub
+
+        ' -- key handling (scroll) -------------------------------------
+        function onKeyEvent(key as String, press as Boolean) as Boolean
+            if not press then return false
+            if key = "down" and m.scrollOffset + 12 < m.items.count()
+                m.scrollOffset = m.scrollOffset + 1
+                renderRows()
+                return true
+            else if key = "up" and m.scrollOffset > 0
+                m.scrollOffset = m.scrollOffset - 1
+                renderRows()
+                return true
+            end if
+            return false
+        end function
+
+    ]]></script>
+</component>

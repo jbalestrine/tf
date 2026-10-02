@@ -1,186 +1,32 @@
-# Large model / binary files — do not track in git
-models/*.gguf
-models/*.bin
-models/*.safetensors
+
 *.gguf
-Files_and_folders.csv
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
+data/github_repos/
 build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-.terraform.lock.hcl
-crash.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-
-# Ansible
-*.retry
-.ansible/
-
-# PowerShell
-*.ps1xml
-
-# Logs
-logs/
-*.log
-
-# IDE
-# Build artifacts
+venv/
+venv310/
+.venv/
+__pycache__/
 *.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
-*.so
-*.egg
-*.egg-info/
-dist/
+*.gguf
+data/github_repos/
 build/
-*.iso
-*.img
-*.vhd
-*.vmdk
-*.ova
 
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
+venv/
+venv310/
+.venv/
+__pycache__/
+*.pyc
+*.gguf
+data/github_repos/
+build/
 
-# Environment
-.env
-.env.local
-*.local
+echo_conversations.db
+echo_memories.jsonl
 
-# Build artifacts
-node_modules/
-dist/
-*.zip
-*.tar.gz
-# Logs
-logs/
+echo_conversations.db
+echo_memories.jsonl
+
+gui/backups/
+*.egg-info/
 *.log
-
-# Environment
-.env
-.venv
-venv/
-ENV/
-
-# Output directories
-os/iso-builder/output/
-platform/backup/backups/
-/tmp/
-
-# Dependencies
-node_modules/
-vendor/
-
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-.terraform.lock.hcl
-
-# Ansible
-*.retry
-.vault_pass
-
-# Logs
-*.log
-logs/
-*.log.*
-
-# Temporary files
-*.tmp
-*.temp
-tmp/
-temp/
-
-# Voice cloning
-voice_profiles/
-voice_samples/
-*.wav
-*.mp3
-*.ogg
-announcements/
-
-# OS
-Thumbs.db
-.DS_Store
-
-# Build artifacts
-node_modules/
-package-lock.json
-yarn.lock
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-*.tfstate.backup
-*.tfvars
-
-# Secrets
-secrets/
-*.key
-*.pem
-*.crt
-*.p12
-*.pfx
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Uploaded data files
-data/uploads/
-data/training/
-venv/
-data/
-backups/
-venv/
-data/
-data/backups/
-
-# Windows NUL device artifact
-nul
-
-# Backup build artifacts
-dist_backup/
-build_backup/
-
-.claude/

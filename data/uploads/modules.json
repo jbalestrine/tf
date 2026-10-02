@@ -307,9 +307,9 @@
   "Echo_Chat": {
     "name": "Echo_Chat",
     "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat",
-    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat",
-    "installed_at": "2026-02-21T06:59:53.686591",
-    "entry_point": "main.py",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat\\Echo_Chat",
+    "installed_at": "2026-08-19T08:37:16.772443",
+    "entry_point": "addon.py",
     "entry_type": "python"
   },
   "kubernetes": {
@@ -453,7 +453,7 @@
     "name": "php_1",
     "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\php_1",
     "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\php_1\\php",
-    "installed_at": "2026-02-21T21:13:11.992005",
+    "installed_at": "2026-08-19T05:52:04.171241",
     "entry_point": "app.py",
     "entry_type": "python"
   },
@@ -464,5 +464,202 @@
     "installed_at": "2026-02-21T21:47:16.752183",
     "entry_point": "app.py",
     "entry_type": "python"
+  },
+  "mmmmm": {
+    "name": "mmmmm",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\mmmmm",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\mmmmm",
+    "installed_at": "2026-05-30T21:51:14.149742",
+    "type": "python",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [
+      "web_ui",
+      "rest_api",
+      "echo_hook",
+      "rbac",
+      "background_jobs",
+      "settings_page",
+      "scheduled_task",
+      "sqlite"
+    ],
+    "auto_load": true
+  },
+  "xecho": {
+    "name": "xecho",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\xecho",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\xecho",
+    "installed_at": "2026-08-19T06:32:30.146231",
+    "entry_point": "accent_engine.py",
+    "entry_type": "python"
+  },
+  "app": {
+    "name": "app",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\app",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\app",
+    "installed_at": "2026-08-19T08:04:52.281151",
+    "entry_point": "addon.py",
+    "entry_type": "python"
+  },
+  "addon": {
+    "name": "addon",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\addon",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\addon",
+    "installed_at": "2026-08-19T08:49:03.515654",
+    "entry_point": "addon.py",
+    "entry_type": "python"
+  },
+  "Echo_Chat2": {
+    "name": "Echo_Chat2",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat2",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat2",
+    "installed_at": "2026-09-22T05:10:24.482391",
+    "entry_point": "addon.py",
+    "entry_type": "python"
+  },
+  "LINKS": {
+    "name": "LINKS",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\LINKS",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\LINKS",
+    "installed_at": "2026-09-22T03:03:41.951308",
+    "type": "python",
+    "description": "links",
+    "is_blank_module": true,
+    "capabilities": [
+      "web_ui"
+    ],
+    "auto_load": false
+  },
+  "link": {
+    "name": "link",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\link",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\link",
+    "installed_at": "2026-09-22T03:15:12.170848",
+    "type": "other",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [
+      "web_ui"
+    ],
+    "auto_load": true
+  },
+  "echo0": {
+    "name": "echo0",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\echo0",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\echo0",
+    "installed_at": "2026-09-22T05:06:44.254528",
+    "type": "api",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [
+      "rest_api",
+      "echo_hook"
+    ],
+    "auto_load": false
+  },
+  "pp": {
+    "name": "pp",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\pp",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\pp",
+    "installed_at": "2026-09-22T19:27:37.706844",
+    "type": "python",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [],
+    "auto_load": false
+  },
+  "jbjb": {
+    "name": "jbjb",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\jbjb",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\jbjb",
+    "installed_at": "2026-09-22T05:11:53.998227",
+    "type": "python",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [],
+    "auto_load": false
+  },
+  "kkk": {
+    "name": "kkk",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\kkk",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\kkk",
+    "installed_at": "2026-09-22T05:21:06.109962",
+    "type": "python",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [
+      "rbac"
+    ],
+    "auto_load": false
+  },
+  "create_a_new_module_when_i_say_module_cr": {
+    "name": "create_a_new_module_when_i_say_module_cr",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\create_a_new_module_when_i_say_module_cr",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\create_a_new_module_when_i_say_module_cr",
+    "installed_at": "2026-09-22T05:29:06.849229",
+    "type": "python",
+    "description": "create a new module when i say !module create",
+    "is_blank_module": true,
+    "capabilities": [
+      "rest_api"
+    ],
+    "auto_load": true
+  },
+  "backup-database_sh": {
+    "name": "backup-database_sh",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\backup-database_sh",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\backup-database_sh",
+    "installed_at": "2026-09-22T12:47:06.435337",
+    "type": "script",
+    "description": "Imported from irc_flask_superapp_final/static/plugins/wizard-botsetup.js",
+    "is_blank_module": true
+  },
+  "testt": {
+    "name": "testt",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\testt",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\testt",
+    "installed_at": "2026-09-22T06:09:47.946719",
+    "type": "python",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [],
+    "auto_load": false
+  },
+  "chatecho": {
+    "name": "chatecho",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\chatecho",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\chatecho",
+    "installed_at": "2026-09-22T08:28:21.316334",
+    "type": "python",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [],
+    "auto_load": false
+  },
+  "show_all_test_files_in_dir_tests_in_a_mo": {
+    "name": "show_all_test_files_in_dir_tests_in_a_mo",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\show_all_test_files_in_dir_tests_in_a_mo",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\show_all_test_files_in_dir_tests_in_a_mo",
+    "installed_at": "2026-09-23T23:16:07.672332",
+    "type": "python",
+    "description": "show all test files in dir: tests/ in a module addon.",
+    "is_blank_module": true,
+    "capabilities": [
+      "rest_api"
+    ],
+    "auto_load": true
+  },
+  "test": {
+    "name": "test",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\test",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\test",
+    "installed_at": "2026-09-23T23:23:30.142120",
+    "type": "api",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [
+      "rest_api"
+    ],
+    "auto_load": false
   }
 }

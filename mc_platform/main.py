@@ -1,73 +1,102 @@
-"""
-MasterChief DevOps Platform
-Main entry point for the platform
-"""
-
 import sys
 import os
-import logging
-from pathlib import Path
+from flask import Flask, jsonify, request
 
-# Add platform directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Ensure Python can look in the current folder for imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from api import create_app
-from config import load_config
+# Import the core classes from your script directly, bypassing the singleton helper
+from myscript import EchoChatBot, TrainingDataStore, ResponseQuality
 
-def setup_logging(config):
-    """Set up logging configuration"""
-    log_dir = Path(config.get('platform', {}).get('log_dir', '/var/log/masterchief'))
-    log_dir.mkdir(parents=True, exist_ok=True)
+app = Flask(__name__)
+
+# A container to track and keep separate bot instances active in memory
+# Key: Instance identifier (e.g., system_id, environment, or bot role)
+bot_instances = {}
+
+def get_or_create_bot_instance(instance_id: str) -> EchoChatBot:
+    """Dynamically initializes and caches separate bot instances."""
+    if instance_id not in bot_instances:
+        # Step A: Optional isolation of storage locations per instance
+        # This keeps files like 'training_examples.jsonl' segregated.
+        custom_storage_path = os.path.join(
+            os.path.dirname(__file__), "data", f"training_{instance_id}"
+        )
+        custom_store = TrainingDataStore(storage_path=custom_storage_path)
+        
+        # Step B: Instantiate a distinct, dedicated chatbot context
+        bot_instances[instance_id] = EchoChatBot(training_store=custom_store)
+        
+        # Step C: Assign a default local model to the instance if it exists
+        preferred_model = os.path.join(os.getcwd(), 'models', 'Phi-3-mini-4k-instruct-q4.gguf')
+        if os.path.exists(preferred_model):
+            bot_instances[instance_id].set_local_model(preferred_model)
+            
+    return bot_instances[instance_id]
+
+
+@app.route('/echo-chat', methods=['POST'])
+def echo_chat():
+    """
+    Communicates directly with specific EchoChatBot instances.
     
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_dir / 'masterchief.log'),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-
-def main():
-    """Main entry point"""
-    logger = logging.getLogger(__name__)
+    Expects JSON payload:
+    {
+        "instance_id": "production-bot-1",  # Uniquely tracks the target instance context
+        "message": "check date in powershell",
+        "session_id": "user-session-abc"     # Passed inside the instance for thread history
+    }
+    """
+    data = request.get_json() or {}
     
+    # 1. Capture payload attributes
+    instance_id = data.get('instance_id', 'default_global_instance').strip()
+    user_message = data.get('message', '').strip()
+    session_id = data.get('session_id', 'default_session').strip()
+    
+    # Optional parameters your script natively accepts via chat()
+    temp = float(data.get('temperature', 0.7))
+    max_tk = int(data.get('max_tokens', 256))
+    
+    if not user_message:
+        return jsonify({"error": "Message body cannot be blank"}), 400
+
     try:
-        # Load configuration
-        config = load_config()
-        setup_logging(config)
+        # 2. Retrieve or generate the fully isolated chatbot object instance
+        active_bot = get_or_create_bot_instance(instance_id)
         
-        logger.info("Starting MasterChief Platform v1.0.0")
-        
-        # Create and run Flask app
-        app = create_app(config)
-        
-        api_config = config.get('api', {})
-        host = api_config.get('host', '0.0.0.0')
-        port = api_config.get('port', 8443)
-        ssl_enabled = api_config.get('ssl', False)
-        
-        if ssl_enabled:
-            # Use self-signed cert for now
-            ssl_context = 'adhoc'
-            logger.info(f"Starting HTTPS server on {host}:{port}")
-        else:
-            ssl_context = None
-            logger.info(f"Starting HTTP server on {host}:{port}")
-        
-        app.run(
-            host=host,
-            port=port,
-            ssl_context=ssl_context,
-            debug=False
+        # 3. Call the internal script execution thread matching your class signature
+        reply_payload = active_bot.chat(
+            user_message=user_message,
+            session_id=session_id,
+            temperature=temp,
+            max_tokens=max_tk
         )
         
-    except KeyboardInterrupt:
-        logger.info("Shutting down...")
-        sys.exit(0)
+        # 4. Inject structural context so your clients know who answered
+        reply_payload['instance_id'] = instance_id
+        
+        return jsonify(reply_payload)
+        
     except Exception as e:
-        logger.error(f"Fatal error: {e}", exc_info=True)
-        sys.exit(1)
+        return jsonify({
+            "error": "Execution routine failed inside target instance context",
+            "details": str(e)
+        }), 500
+
+
+@app.route('/echo-chat/stats/<instance_id>', methods=['GET'])
+def get_instance_stats(instance_id):
+    """Retrieve isolated metrics specific to a single instance."""
+    if instance_id not in bot_instances:
+        return jsonify({"error": f"Instance '{instance_id}' has not been initialized yet"}), 404
+        
+    active_bot = bot_instances[instance_id]
+    return jsonify({
+        "instance_id": instance_id,
+        "stats": active_bot.get_training_stats()
+    })
+
 
 if __name__ == '__main__':
-    main()
+    app.run(debug=True, port=5000)

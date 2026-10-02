@@ -2,9 +2,7 @@
 # MasterChief — Core Requirements
 # =============================================================================
 # Install:  pip install -r requirements.txt
-# Full install (recommended for all features):
-#           pip install -r requirements.txt -r requirements-optional.txt
-# Optional heavy dependencies (AI/ML, audio, async/db extras) are in:
+# Optional heavy dependencies (AI/ML, audio, cloud) are in:
 #           requirements-optional.txt
 # =============================================================================
 

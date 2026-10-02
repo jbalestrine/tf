@@ -301,6 +301,7 @@ td.link:hover{text-decoration:underline}
   <div id="scan-status">Not scanned</div>
   <button class="header-btn" onclick="exportData()">⬇ Export JSON</button>
   <a class="header-btn" href="/sys/api/export-active" title="Download all active app files as ZIP">📦 Export ZIP</a>
+  <a class="header-btn" href="/sys/ops" title="Unified operations cockpit">🧭 Ops Center</a>
   <a class="header-btn" href="/sys/scm" title="Source control manager">🗂 SCM</a>
   <button class="header-btn primary" onclick="startScan()">⟳ Scan Workspace</button>
 </div>

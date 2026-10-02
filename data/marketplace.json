@@ -1,0 +1,171 @@
+{
+  "plugins": [
+    {
+      "id": "terraform-iac",
+      "name": "Terraform IaC",
+      "version": "1.2.0",
+      "author": "MasterChief Team",
+      "category": "DevOps",
+      "description": "Infrastructure as Code automation with Terraform.",
+      "installed": true,
+      "rating": 4.5,
+      "review_count": 12,
+      "config": {
+        "default_provider": "azure",
+        "state_backend": "local"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "ansible-config",
+      "name": "Ansible Config Management",
+      "version": "2.0.1",
+      "author": "MasterChief Team",
+      "category": "Automation",
+      "description": "Server configuration management with Ansible playbooks.",
+      "installed": true,
+      "rating": 4.2,
+      "review_count": 8,
+      "config": {
+        "inventory_path": "/etc/ansible/hosts"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "k8s-deploy",
+      "name": "Kubernetes Deployer",
+      "version": "3.1.0",
+      "author": "MasterChief Team",
+      "category": "DevOps",
+      "description": "Kubernetes deployment automation with Helm charts.",
+      "installed": true,
+      "rating": 4.8,
+      "review_count": 25,
+      "config": {
+        "default_namespace": "default",
+        "context": "minikube"
+      },
+      "dependencies": [
+        "terraform-iac"
+      ]
+    },
+    {
+      "id": "prometheus-monitor",
+      "name": "Prometheus Monitoring",
+      "version": "1.5.0",
+      "author": "MasterChief Team",
+      "category": "Monitoring",
+      "description": "Full metrics pipeline with Prometheus and Grafana.",
+      "installed": true,
+      "rating": 4.6,
+      "review_count": 18,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "vault-secrets",
+      "name": "HashiCorp Vault",
+      "version": "0.9.0",
+      "author": "Community",
+      "category": "Security",
+      "description": "Integration with HashiCorp Vault for secret management.",
+      "installed": true,
+      "rating": 4.0,
+      "review_count": 6,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "jenkins-ci",
+      "name": "Jenkins CI Bridge",
+      "version": "1.0.0",
+      "author": "Community",
+      "category": "Integration",
+      "description": "Bridge MasterChief pipelines with Jenkins CI/CD.",
+      "installed": false,
+      "rating": 3.8,
+      "review_count": 4,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "github-actions",
+      "name": "GitHub Actions Sync",
+      "version": "2.1.0",
+      "author": "Community",
+      "category": "Integration",
+      "description": "Sync GitHub Actions workflows with MasterChief pipelines.",
+      "installed": true,
+      "rating": 4.3,
+      "review_count": 14,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "sonarqube-scan",
+      "name": "SonarQube Scanner",
+      "version": "1.3.0",
+      "author": "Community",
+      "category": "Security",
+      "description": "Code quality and security scanning with SonarQube.",
+      "installed": false,
+      "rating": 4.1,
+      "review_count": 9,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "elk-logging",
+      "name": "ELK Stack Logging",
+      "version": "2.0.0",
+      "author": "MasterChief Team",
+      "category": "Monitoring",
+      "description": "Centralized logging with Elasticsearch, Logstash, and Kibana.",
+      "installed": false,
+      "rating": 4.4,
+      "review_count": 11,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "cost-optimizer",
+      "name": "Cloud Cost Optimizer",
+      "version": "1.1.0",
+      "author": "Community",
+      "category": "DevOps",
+      "description": "Analyze and optimize cloud spending.",
+      "installed": false,
+      "rating": 3.9,
+      "review_count": 7,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "postgres-manager",
+      "name": "PostgreSQL Manager",
+      "version": "1.0.0",
+      "author": "Community",
+      "category": "Database",
+      "description": "PostgreSQL database management with backups and monitoring.",
+      "installed": false,
+      "rating": 4.2,
+      "review_count": 5,
+      "config": {},
+      "dependencies": []
+    },
+    {
+      "id": "nginx-proxy",
+      "name": "Nginx Proxy Manager",
+      "version": "1.4.0",
+      "author": "Community",
+      "category": "Networking",
+      "description": "Nginx reverse proxy management with SSL automation.",
+      "installed": false,
+      "rating": 4.5,
+      "review_count": 16,
+      "config": {},
+      "dependencies": []
+    }
+  ],
+  "reviews": []
+}

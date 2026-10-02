@@ -1,29 +1,10 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 
 """MasterChief Flask Web Application - All-in-One File"""
 
 import sys
 print("DEBUG: main.py is starting", file=sys.stderr)
-# --- MASTERCHIEF APPLIANCE PATH LOGIC ---
-import platform as _plt
-import os
 
-# Detect if we are on the Ubuntu Appliance (/opt/) or Windows Laptop
-IS_LINUX = _plt.system() == "Linux"
-BASE_PATH = "/opt/masterchief" if IS_LINUX else os.path.dirname(os.path.abspath(__file__))
-
-# Define universal paths for the model and data
-MODEL_PATH = os.path.join(BASE_PATH, "models", "mistral-7b-instruct-v0.1.Q4_K_M.gguf")
-DATA_DIR = os.path.join(BASE_PATH, "data")
-
-# Ensure subfolders exist so the appliance doesn't crash on first boot
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(os.path.join(BASE_PATH, "logs"), exist_ok=True)
-
-# Add base path to sys.path so modules like 'echo' and 'features' are found
-if BASE_PATH not in sys.path:
-    sys.path.insert(0, BASE_PATH)
-# ----------------------------------------
 import sys
 import os
 import random
@@ -218,7 +199,56 @@ app=Flask(__name__)
 
 app.config['SECRET_KEY']='masterchief-secret-key-change-in-production'
 
-CORS(app)
+CORS(app, resources={r"/*": {
+    "origins": "*",
+    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+    "supports_credentials": True,
+}})
+
+@app.after_request
+def _add_cors_headers(response):
+    origin = request.headers.get('Origin')
+    response.headers['Access-Control-Allow-Origin'] = origin or '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, Origin, X-Requested-With'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Expose-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    return response
+
+
+def _fetch_remote_playlist_text(url, timeout=30):
+    """Fetch remote M3U/M3U8 playlists with permissive IPTV-friendly behavior."""
+    if not url:
+        raise ValueError('Playlist URL is required')
+
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'MasterChief-Roku/1.0 (+https://masterchief.local)',
+        'Accept': '*/*, application/vnd.apple.mpegurl, application/octet-stream, text/plain',
+        'Referer': url,
+    })
+
+    candidates = []
+    seen = set()
+    for candidate in [url, url.replace('https://', 'http://', 1), url.replace('http://', 'https://', 1)]:
+        if candidate and candidate not in seen:
+            candidates.append(candidate)
+            seen.add(candidate)
+
+    last_error = None
+    for candidate in candidates:
+        try:
+            response = session.get(candidate, timeout=timeout, allow_redirects=True, verify=False)
+            response.raise_for_status()
+            if response.status_code in (200, 206):
+                return response.text
+        except Exception as exc:  # pragma: no cover - network-dependent fallback
+            last_error = exc
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError(f'Unable to fetch playlist from {url}')
 
 # Mount TF Wizard static files if available
 if TF_WIZARD_AVAILABLE:
@@ -273,83 +303,6 @@ IMAGE_JOBS  = {}   # job_id   -> {'status', 'progress', 'path', 'error'}
 
 
 ENABLED_MODULES = load_enabled_modules()
-
-# Echo integration controls:
-# - chat/web_ide/training are automatic by default
-# - all other module integrations are opt-in via per-module toggles
-ECHO_INTEGRATIONS_FILE = _data_dir / 'echo_integrations.json'
-ECHO_INTEGRATION_DEFAULTS = {
-    'enabled': True,
-    # Keep the echo-chat page and its connected scripts stable by default.
-    # Set ECHO_LOCK_CORE_INTEGRATIONS=0 to allow disabling these via API.
-    'lock_core_scopes': _env_bool('ECHO_LOCK_CORE_INTEGRATIONS', True),
-    'auto': {
-        'chat': True,
-        'web_ide': True,
-        'training': True,
-    },
-    'modules': {}
-}
-
-
-def _load_echo_integrations() -> dict:
-    try:
-        if ECHO_INTEGRATIONS_FILE.exists():
-            try:
-                data = json.loads(ECHO_INTEGRATIONS_FILE.read_text(encoding='utf-8'))
-            except Exception:
-                data = {}
-        else:
-            data = {}
-
-        merged = {
-            'enabled': bool(data.get('enabled', ECHO_INTEGRATION_DEFAULTS['enabled'])),
-            'lock_core_scopes': bool(data.get('lock_core_scopes', ECHO_INTEGRATION_DEFAULTS['lock_core_scopes'])),
-            'auto': {
-                'chat': bool((data.get('auto') or {}).get('chat', ECHO_INTEGRATION_DEFAULTS['auto']['chat'])),
-                'web_ide': bool((data.get('auto') or {}).get('web_ide', ECHO_INTEGRATION_DEFAULTS['auto']['web_ide'])),
-                'training': bool((data.get('auto') or {}).get('training', ECHO_INTEGRATION_DEFAULTS['auto']['training'])),
-            },
-            'modules': dict(data.get('modules') or {}),
-        }
-        return merged
-    except Exception:
-        app.logger.exception('Failed to load echo integrations config')
-        return dict(ECHO_INTEGRATION_DEFAULTS)
-
-
-def _save_echo_integrations(cfg: dict):
-    try:
-        ECHO_INTEGRATIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        ECHO_INTEGRATIONS_FILE.write_text(json.dumps(cfg, indent=2), encoding='utf-8')
-    except Exception:
-        app.logger.exception('Failed to save echo integrations config')
-
-
-def _echo_integration_enabled(scope: str, module_name: str = None, default_for_module: bool = False) -> bool:
-    """Central toggle check used by routes/modules.
-
-    - Global kill switch: enabled=false disables all Echo integrations.
-    - Known automatic scopes: chat/web_ide/training use `auto` map.
-    - Module-specific scope: uses modules[<name>] and defaults to opt-in.
-    """
-    cfg = app.config.get('ECHO_INTEGRATIONS') or _load_echo_integrations()
-    if not cfg.get('enabled', True):
-        return False
-
-    auto = cfg.get('auto') or {}
-    if scope in ('chat', 'web_ide', 'training'):
-        if cfg.get('lock_core_scopes', True):
-            return True
-        return bool(auto.get(scope, True))
-
-    modules = cfg.get('modules') or {}
-    if module_name:
-        return bool(modules.get(module_name, default_for_module))
-    return bool(default_for_module)
-
-
-app.config['ECHO_INTEGRATIONS'] = _load_echo_integrations()
 
 @app.context_processor
 def inject_ui_modules():
@@ -539,102 +492,211 @@ except Exception:
 
 
 
-# --- MASTERCHIEF APPLIANCE MODEL LOGIC ---
+# Optionally force a default model for debugging via ECHO_FORCE_MODEL.
+
+# If set (or the chosen fallback exists), persist it to data/echo_model.json
+
+# so `/api/echo/preload_model` and the bot prefer this model.
+
 try:
-    # 1. Determine model path: Prefer Environment Variable, then Universal Fallback
-    forced_model = os.environ.get('ECHO_FORCE_MODEL') or MODEL_PATH
+
+    forced_model = os.environ.get('ECHO_FORCE_MODEL') or None
+
+    # sensible fallback for debugging (update if you prefer another model)
+
+    if not forced_model:
+
+        forced_model = str(Path.cwd() / 'models' / 'mistral-7b-instruct-v0.1.Q4_K_M.gguf')
+
+    # resolve to absolute path
+
     p = Path(forced_model)
 
-    # 2. Resolve to absolute path using our Appliance Base
     if not p.is_absolute():
-        p = Path(BASE_PATH) / p
 
-    # 3. Persist chosen model to our data directory
+        p = Path.cwd() / p
+
     if p.exists():
-        cfg = Path(DATA_DIR) / 'echo_model.json'
+
+        cfg = Path(__file__).parent / 'data' / 'echo_model.json'
+
         cfg.parent.mkdir(parents=True, exist_ok=True)
+
         cfg.write_text(json.dumps({'model': str(p)}), encoding='utf-8')
+
         app.logger.info(f'Forced default model set to: {p}')
+
     else:
+
         app.logger.info(f'Forced model not found, skipping: {p}')
+
 except Exception:
+
     app.logger.exception('Failed to set forced default model')
 
-# --- IMMEDIATE STARTUP LOAD ---
+# If user explicitly requests an immediate forced GGUF load, do it now.
+
+# This bypasses the test-time guard and will load the model into memory.
+
 try:
+
     if os.environ.get('ECHO_FORCE_LOAD') == '1':
+
+        # determine model path: prefer explicit env, then persisted config
+
         model_path = os.environ.get('ECHO_FORCE_MODEL')
+
         if not model_path:
-            cfg = Path(DATA_DIR) / 'echo_model.json'
+
+            cfg = Path(__file__).parent / 'data' / 'echo_model.json'
+
             if cfg.exists():
+
                 try:
+
                     model_path = json.loads(cfg.read_text(encoding='utf-8')).get('model')
+
                 except Exception:
+
                     model_path = None
-        
+
         if model_path:
+
             try:
+
                 from echo.runtime import model_runtime
-                model_runtime.load_model(model_path)
+
+                model_runtime.load_model(model_path, force=True)
+
                 app.logger.info(f'Force-loaded GGUF model at startup: {model_path}')
-            except ModuleNotFoundError as e:
-                if getattr(e, 'name', None) == 'llama_cpp':
-                    app.logger.warning('Optional dependency missing: llama_cpp. Install optional AI dependencies to enable local GGUF runtime model loading.')
-                else:
-                    app.logger.exception('Failed to force-load GGUF model')
+
             except Exception:
+
                 app.logger.exception('Failed to force-load GGUF model')
+
         else:
+
             app.logger.warning('ECHO_FORCE_LOAD=1 but no model path found')
+
 except Exception:
+
     app.logger.exception('Force model load check failed')
 
-# --- RUNTIME INITIALIZATION HELPERS ---
+# Sessions index file (persistent metadata for chat sessions)
+
+
+
+
+
+# Runtime chat/model initialization
+
 chatbot = None
 
+
+
 def get_default_model_path():
-    """Retrieve the persisted model path or use the appliance default."""
-    cfg = Path(DATA_DIR) / 'echo_model.json'
+
+    cfg = Path(__file__).parent / 'data' / 'echo_model.json'
+
     if cfg.exists():
+
         try:
+
             return json.loads(cfg.read_text(encoding='utf-8')).get('model')
+
         except Exception:
-            pass
-    # Fallback to the Mistral path defined at the top
-    return MODEL_PATH if Path(MODEL_PATH).exists() else None
+
+            return None
+
+    # sensible fallback (do not force existence here)
+
+    candidate = Path.cwd() / 'models' / 'Phi-3-mini-4k-instruct-q4.gguf'
+
+    return str(candidate) if candidate.exists() else None
+
+
+
+
 
 def init_chat():
-    """Initialize the Echo chat bot for the Appliance."""
+
+    """Initialize the Echo chat bot and (optionally) load the GGUF at runtime.
+
+
+
+    Loading the heavy GGUF model is performed here so pytest collection
+
+    and import-time operations never import native bindings.
+
+    """
+
     global chatbot
+
     try:
+
         from echo.chat_bot import get_chat_bot
+
         from echo.runtime import model_runtime
+
         from echo.conversation_storage import get_storage as _get_storage
-        
+
         chatbot = get_chat_bot()
-        
-        # Pre-warm storage for the USB appliance
+
+        # Pre-warm conversation storage so the first API request isn't slow
+
         try:
+
             _get_storage()
+
         except Exception:
+
             app.logger.exception('Failed to pre-warm conversation storage')
 
         model_path = get_default_model_path()
+
         if model_path:
+
+            # set the preferred model path on the bot (no load yet)
+
             try:
+
                 chatbot.set_local_model(model_path)
-                model_runtime.load_model(model_path)
-                app.logger.info(f'Runtime model loaded: {model_path}')
-            except ModuleNotFoundError as e:
-                if getattr(e, 'name', None) == 'llama_cpp':
-                    app.logger.warning('Optional dependency missing: llama_cpp. Install optional AI dependencies to enable local GGUF runtime model loading.')
-                else:
-                    app.logger.exception('Failed to runtime-load model')
+
             except Exception:
+
+                pass
+
+            # perform explicit runtime load of the model
+
+            try:
+
+                model_runtime.load_model(model_path)
+
+                app.logger.info(f'Runtime model loaded: {model_path}')
+
+            except Exception:
+
                 app.logger.exception('Failed to runtime-load model')
+
     except Exception:
+
         app.logger.exception('Chat initialization failed')
-# --- END APPLIANCE LOGIC ---
+
+
+
+
+    except Exception:
+
+        return None
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1974,12 +2036,31 @@ app.config['_managers'] = managers
 app.config['_rbac_mgr'] = rbac_mgr
 
 # Register blueprints
-from blueprints import ide, terraform, mock, azure
+from blueprints import (
+    azure,
+    diagnostics_routes,
+    feature_routes,
+    ide,
+    manager,
+    mock,
+    ops_routes,
+    scm_routes,
+    terraform,
+    ui_pages,
+    wizard,
+)
 from renderers import render_resources_page, render_addons_modules_page, render_module_manager_page, render_addons_module_config_page, render_echo_training_page
 app.register_blueprint(ide.ide_bp)
 app.register_blueprint(terraform.terraform_bp)
 app.register_blueprint(mock.mock_bp)
 app.register_blueprint(azure.azure_bp)
+app.register_blueprint(manager.manager_bp)
+app.register_blueprint(ui_pages.ui_pages_bp)
+app.register_blueprint(feature_routes.feature_routes_bp)
+app.register_blueprint(ops_routes.ops_bp)
+app.register_blueprint(diagnostics_routes.diagnostics_bp)
+app.register_blueprint(scm_routes.scm_bp)
+app.register_blueprint(wizard.wizard_bp)
 
 
 
@@ -2309,11 +2390,27 @@ h1{color:#4CAF50;font-size:2.5em;margin-bottom:10px;}
 
 .subtitle{color:#888;font-size:1.1em;}
 
-nav{background:#252525;padding:15px;margin-bottom:30px;border-radius:8px;}
+nav{background:rgba(18,22,31,0.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:12px 18px;margin-bottom:30px;border-radius:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;border:1px solid rgba(148,163,184,0.18);box-shadow:0 8px 24px rgba(15,23,42,0.38);}
 
-nav a{color:#4CAF50;text-decoration:none;margin-right:20px;padding:8px 15px;border-radius:5px;display:inline-block;transition:all 0.3s;}
+.nav-group{position:relative;display:inline-block;}
 
-nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
+.nav-group > summary.dropbtn{list-style:none;cursor:pointer;background:linear-gradient(135deg,rgba(22,27,39,0.9),rgba(15,118,110,0.2));color:#8ae2a0;border:1px solid rgba(122,217,167,0.32);border-radius:12px;padding:10px 14px;font-weight:700;text-decoration:none;display:inline-block;transition:all 0.25s ease;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 6px 18px rgba(16,185,129,0.08);}
+
+.nav-group > summary.dropbtn::-webkit-details-marker{display:none;}
+
+.nav-group[open] > summary.dropbtn,.nav-group > summary.dropbtn:hover{background:linear-gradient(135deg,#4CAF50,#2b6b43);color:#fff;transform:translateY(-1px);box-shadow:0 10px 22px rgba(76,175,80,0.22);}
+
+.nav-group-content{display:none;position:absolute;left:0;top:calc(100% + 8px);min-width:240px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.18);border-radius:14px;box-shadow:0 18px 38px rgba(2,6,23,0.6);z-index:50;padding:8px 0;margin-top:0;backdrop-filter:blur(10px);}
+
+.nav-group[open] .nav-group-content{display:block;}
+
+.nav-group-content a{display:block;color:#dbeafe;text-decoration:none;padding:9px 12px;border-left:3px solid transparent;white-space:nowrap;font-size:0.96rem;transition:all 0.2s ease;}
+
+.nav-group-content a:hover,.nav-group-content a.active{background:linear-gradient(90deg,rgba(76,175,80,0.15),rgba(59,130,246,0.08));border-left-color:#4CAF50;color:#9ae6b4;}
+
+nav a{color:#9ae6b4;text-decoration:none;margin-right:0;padding:9px 12px;border-radius:10px;display:inline-block;transition:all 0.25s ease;border:1px solid transparent;}
+
+nav a:hover,nav a.active{background:linear-gradient(135deg,#4CAF50,#2e7d32);color:#fff;border-color:rgba(255,255,255,0.08);box-shadow:0 10px 20px rgba(76,175,80,0.18);}
 
 .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-bottom:30px;}
 
@@ -2416,31 +2513,72 @@ code{color:#4CAF50;}
 </header>
 
 <nav>
+  <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
 
-<a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
+  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') else '' }}">
+    <summary class="dropbtn">Operate</summary>
+    <div class="nav-group-content">
+      <a href="/master-menu" class="{{ 'active' if '/master-menu' in request.path else '' }}">🧭 Master Menu</a>
+      <a href="/manager" class="{{ 'active' if '/manager' in request.path else '' }}">📋 Manager</a>
+      <a href="/site-map" class="{{ 'active' if '/site-map' in request.path else '' }}">🗺 Unified Site Map</a>
+      <a href="/sys/diagnostics" class="{{ 'active' if '/sys/diagnostics' in request.path else '' }}">🔬 Diagnostics</a>
+      <a href="/sys/scm" class="{{ 'active' if '/sys/scm' in request.path else '' }}">🗂 SCM</a>
+      <a href="/sys/ops" class="{{ 'active' if '/sys/ops' in request.path else '' }}">🧭 Ops Center</a>
+      <a href="/cloud" class="{{ 'active' if '/cloud' in request.path else '' }}">☁️ Cloud</a>
+      <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
+      <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
+      <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
+      <a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">🛠 Services</a>
+      <a href="/about" class="{{ 'active' if '/about' in request.path else '' }}">ℹ️ About</a>
+    </div>
+  </details>
 
-<a href="/echo-chat" class="{{ 'active' if '/echo-chat' in request.path else '' }}">🌙 Echo Chat</a>
+  <details class="nav-group {{ 'active' if request.path.startswith('/pipelines') or request.path.startswith('/modules') or request.path.startswith('/addons') or request.path.startswith('/arm_creator') or request.path.startswith('/iac_manager') or request.path.startswith('/blueprint-wizard') or request.path.startswith('/features') else '' }}">
+    <summary class="dropbtn">Build</summary>
+    <div class="nav-group-content">
+      <a href="/pipelines" class="{{ 'active' if '/pipelines' in request.path else '' }}">🚀 Pipelines</a>
+      <a href="/modules" class="{{ 'active' if request.path=='/modules' else '' }}">🧱 Modules</a>
+      <a href="/addons" class="{{ 'active' if '/addons' in request.path and '/modules' not in request.path else '' }}">📦 Addons</a>
+      <a href="/addons/modules" class="{{ 'active' if '/addons/modules' in request.path else '' }}">🧩 Addon Modules</a>
+      <a href="/blueprint-wizard" class="{{ 'active' if '/blueprint-wizard' in request.path else '' }}">🧩 Blueprint Wizard</a>
+      <a href="/arm_creator" class="{{ 'active' if '/arm_creator' in request.path else '' }}">🧱 ARM Creator</a>
+      <a href="/iac_manager" class="{{ 'active' if '/iac_manager' in request.path else '' }}">🏗 IaC Manager</a>
+      <a href="/features" class="{{ 'active' if '/features' in request.path else '' }}">⚡ Features</a>
+    </div>
+  </details>
 
-<a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">Scripts</a>
+  <details class="nav-group {{ 'active' if request.path.startswith('/gallery') or request.path.startswith('/marketplace') or request.path.startswith('/media') or request.path.startswith('/roku') else '' }}">
+    <summary class="dropbtn">Media</summary>
+    <div class="nav-group-content">
+      <a href="/gallery" class="{{ 'active' if '/gallery' in request.path else '' }}">🖼 Gallery</a>
+      <a href="/marketplace" class="{{ 'active' if '/marketplace' in request.path else '' }}">🛍 Marketplace</a>
+      <a href="/media/roku" class="{{ 'active' if '/media/roku' in request.path or '/roku-builder' in request.path else '' }}">📺 Roku Builder</a>
+    </div>
+  </details>
 
-<a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">Processes</a>
+  <details class="nav-group {{ 'active' if request.path.startswith('/echo-') or request.path.startswith('/web_ide') or request.path.startswith('/masterchief_code_ui') else '' }}">
+    <summary class="dropbtn">AI &amp; Tools</summary>
+    <div class="nav-group-content">
+      <a href="/echo-chat" class="{{ 'active' if '/echo-chat' in request.path else '' }}">🌙 Echo Chat</a>
+      <a href="/echo-train" class="{{ 'active' if '/echo-train' in request.path else '' }}">🎓 Training</a>
+      <a href="/echo-memory" class="{{ 'active' if '/echo-memory' in request.path else '' }}">🧠 Echo Memory</a>
+      <a href="/web_ide" class="{{ 'active' if '/web_ide' in request.path else '' }}">💻 Web IDE</a>
+      <a href="/masterchief_code_ui" class="{{ 'active' if '/masterchief_code_ui' in request.path else '' }}">🧠 MasterChief Code UI</a>
+    </div>
+  </details>
 
-<a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">Services</a>
+  <details class="nav-group {{ 'active' if request.path.startswith('/rbac') or request.path.startswith('/secrets') or request.path.startswith('/teams') or request.path.startswith('/okta') else '' }}">
+    <summary class="dropbtn">Secure</summary>
+    <div class="nav-group-content">
+      <a href="/rbac" class="{{ 'active' if '/rbac' in request.path else '' }}">🛡 RBAC</a>
+      <a href="/secrets" class="{{ 'active' if '/secrets' in request.path else '' }}">🔐 Secrets</a>
+      <a href="/teams" class="{{ 'active' if request.path=='/teams' else '' }}">📅 Teams</a>
+      <a href="/okta" class="{{ 'active' if request.path=='/okta' else '' }}">🔒 Okta</a>
+    </div>
+  </details>
 
-<a href="/addons" class="{{ 'active' if '/addons' in request.path and '/modules' not in request.path else '' }}">Addons</a>
-
-<a href="/modules" class="{{ 'active' if request.path=='/modules' else '' }}">⚙️ Modules</a>
-
-<a href="/addons/modules" class="{{ 'active' if '/addons/modules' in request.path else '' }}">🧩 Addon Modules</a>
-
-<a href="/echo-train" class="{{ 'active' if '/echo-train' in request.path else '' }}">Training</a>
-
-<a href="/teams" class="{{ 'active' if request.path=='/teams' else '' }}">📅 Teams</a>
-
-<a href="/okta" class="{{ 'active' if request.path=='/okta' else '' }}">🔒 Okta</a>
-
-{% for _mod_name, _mod in ui_modules.items() %}<a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Addon Module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
-{% endfor %}
+  {% for _mod_name, _mod in ui_modules.items() %}<a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Addon Module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
+  {% endfor %}
 </nav>
 
 {% with messages=get_flashed_messages(with_categories=true) %}
@@ -4270,7 +4408,7 @@ function voiceTTSSpeak(text){
     if(!_voiceTTSEnabled || !_voiceSynth) return;
     _voiceSynth.cancel();
     // strip markdown-ish syntax for cleaner speech
-    const clean = text.replace(/```[\\s\\S]*?```/g,' code block ').replace(/`[^`]+`/g,'').replace(/[*_#]/g,'').replace(/https?:\\/\\/\\S+/g,'link').slice(0,600);
+    const clean = text.replace(/```[\s\S]*?```/g,' code block ').replace(/`[^`]+`/g,'').replace(/[*_#]/g,'').replace(/https?:\/\/\S+/g,'link').slice(0,600);
     const utt = new SpeechSynthesisUtterance(clean);
     utt.rate   = 1.0;
     utt.pitch  = 1.1;
@@ -11583,6 +11721,55 @@ runpy.run_path(r'{entry_file}', run_name='__main__')
 
 
 
+def _register_runtime_blueprint_routes(app_obj, module_name: str, module_file: Path):
+    """Register blueprint routes directly on the live app when startup is already finished."""
+    try:
+        import importlib.util as _ilu
+        from werkzeug.routing import Rule
+
+        spec = _ilu.spec_from_file_location(f'addon_{module_name}_runtime', str(module_file))
+        if not spec or not spec.loader:
+            return False
+
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        candidates = []
+        for attr_name in dir(mod):
+            obj = getattr(mod, attr_name)
+            if hasattr(obj, 'deferred_functions') and getattr(obj, 'name', ''):
+                candidates.append(obj)
+
+        if not candidates:
+            return False
+
+        registered = 0
+        for bp in candidates:
+            prefix = getattr(bp, 'url_prefix', None) or f'/{module_name}'
+            if not prefix.startswith('/'):
+                prefix = '/' + prefix
+            for deferred in getattr(bp, 'deferred_functions', []):
+                rule = getattr(deferred, 'rule', None)
+                endpoint = getattr(deferred, 'endpoint', None)
+                view_func = getattr(deferred, 'func', None)
+                methods = list(getattr(deferred, 'methods', None) or ['GET'])
+                if not rule or not endpoint or not view_func:
+                    continue
+                endpoint_name = endpoint
+                if endpoint_name in app_obj.view_functions:
+                    endpoint_name = f'{bp.name}_{endpoint}'
+                if endpoint_name in app_obj.view_functions:
+                    continue
+                full_rule = f'{prefix.rstrip("/")}{rule}'
+                app_obj.url_map.add(Rule(full_rule, endpoint=endpoint_name, methods=methods, provide_automatic_options=False))
+                app_obj.view_functions[endpoint_name] = view_func
+                registered += 1
+
+        return registered > 0
+    except Exception:
+        return False
+
+
 @app.route('/addons/modules/<module_name>/start', methods=['POST'])
 def addons_module_start(module_name):
     """Start a module service.
@@ -11606,6 +11793,29 @@ def addons_module_start(module_name):
                 mod = _ilu.module_from_spec(spec)
                 spec.loader.exec_module(mod)
                 if hasattr(mod, 'init'):
+                    # Flask rejects blueprint registration after the first request,
+                    # so we need the runtime-compatible path once the app is live.
+                    if getattr(app, '_got_first_request', False):
+                        registered = _register_runtime_blueprint_routes(app, module_name, addon_py)
+                        if not registered:
+                            return jsonify({'error': 'Failed to register addon routes after startup'}), 500
+                        bp_url = f'/modules/{module_name}/'
+                        for bp_name, bp in app.blueprints.items():
+                            if bp_name == module_name or bp_name == f'addon_{module_name}':
+                                prefix = getattr(bp, 'url_prefix', None) or f'/{bp_name}'
+                                bp_url = prefix.rstrip('/') + '/'
+                                break
+                        app.config.setdefault('running_services', {})[module_name] = {
+                            'type': 'blueprint',
+                            'entry_point': 'addon.py',
+                            'proxy_url': bp_url,
+                        }
+                        return jsonify({
+                            'status': 'blueprint',
+                            'message': f'{module_name} loaded as Blueprint',
+                            'entry_point': 'addon.py',
+                            'proxy_url': bp_url,
+                        }), 200
                     mod.init(app)
                     # Record as a "blueprint" service so status checks work
                     app.config.setdefault('running_services', {})[module_name] = {
@@ -13206,137 +13416,6 @@ def _ach_handle_echo_image(params, message, um_low, storage, session_id, upsert_
 
 _echo_action_registry.register('echo_image', _ach_detect_echo_image, _ach_handle_echo_image, priority=10)
 
-# ---- Built-in handler: Free web intel (no subscription required) ----
-def _ach_detect_web_intel(message: str, um_low: str):
-    triggers = [
-        'search web for ',
-        'search the web for ',
-        'search internet for ',
-        'look up ',
-        'lookup ',
-        'web intel on ',
-        'intel on ',
-        'find on the web ',
-        'latest on ',
-    ]
-    for t in triggers:
-        if um_low.startswith(t):
-            q = message[len(t):].strip().rstrip('.!?')
-            if q:
-                return {'query': q}
-    return None
-
-def _ach_handle_web_intel(params, message, um_low, storage, session_id, upsert_fn):
-    q = (params or {}).get('query', '').strip()
-    if not q:
-        return None
-
-    answer = None
-    source_url = None
-    related = []
-    err = None
-
-    try:
-        # DuckDuckGo Instant Answer API is free and does not require API keys.
-        r = requests.get(
-            'https://api.duckduckgo.com/',
-            params={
-                'q': q,
-                'format': 'json',
-                'no_html': 1,
-                'no_redirect': 1,
-                'skip_disambig': 1,
-            },
-            headers={'User-Agent': 'MasterChief-Echo/1.0'},
-            timeout=10,
-        )
-        r.raise_for_status()
-        data = r.json() or {}
-
-        answer = (data.get('AbstractText') or '').strip() or None
-        source_url = (data.get('AbstractURL') or '').strip() or None
-
-        def _walk_related(items):
-            out = []
-            for it in items or []:
-                if isinstance(it, dict):
-                    txt = (it.get('Text') or '').strip()
-                    if txt:
-                        out.append(txt)
-                    nested = it.get('Topics')
-                    if isinstance(nested, list):
-                        out.extend(_walk_related(nested))
-            return out
-
-        related = _walk_related(data.get('RelatedTopics'))[:3]
-    except Exception as e:
-        err = str(e)
-
-    # Secondary free source: Wikipedia public API.
-    if not answer and not related:
-        try:
-            search_resp = requests.get(
-                'https://en.wikipedia.org/w/api.php',
-                params={
-                    'action': 'opensearch',
-                    'search': q,
-                    'limit': 1,
-                    'namespace': 0,
-                    'format': 'json',
-                },
-                headers={'User-Agent': 'MasterChief-Echo/1.0'},
-                timeout=10,
-            )
-            search_resp.raise_for_status()
-            sdata = search_resp.json() or []
-            title = None
-            if isinstance(sdata, list) and len(sdata) >= 2 and isinstance(sdata[1], list) and sdata[1]:
-                title = str(sdata[1][0]).strip()
-
-            if title:
-                sum_resp = requests.get(
-                    f'https://en.wikipedia.org/api/rest_v1/page/summary/{requests.utils.quote(title, safe="")}',
-                    headers={'User-Agent': 'MasterChief-Echo/1.0'},
-                    timeout=10,
-                )
-                if sum_resp.status_code == 200:
-                    pdata = sum_resp.json() or {}
-                    answer = (pdata.get('extract') or '').strip() or answer
-                    source_url = (pdata.get('content_urls') or {}).get('desktop', {}).get('page') or source_url
-        except Exception:
-            pass
-
-    if answer:
-        reply = f"Web intel for '{q}': {answer}"
-        if related:
-            reply += "\nAlso found: " + " | ".join(related)
-        if source_url:
-            reply += f"\nSource: {source_url}"
-    elif related:
-        reply = f"Web intel for '{q}': " + " | ".join(related)
-    else:
-        reply = (
-            f"I couldn't get a strong public result for '{q}' right now. "
-            "Try a more specific query with 'search web for ...'."
-        )
-        if err:
-            app.logger.warning('Web intel query failed: %s', err)
-
-    storage.store_message(user='web_user', message=message, echo_response=reply, channel=session_id)
-    upsert_fn(session_id)
-    return jsonify({
-        'response': reply,
-        'session_id': session_id,
-        'timestamp': time.time(),
-        'message_id': f"bot_{int(time.time()*1000)}",
-        '_handler': 'web_intel',
-        'intel_query': q,
-        'intel_provider': 'duckduckgo_instant_answer',
-        'internet_enabled': True,
-    })
-
-_echo_action_registry.register('web_intel', _ach_detect_web_intel, _ach_handle_web_intel, priority=15)
-
 # ---- Built-in handler: YouTube play ----
 def _ach_detect_youtube(message: str, um_low: str):
     _pats = [
@@ -13378,9 +13457,6 @@ def api_echo_chat():
 
     try:
 
-        if not _echo_integration_enabled('chat'):
-            return jsonify({'error': 'Echo chat integration is disabled by policy'}), 503
-
         data = request.get_json() or {}
 
         message = data.get('message','')
@@ -13390,8 +13466,6 @@ def api_echo_chat():
         temperature = float(data.get('temperature', 0.7))
 
         max_tokens = int(data.get('max_tokens', 1024))
-        debug_mode = _parse_bool_val(data.get('debug'), default=False)
-        guided_mode = _parse_bool_val(data.get('guided_mode'), default=False)
 
         if not message:
 
@@ -13497,20 +13571,6 @@ def api_echo_chat():
 
             app.logger.exception('Auto-apply persona step failed')
 
-        def _echo_payload(text: str, path: str, **extra):
-            payload = {
-                'response': text,
-                'session_id': session_id,
-                'timestamp': time.time(),
-                'message_id': f"bot_{int(time.time()*1000)}",
-            }
-            if extra:
-                payload.update(extra)
-            if debug_mode:
-                payload['_path'] = path
-                payload['_session_has_topic'] = bool((meta or {}).get('topic_state'))
-            return payload
-
 
 
         um_low = message.lower()
@@ -13522,28 +13582,10 @@ def api_echo_chat():
             return _action_resp
         # ---- End action registry dispatch ----
 
-        # Internet-first default for questions: run web intel automatically
-        # unless the user is asking personal identity/memory prompts.
-        _identity_q = (
-            'who am i' in um_low
-            or 'what is my name' in um_low
-            or "what's my name" in um_low
-            or 'whats my name' in um_low
-            or 'what would you call me' in um_low
-            or 'who are you' in um_low
-            or 'what is your name' in um_low
-            or "what's your name" in um_low
-            or 'whats your name' in um_low
-        )
-        if ('?' in message or um_low.startswith(('what ', 'who ', 'when ', 'where ', 'why ', 'how '))) and not _identity_q:
-            _web_auto = _ach_handle_web_intel({'query': message.strip().rstrip('?').strip()}, message, um_low, storage, session_id, _upsert_session_meta)
-            if _web_auto is not None:
-                return _web_auto
-
 
         # New topic
 
-        if guided_mode and any(p in um_low for p in ['i want ', 'i need ', 'can you help', 'help me', "let's", 'let us', 'task:', 'project:']):
+        if any(p in um_low for p in ['i want ', 'i need ', 'can you help', 'help me', "let's", 'let us', 'task:', 'project:']):
 
             topic = message.strip()[:200]
 
@@ -13563,13 +13605,13 @@ def api_echo_chat():
 
             _upsert_session_meta(session_id, title=topic)
 
-            return jsonify(_echo_payload(f"Got it — I'll explore that: {topic}. Can you provide any important details or constraints?", 'topic_start'))
+            return jsonify({'response': f"Got it — I'll explore that: {topic}. Can you provide any important details or constraints?", 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
 
 
 
         # Refinement
 
-        if guided_mode and any(p in um_low for p in ['also', 'add', 'update', 'refine', 'change', 'instead', 'correction', 'fix', 'detail', 'more']):
+        if any(p in um_low for p in ['also', 'add', 'update', 'refine', 'change', 'instead', 'correction', 'fix', 'detail', 'more']):
 
             topic_state = meta.get('topic_state') or {}
 
@@ -13599,42 +13641,13 @@ def api_echo_chat():
 
                 _upsert_session_meta(session_id)
 
-                return jsonify(_echo_payload("Thanks — I've updated the plan with that detail. Anything else to refine?", 'topic_refine'))
-
-
-
-        # Continuity follow-up: keep short follow-up turns anchored to the active topic.
-        topic_state = meta.get('topic_state') or {}
-        if guided_mode and topic_state and topic_state.get('topic'):
-            followup_markers = ['and ', 'what about', 'also', 'then', 'next', 'continue', 'more', 'rollback']
-            is_followup_turn = (len(message.strip().split()) <= 12) or any(m in um_low for m in followup_markers)
-            if is_followup_turn:
-                kp = topic_state.get('key_points', [])
-                kp.append(message.strip())
-                topic_state['key_points'] = kp
-                topic_state['stage'] = 'refinement'
-                topic_state['turns'] = topic_state.get('turns', 0) + 1
-                topic_state['last_alignment'] = time.time()
-                try:
-                    meta['topic_state'] = topic_state
-                    storage.set_session_meta(session_id, meta)
-                except Exception:
-                    pass
-
-                topic = str(topic_state.get('topic', '')).strip()
-                follow_resp = (
-                    f"Great follow-up. Staying on \"{topic}\": "
-                    f"for \"{message.strip()}\", do you want high-level strategy, concrete implementation steps, or a runnable example first?"
-                )
-                storage.store_message(user='web_user', message=message, echo_response=follow_resp, channel=session_id)
-                _upsert_session_meta(session_id)
-                return jsonify(_echo_payload(follow_resp, 'topic_followup'))
+                return jsonify({'response': "Thanks — I've updated the plan with that detail. Anything else to refine?", 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
 
 
 
         # Validation
 
-        if guided_mode and any(p in um_low for p in ['is this okay', 'does this work', 'is this correct', 'confirm', 'validate', 'looks good', 'agree', 'ok to proceed']):
+        if any(p in um_low for p in ['is this okay', 'does this work', 'is this correct', 'confirm', 'validate', 'looks good', 'agree', 'ok to proceed']):
 
             topic_state = meta.get('topic_state') or {}
 
@@ -13662,13 +13675,13 @@ def api_echo_chat():
 
                 _upsert_session_meta(session_id)
 
-                return jsonify(_echo_payload(resp_text, 'topic_validate'))
+                return jsonify({'response': resp_text, 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
 
 
 
         # Completion
 
-        if guided_mode and any(p in um_low for p in ["done","finished","complete","that's all",'thats all',"that's it","that's it, thanks",'thank you','thanks']):
+        if any(p in um_low for p in ["done","finished","complete","that's all",'thats all',"that's it","that's it, thanks",'thank you','thanks']):
 
             topic_state = meta.get('topic_state') or {}
 
@@ -13696,40 +13709,11 @@ def api_echo_chat():
 
                 _upsert_session_meta(session_id)
 
-                return jsonify(_echo_payload(resp_text, 'topic_complete'))
-
-        # Metadata-independent continuity fallback:
-        # if session meta is missing but there is recent persisted chat context,
-        # keep short follow-up prompts anchored to the latest prior user topic.
-        try:
-            recent = storage.get_conversation_history(user='web_user', channel=session_id, limit=4)
-        except Exception:
-            recent = []
-        if guided_mode and recent:
-            followup_markers = ['and ', 'what about', 'also', 'then', 'next', 'continue', 'more', 'rollback']
-            is_short_followup = (len(message.strip().split()) <= 12) or any(m in um_low for m in followup_markers)
-            if is_short_followup:
-                prior_user = None
-                for row in recent:
-                    cand = (row.get('message') or '').strip()
-                    if cand and cand.lower() != message.strip().lower():
-                        prior_user = cand
-                        break
-                if prior_user:
-                    follow_resp = (
-                        f"Staying on \"{prior_user}\": for \"{message.strip()}\", "
-                        "do you want architecture guidance, implementation steps, "
-                        "or a validation checklist first?"
-                    )
-                    storage.store_message(user='web_user', message=message, echo_response=follow_resp, channel=session_id)
-                    _upsert_session_meta(session_id)
-                    return jsonify(_echo_payload(follow_resp, 'history_followup'))
+                return jsonify({'response': resp_text, 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
 
 
 
         # Fallback to bot
-
-        response_path = 'bot'
 
         bot = get_chat_bot()
 
@@ -13738,37 +13722,6 @@ def api_echo_chat():
         message_for_bot = message
 
         response = bot.chat(message_for_bot, session_id=session_id, temperature=temperature, max_tokens=max_tokens)
-
-        # Robust continuity rescue:
-        # If we have an active topic_state but the model returns a generic unknown,
-        # rewrite to a topic-anchored follow-up so IDE-assisted workflows and
-        # training loops remain coherent.
-        try:
-            topic_state = (meta or {}).get('topic_state') or {}
-            topic = str(topic_state.get('topic') or '').strip()
-            text_now = response.get('response') if isinstance(response, dict) else str(response)
-            if topic and isinstance(text_now, str):
-                low_now = text_now.lower().strip()
-                unknown_markers = (
-                    "i'm still learning",
-                    "i am still learning",
-                    "that's new to me",
-                    "hmm... i'm not sure",
-                    "help me understand"
-                )
-                if any(m in low_now for m in unknown_markers):
-                    rescue_text = (
-                        f"Staying on \"{topic}\": for \"{message.strip()}\", "
-                        "do you want architecture guidance, implementation steps, "
-                        "or a validation checklist first?"
-                    )
-                    if isinstance(response, dict):
-                        response['response'] = rescue_text
-                    else:
-                        response = {'response': rescue_text}
-                    response_path = 'continuity_rescue'
-        except Exception:
-            app.logger.exception('Continuity rescue failed')
 
         # Sanitize obviously-garbled responses (long repeated characters, repeated "A: A: A:" patterns, etc.)
 
@@ -13920,19 +13873,17 @@ def api_echo_chat():
 
         try:
 
-            if debug_mode:
+            if data.get('debug'):
 
                 debug_info = getattr(bot, '_last_llm_debug', None)
 
                 if isinstance(response, dict):
 
                     response['_llm_debug'] = debug_info
-                    response['_path'] = response_path
-                    response['_session_has_topic'] = bool((meta or {}).get('topic_state'))
 
                 else:
 
-                    response = {'response': str(response), '_llm_debug': debug_info, '_path': response_path, '_session_has_topic': bool((meta or {}).get('topic_state'))}
+                    response = {'response': str(response), '_llm_debug': debug_info}
 
         except Exception:
 
@@ -13944,15 +13895,11 @@ def api_echo_chat():
 
         full_text = response.get('response') if isinstance(response, dict) else str(response)
 
-        # Request flags: save_to_file (bool) and auto_continue (bool).
-        # Priority: explicit request value -> persisted session preference -> app default.
-        prefs = (meta or {}).get('echo_prefs') or {}
-        save_default = bool(prefs.get('save_to_file', False))
-        auto_default = bool(prefs.get('auto_continue', app.config.get('ECHO_AUTO_CONTINUE', False)))
+        # Request flags: save_to_file (bool) and auto_continue (bool). If auto_continue is omitted, fall back to app config.
 
-        save_to_file = _parse_bool_val(data.get('save_to_file'), default=save_default)
+        save_to_file = _parse_bool_val(data.get('save_to_file'), default=False)
 
-        auto_continue = _parse_bool_val(data.get('auto_continue'), default=auto_default)
+        auto_continue = _parse_bool_val(data.get('auto_continue'), default=bool(app.config.get('ECHO_AUTO_CONTINUE', False)))
 
 
 
@@ -13976,120 +13923,125 @@ def api_echo_chat():
 
             return False
 
-        # If requested (or configured) attempt to auto-continue when the reply looks cut off,
-        # but guard against off-topic or rambling continuations by checking similarity
-        # between the continuation and the user's original message.
-        if auto_continue:
 
-            max_retries = int(app.config.get('ECHO_CONTINUE_MAX_RETRIES', 1))
 
-            min_sim = float(app.config.get('ECHO_CONTINUE_MIN_SIMILARITY', 0.12))
+            # If requested (or configured) attempt to auto-continue when the reply looks cut off,
 
-            retries = 0
+            # but guard against off-topic or rambling continuations by checking similarity
 
-            def _should_accept_continuation(prev_text: str, cont_text: str, user_msg: str) -> bool:
+            # between the continuation and the user's original message.
 
-                try:
+            if auto_continue:
 
-                    if not cont_text or not isinstance(cont_text, str):
+                max_retries = int(app.config.get('ECHO_CONTINUE_MAX_RETRIES', 1))
+
+                min_sim = float(app.config.get('ECHO_CONTINUE_MIN_SIMILARITY', 0.12))
+
+                retries = 0
+
+                def _should_accept_continuation(prev_text: str, cont_text: str, user_msg: str) -> bool:
+
+                    try:
+
+                        if not cont_text or not isinstance(cont_text, str):
+
+                            return False
+
+                        # very short continuations are not useful
+
+                        if len(cont_text.strip()) < 30:
+
+                            return False
+
+                        # similarity between user message and continuation (simple heuristic)
+
+                        sim = difflib.SequenceMatcher(None, (user_msg or '').lower(), cont_text.lower()).ratio()
+
+                        # token overlap on longer words
+
+                        import re
+
+                        user_words = set(w for w in re.findall(r"\w{4,}", (user_msg or '').lower()))
+
+                        cont_words = set(w for w in re.findall(r"\w{4,}", cont_text.lower()))
+
+                        overlap = 0.0
+
+                        if user_words:
+
+                            overlap = len(user_words & cont_words) / max(1, len(user_words))
+
+                        # reject if continuation appears extremely similar to previous text (repeat) or clearly off-topic
+
+                        if cont_text.strip() in (prev_text or ''):
+
+                            return False
+
+                        # accept only when similarity or overlap meets thresholds
+
+                        if sim >= min_sim or overlap >= 0.05:
+
+                            return True
 
                         return False
 
-                    # very short continuations are not useful
-
-                    if len(cont_text.strip()) < 30:
+                    except Exception:
 
                         return False
 
-                    # similarity between user message and continuation (simple heuristic)
-
-                    sim = difflib.SequenceMatcher(None, (user_msg or '').lower(), cont_text.lower()).ratio()
-
-                    # token overlap on longer words
-
-                    import re
-
-                    user_words = set(w for w in re.findall(r"\w{4,}", (user_msg or '').lower()))
-
-                    cont_words = set(w for w in re.findall(r"\w{4,}", cont_text.lower()))
-
-                    overlap = 0.0
-
-                    if user_words:
-
-                        overlap = len(user_words & cont_words) / max(1, len(user_words))
-
-                    # reject if continuation appears extremely similar to previous text (repeat) or clearly off-topic
-
-                    if cont_text.strip() in (prev_text or ''):
-
-                        return False
-
-                    # accept only when similarity or overlap meets thresholds
-
-                    if sim >= min_sim or overlap >= 0.05:
-
-                        return True
-
-                    return False
-
-                except Exception:
-
-                    return False
 
 
+                while retries < max_retries and _looks_truncated(full_text):
 
-            while retries < max_retries and _looks_truncated(full_text):
+                    try:
 
-                try:
+                        cont_prompt = app.config.get('ECHO_CONTINUE_PROMPT', 'Please continue the previous response.')
 
-                    cont_prompt = app.config.get('ECHO_CONTINUE_PROMPT', 'Please continue the previous response.')
+                        cont_resp = bot.chat(cont_prompt, session_id=session_id)
 
-                    cont_resp = bot.chat(cont_prompt, session_id=session_id)
+                        cont_text = cont_resp.get('response') if isinstance(cont_resp, dict) else str(cont_resp)
 
-                    cont_text = cont_resp.get('response') if isinstance(cont_resp, dict) else str(cont_resp)
+                        if not cont_text:
 
-                    if not cont_text:
+                            break
 
-                        break
+                        # decide whether to accept this continuation
 
-                    # decide whether to accept this continuation
+                        if not _should_accept_continuation(full_text, cont_text, message):
 
-                    if not _should_accept_continuation(full_text, cont_text, message):
+                            # mark on the response that continuation was halted due to divergence
 
-                        # mark on the response that continuation was halted due to divergence
+                            if isinstance(response, dict):
+
+                                response['continued_halted_due_to_divergence'] = True
+
+                            else:
+
+                                response = {'response': full_text, 'continued_halted_due_to_divergence': True}
+
+                            break
+
+                        # append accepted continuation
+
+                        full_text = full_text + "\n" + cont_text
 
                         if isinstance(response, dict):
 
-                            response['continued_halted_due_to_divergence'] = True
+                            response['response'] = full_text
+
+                            response['continued_count'] = response.get('continued_count', 0) + 1
 
                         else:
 
-                            response = {'response': full_text, 'continued_halted_due_to_divergence': True}
+                            response = {'response': full_text, 'continued_count': 1}
+
+                    except Exception:
+
+                        app.logger.exception('Auto-continue failed')
 
                         break
 
-                    # append accepted continuation
-
-                    full_text = full_text + "\n" + cont_text
-
-                    if isinstance(response, dict):
-
-                        response['response'] = full_text
-
-                        response['continued_count'] = response.get('continued_count', 0) + 1
-
-                    else:
-
-                        response = {'response': full_text, 'continued_count': 1}
-
-                except Exception:
-
-                    app.logger.exception('Auto-continue failed')
-
-                    break
-
-                retries += 1
+                    retries += 1
 
 
 
@@ -14139,14 +14091,6 @@ def api_echo_chat():
 
         storage.store_message(user='web_user', message=message, echo_response=full_text, channel=session_id)
 
-        if not isinstance(response, dict):
-            response = {'response': str(response)}
-        response.setdefault('session_id', session_id)
-        response.setdefault('timestamp', time.time())
-        response.setdefault('message_id', f"bot_{int(time.time()*1000)}")
-        if debug_mode:
-            response.setdefault('_path', 'bot')
-            response.setdefault('_session_has_topic', bool((meta or {}).get('topic_state')))
         return jsonify(response)
 
     except Exception as e:
@@ -14392,78 +14336,6 @@ def api_echo_action_handlers():
     """Return metadata for all registered server-side action handlers."""
     return jsonify({'handlers': _echo_action_registry.list_handlers()})
 
-
-@app.route('/api/echo/integrations', methods=['GET', 'POST'])
-def api_echo_integrations():
-    """Manage Echo integration toggles.
-
-    GET:
-      Returns the persisted config plus effective module projection.
-
-    POST JSON examples:
-      {"enabled": true}
-      {"auto": {"chat": true, "web_ide": true, "training": true}}
-      {"module": "rbac", "enabled": true}
-    """
-    try:
-        cfg = app.config.get('ECHO_INTEGRATIONS') or _load_echo_integrations()
-        warnings = []
-
-        if request.method == 'POST':
-            body = request.get_json(silent=True) or {}
-
-            if 'enabled' in body:
-                requested = bool(body.get('enabled'))
-                # If core scopes are locked, do not allow turning Echo off globally.
-                if cfg.get('lock_core_scopes', True) and not requested:
-                    warnings.append('ignored enabled=false because lock_core_scopes is true')
-                else:
-                    cfg['enabled'] = requested
-
-            if 'lock_core_scopes' in body:
-                cfg['lock_core_scopes'] = bool(body.get('lock_core_scopes'))
-
-            auto = body.get('auto')
-            if isinstance(auto, dict):
-                cfg.setdefault('auto', {})
-                for key in ('chat', 'web_ide', 'training'):
-                    if key in auto:
-                        requested = bool(auto.get(key))
-                        if cfg.get('lock_core_scopes', True) and not requested:
-                            warnings.append(f'ignored auto.{key}=false because lock_core_scopes is true')
-                            cfg['auto'][key] = True
-                        else:
-                            cfg['auto'][key] = requested
-
-            mod = body.get('module')
-            if mod is not None:
-                mod_name = str(mod).strip()
-                if mod_name:
-                    cfg.setdefault('modules', {})
-                    cfg['modules'][mod_name] = bool(body.get('enabled', True))
-
-            app.config['ECHO_INTEGRATIONS'] = cfg
-            _save_echo_integrations(cfg)
-
-        effective_modules = {}
-        for mod_name in ENABLED_MODULES.keys():
-            effective_modules[mod_name] = _echo_integration_enabled('module', module_name=mod_name, default_for_module=False)
-
-        return jsonify({
-            'ok': True,
-            'warnings': warnings,
-            'config': cfg,
-            'effective': {
-                'chat': _echo_integration_enabled('chat'),
-                'web_ide': _echo_integration_enabled('web_ide'),
-                'training': _echo_integration_enabled('training'),
-                'modules': effective_modules,
-            }
-        })
-    except Exception as e:
-        app.logger.exception('Echo integrations endpoint failed')
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
 @app.route('/api/echo/session_prefs', methods=['GET','POST'])
 
 def api_echo_session_prefs():
@@ -14531,9 +14403,6 @@ def api_echo_session_prefs():
 def api_echo_train():
 
     try:
-
-        if not _echo_integration_enabled('training'):
-            return jsonify({'error': 'Echo training integration is disabled by policy'}), 503
 
         data=request.get_json()
 
@@ -17495,6 +17364,399 @@ def art_gallery():
     except Exception:
         app.logger.exception('Failed to serve gallery.html')
     return ('Art Gallery not available', 404)
+
+
+@app.route('/media/roku')
+def roku_builder_page():
+    """Serve the Roku IPTV builder wizard."""
+    try:
+        p = Path(__file__).resolve().parent / 'roku_builder.html'
+        if p.exists():
+            return p.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'}
+    except Exception:
+        app.logger.exception('Failed to serve roku_builder.html')
+    return ('Roku Builder not available', 404)
+
+
+MAX_PLAYLIST_ENTRIES = 50000
+MAX_PREVIEW_ITEMS = 25
+MAX_CATEGORY_ITEMS = 50
+
+
+def _normalize_group_key(value):
+    """Normalize IPTV group names so actual playlist categories are preserved."""
+    text = (value or '').strip().lower()
+    if not text:
+        return 'live'
+    text = text.replace('&', ' and ')
+    text = re.sub(r'[^a-z0-9]+', '-', text)
+    return text.strip('-') or 'live'
+
+
+def _classify_roku_entry(title, group_title=None):
+    """Infer a content category for a Roku playlist entry."""
+    haystack = ' '.join(filter(None, [title or '', group_title or ''])).lower()
+    if any(token in haystack for token in ['news', 'breaking', 'cnn', 'bbc', 'fox', 'sky news', 'live news']):
+        return 'news'
+    if any(token in haystack for token in ['sport', 'sports', 'football', 'soccer', 'nba', 'nfl', 'mma', 'boxing', 'premier league']):
+        return 'sports'
+    if any(token in haystack for token in ['movie', 'movies', 'film', 'cinema', 'premiere', 'theater']):
+        return 'movies'
+    if any(token in haystack for token in ['series', 'episode', 'show', 'drama', 'tv show', 'reality', 'documentary series']):
+        return 'series'
+    if any(token in haystack for token in ['kids', 'cartoon', 'animation', 'family']):
+        return 'kids'
+    if any(token in haystack for token in ['music', 'radio', 'concert']):
+        return 'music'
+    return 'live'
+
+
+def _parse_roku_m3u_attributes(line):
+    attrs = {}
+    for key, value in re.findall(r'(?:^|\s)([A-Za-z0-9_-]+)="([^"]*)"', line):
+        attrs[key.lower().replace('-', '_')] = value.strip()
+    return attrs
+
+
+def _parse_m3u_playlist(text):
+    """Parse an m3u/m3u8 playlist into rich Roku-friendly entries."""
+    items = []
+    current = {}
+    current_group = None
+    for raw_line in str(text or '').splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith('#EXTGRP:'):
+            current_group = line.split(':', 1)[1].strip()
+            continue
+        if line.startswith('#EXTINF'):
+            current = {'group_title': current_group}
+            attrs = _parse_roku_m3u_attributes(line)
+            current.update(attrs)
+            title_match = re.search(r',\s*(.*)$', line)
+            current['title'] = title_match.group(1).strip() if title_match else (attrs.get('tvg_name') or attrs.get('title') or 'Channel')
+            raw_group = attrs.get('group_title') or attrs.get('tvg_group') or attrs.get('group') or current_group or current.get('group_title')
+            current['group_title'] = raw_group
+            current['category'] = _normalize_group_key(raw_group) if raw_group else _classify_roku_entry(current['title'], current.get('group_title'))
+            continue
+        if line.startswith('#'):
+            continue
+        if line.startswith(('http://', 'https://', 'rtsp://', 'udp://', 'rtmp://', 'mms://')):
+            if len(items) >= MAX_PLAYLIST_ENTRIES:
+                break
+            current['url'] = line
+            title = current.get('title') or current.get('tvg_name') or f'Channel {len(items) + 1}'
+            group = current.get('group_title') or current.get('tvg_group') or current.get('group') or current.get('category') or 'live'
+            category = current.get('category') or _normalize_group_key(group) or _classify_roku_entry(title, group)
+            items.append({
+                'title': title,
+                'url': line,
+                'group': group,
+                'category': category,
+                'logo': current.get('tvg_logo') or current.get('logo') or '',
+                'raw_group': current.get('group_title') or current.get('tvg_group') or ''
+            })
+            current = {}
+    return items
+
+
+def _generate_roku_manifest(channel_name, bundle_id, developer_ip='', theme='dark'):
+    manifest = f"""title={channel_name}
+subtitle={channel_name} IPTV
+major_version=1
+minor_version=0
+build_version=00001
+mm_icon_focus_hd=pkg:/images/icon_focus_hd.png
+mm_icon_focus_sd=pkg:/images/icon_focus_sd.png
+splash_screen_fhd=pkg:/images/splash_fhd.png
+splash_screen_hd=pkg:/images/splash_hd.png
+splash_screen_sd=pkg:/images/splash_sd.png
+supports_input_launch=true
+ui_resolutions=fhd,hd,sd
+developer_ip={developer_ip}
+theme={theme}
+channel_id={bundle_id}
+"""
+    return manifest
+
+
+def _roku_project_template(channel_name, bundle_id, categories):
+    rows = []
+    for category_name, items in categories.items():
+        row_items = items[:6]
+        item_names = ', '.join(f'"{item["title"]}"' for item in row_items)
+        rows.append(f'        {{ title: "{category_name.title()}", items: [{item_names}] }}')
+    rows_text = '\n'.join(rows)
+    return f"""sub init()
+    m.top.backgroundColor = "0x111827"
+    m.top.title = "{channel_name}"
+    m.top.categoryRows = [
+{rows_text}
+    ]
+end sub
+"""
+
+
+def _build_roku_preview(entries):
+    grouped = {}
+    for entry in entries:
+        raw_group = entry.get('group') or entry.get('raw_group') or entry.get('category') or 'live'
+        category = _normalize_group_key(raw_group)
+        grouped.setdefault(category, []).append(entry)
+    return {category: values[:MAX_CATEGORY_ITEMS] for category, values in sorted(grouped.items())}
+
+
+@app.route('/api/roku/validate', methods=['POST'])
+def api_roku_validate():
+    """Validate and normalize an m3u/m3u8 source before building a Roku app."""
+    payload = request.get_json(silent=True) or request.form.to_dict() or {}
+    playlist_url = (payload.get('playlist_url') or '').strip()
+    playlist_text = (payload.get('playlist_text') or '').strip()
+    playlist_json = (payload.get('playlist_json') or '').strip()
+    uploaded = request.files.get('file') if request.files else None
+
+    if not playlist_text and not playlist_url and not playlist_json and not uploaded:
+        return jsonify({'ok': False, 'error': 'playlist url, text, json, or file upload required'}), 400
+
+    try:
+        if uploaded is not None and uploaded.filename:
+            content = uploaded.read().decode('utf-8', 'replace')
+            if uploaded.filename.lower().endswith('.json'):
+                parsed = json.loads(content)
+                entries = []
+                for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
+                    if not isinstance(item, dict):
+                        continue
+                    title = str(item.get('title') or item.get('name') or 'Channel').strip()
+                    url = str(item.get('url') or item.get('stream_url') or '').strip()
+                    if not url:
+                        continue
+                    category = str(item.get('category') or item.get('group') or 'live').strip().lower()
+                    entries.append({
+                        'title': title,
+                        'url': url,
+                        'group': str(item.get('group') or item.get('category') or 'live').strip(),
+                        'category': category,
+                        'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
+                        'raw_group': str(item.get('group') or item.get('category') or '').strip(),
+                    })
+            else:
+                entries = _parse_m3u_playlist(content)
+        elif playlist_json:
+            parsed = json.loads(playlist_json)
+            entries = []
+            for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
+                if not isinstance(item, dict):
+                    continue
+                title = str(item.get('title') or item.get('name') or 'Channel').strip()
+                url = str(item.get('url') or item.get('stream_url') or '').strip()
+                if not url:
+                    continue
+                category = str(item.get('category') or item.get('group') or 'live').strip().lower()
+                entries.append({
+                    'title': title,
+                    'url': url,
+                    'group': str(item.get('group') or item.get('category') or 'live').strip(),
+                    'category': category,
+                    'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
+                    'raw_group': str(item.get('group') or item.get('category') or '').strip(),
+                })
+        elif playlist_text:
+            entries = _parse_m3u_playlist(playlist_text)
+        else:
+            content = _fetch_remote_playlist_text(playlist_url)
+            entries = _parse_m3u_playlist(content)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': f'Unable to validate playlist: {exc}'}), 400
+
+    grouped = _build_roku_preview(entries)
+    preview = entries[0] if entries else None
+    preview_text = f"{preview['title']} -> {preview['url']}" if preview else None
+    preview_entries = entries[:MAX_PREVIEW_ITEMS]
+    return jsonify({
+        'ok': True,
+        'count': len(entries),
+        'preview': preview_text,
+        'entries': preview_entries,
+        'grouped': grouped,
+        'categories': sorted(grouped.keys()),
+        'message': 'Playlist validated for Roku development use.'
+    })
+
+
+@app.route('/api/roku/build', methods=['POST'])
+def api_roku_build():
+    """Generate a Roku app scaffold, manifest, preview model, and zip archive from an m3u/m3u8 source."""
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    name = (data.get('channel_name') or data.get('name') or 'MasterChief Roku').strip()
+    bundle_id = (data.get('bundle_id') or 'com.masterchief.roku').strip()
+    playlist_url = (data.get('playlist_url') or '').strip()
+    playlist_text = (data.get('playlist_text') or '').strip()
+    playlist_json = (data.get('playlist_json') or '').strip()
+    source_url = (data.get('source_url') or '').strip()
+    developer_ip = (data.get('developer_ip') or '').strip()
+    theme = (data.get('theme') or 'dark').strip().lower()
+
+    uploaded = request.files.get('file') if request.files else None
+    if uploaded is not None and uploaded.filename:
+        playlist_text = uploaded.read().decode('utf-8', 'replace')
+        if not playlist_text.strip():
+            return jsonify({'ok': False, 'error': 'Uploaded playlist file is empty'}), 400
+
+    if not name or not bundle_id:
+        return jsonify({'ok': False, 'error': 'channel name and bundle id are required'}), 400
+
+    playlist = []
+    if uploaded is not None and uploaded.filename and uploaded.filename.lower().endswith('.json'):
+        try:
+            parsed = json.loads(playlist_text)
+            for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
+                if not isinstance(item, dict):
+                    continue
+                title = str(item.get('title') or item.get('name') or 'Channel').strip()
+                url = str(item.get('url') or item.get('stream_url') or '').strip()
+                if not url:
+                    continue
+                category = str(item.get('category') or item.get('group') or 'live').strip().lower()
+                playlist.append({
+                    'title': title,
+                    'url': url,
+                    'group': str(item.get('group') or item.get('category') or 'live').strip(),
+                    'category': category,
+                    'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
+                    'raw_group': str(item.get('group') or item.get('category') or '').strip(),
+                })
+        except Exception as exc:
+            return jsonify({'ok': False, 'error': f'Unable to parse JSON playlist: {exc}'}), 400
+    elif playlist_json:
+        try:
+            parsed = json.loads(playlist_json)
+            for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
+                if not isinstance(item, dict):
+                    continue
+                title = str(item.get('title') or item.get('name') or 'Channel').strip()
+                url = str(item.get('url') or item.get('stream_url') or '').strip()
+                if not url:
+                    continue
+                category = str(item.get('category') or item.get('group') or 'live').strip().lower()
+                playlist.append({
+                    'title': title,
+                    'url': url,
+                    'group': str(item.get('group') or item.get('category') or 'live').strip(),
+                    'category': category,
+                    'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
+                    'raw_group': str(item.get('group') or item.get('category') or '').strip(),
+                })
+        except Exception as exc:
+            return jsonify({'ok': False, 'error': f'Unable to parse JSON playlist: {exc}'}), 400
+    elif playlist_text:
+        playlist = _parse_m3u_playlist(playlist_text)
+    elif playlist_url:
+        try:
+            playlist_text = _fetch_remote_playlist_text(playlist_url)
+            playlist = _parse_m3u_playlist(playlist_text)
+        except Exception as exc:
+            return jsonify({'ok': False, 'error': f'Unable to fetch playlist: {exc}'}), 400
+
+    if not playlist and not source_url:
+        return jsonify({'ok': False, 'error': 'Provide an m3u/m3u8 URL, paste playlist text, upload a playlist file, or supply a JSON custom channel list'}), 400
+
+    root = Path(__file__).resolve().parent / 'data' / 'roku_builds'
+    root.mkdir(parents=True, exist_ok=True)
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-') or 'masterchief-roku'
+    project_dir = root / slug
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    grouped = _build_roku_preview(playlist)
+    preview_model = {
+        'channel_name': name,
+        'bundle_id': bundle_id,
+        'categories': {category: [{'title': item['title'], 'url': item['url'], 'group': item.get('group', category)} for item in entries] for category, entries in grouped.items()},
+        'search_index': [item['title'] for item in playlist[:200]],
+        'source_url': playlist_url or source_url or 'uploaded_playlist',
+        'developer_ip': developer_ip,
+        'theme': theme,
+        'sample_size': len(playlist),
+        'preview_limited': len(playlist) > MAX_PREVIEW_ITEMS
+    }
+
+    manifest_path = project_dir / 'manifest'
+    manifest_path.write_text(_generate_roku_manifest(name, bundle_id, developer_ip, theme), encoding='utf-8')
+
+    source_path = project_dir / 'source.m3u'
+    if playlist:
+        lines = ['#EXTM3U']
+        for item in playlist:
+            title = (item.get('title') or 'Channel').replace('\n', ' ')
+            url = item.get('url', '')
+            group = item.get('group') or 'live'
+            if title and url:
+                lines.append(f'#EXTINF:-1 tvg-group="{group}",{title}')
+                lines.append(url)
+        source_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    elif source_url:
+        source_path.write_text(f'#EXTM3U\n{source_url}\n', encoding='utf-8')
+
+    images_dir = project_dir / 'images'
+    images_dir.mkdir(parents=True, exist_ok=True)
+    for name_file in ['icon_focus_hd.png', 'icon_focus_sd.png', 'splash_fhd.png', 'splash_hd.png', 'splash_sd.png']:
+        (images_dir / name_file).write_bytes(b'placeholder')
+
+    components_dir = project_dir / 'components'
+    components_dir.mkdir(parents=True, exist_ok=True)
+    (components_dir / 'MainScene.brs').write_text(
+        _roku_project_template(name, bundle_id, grouped),
+        encoding='utf-8'
+    )
+
+    (project_dir / 'channel_config.json').write_text(json.dumps({
+        'channel_name': name,
+        'bundle_id': bundle_id,
+        'playlist_url': playlist_url,
+        'source_url': source_url,
+        'developer_ip': developer_ip,
+        'theme': theme,
+        'playlist_count': len(playlist),
+        'entries': playlist[:20],
+        'preview_model': preview_model,
+        'created_at': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+        'target': 'Roku TV streaming app',
+        'deployment': 'Developer Mode / sideload / upload to TV',
+        'notes': 'Use the Roku developer portal to sideload the generated zip and confirm the playlist loads on-device.'
+    }, indent=2), encoding='utf-8')
+
+    (project_dir / 'README.md').write_text(
+        '# Roku App Project\n\n'
+        f'- Channel name: {name}\n'
+        f'- Bundle ID: {bundle_id}\n'
+        f'- Playlist source: {playlist_url or source_url or "provided in pasted playlist text"}\n'
+        f'- Developer IP: {developer_ip or "not configured yet"}\n'
+        f'- Theme: {theme}\n\n'
+        '## Preview model\n\n'
+        f'{json.dumps(preview_model, indent=2)}\n\n'
+        'Use the Roku developer tools to upload the packaged channel and test it on-device.',
+        encoding='utf-8'
+    )
+
+    zip_path = project_dir / f'{slug}.zip'
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as archive:
+        for p in sorted(project_dir.rglob('*')):
+            if p.is_file() and p.name != zip_path.name:
+                archive.write(p, arcname=str(p.relative_to(project_dir)))
+
+    return jsonify({
+        'ok': True,
+        'project_path': str(project_dir.relative_to(Path(__file__).resolve().parent)),
+        'manifest_path': str(manifest_path.relative_to(Path(__file__).resolve().parent)),
+        'zip_path': str(zip_path.relative_to(Path(__file__).resolve().parent)),
+        'slug': slug,
+        'channel_name': name,
+        'bundle_id': bundle_id,
+        'playlist_count': len(playlist),
+        'preview_model': preview_model,
+        'message': 'Roku app scaffold generated and packaged for sideloading.'
+    })
 
 # ── Art Gallery API ──────────────────────────────────────────────────
 _GALLERY_DIR = Path(__file__).resolve().parent / 'data' / 'gallery'

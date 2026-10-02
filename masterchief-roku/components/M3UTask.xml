@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="M3UTask" extends="Task">
+    <interface>
+        <field id="url"          type="string"  onChange="onUrlChange" />
+        <field id="error"        type="string"  value="" />
+        <field id="groupsJson"   type="string"  value="" />
+        <field id="channelsJson" type="string"  value="" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+
+        sub init()
+            m.top.functionName = "fetch"
+        end sub
+
+        sub onUrlChange()
+            m.top.control = "run"
+        end sub
+
+        sub fetch()
+            url = m.top.url
+            if url = "" then return
+            http = CreateObject("roUrlTransfer")
+            http.SetUrl(url)
+            http.SetCertificatesFile("common:/certs/ca-bundle.crt")
+            http.InitClientCertificates()
+            http.AddHeader("User-Agent", "Roku/1.0")
+            port = CreateObject("roMessagePort")
+            http.SetMessagePort(port)
+            tmpFile = "cachefs:/mc_playlist.m3u"
+            http.AsyncGetToFile(tmpFile)
+            msg = Wait(120000, port)
+            if msg = invalid
+                m.top.error = "Download timeout"
+                return
+            end if
+            code = msg.GetResponseCode()
+            if code < 200 or code >= 300
+                m.top.error = "HTTP " + stri(code).trim()
+                return
+            end if
+            content = ReadAsciiFile(tmpFile)
+            if content = ""
+                m.top.error = "Empty file"
+                return
+            end if
+            rs = CreateObject("roString")
+            rs.SetString(content)
+            rawLines = rs.Tokenize(chr(10))
+            channels   = []
+            groupsSeen = {}
+            groups     = []
+            maxCh      = 4000
+            extinf     = ""
+            for each rawLine in rawLines
+                if channels.count() < maxCh
+                    ln = rawLine
+                    if Right(ln, 1) = chr(13) then ln = Left(ln, Len(ln) - 1)
+                    ln = Trim(ln)
+                    if ln <> ""
+                        if Left(ln, 7) = "#EXTINF"
+                            extinf = ln
+                        else if Left(ln, 1) <> "#" and extinf <> ""
+                            ch = buildChannel(extinf, ln)
+                            if ch.name <> ""
+                                channels.push(ch)
+                                grp = ch.group
+                                if not groupsSeen.doesExist(grp)
+                                    groupsSeen[grp] = true
+                                    groups.push(grp)
+                                end if
+                            end if
+                            extinf = ""
+                        end if
+                    end if
+                end if
+            end for
+            m.top.channelsJson = FormatJson(channels)
+            m.top.groupsJson   = FormatJson(groups)
+        end sub
+
+        function buildChannel(extinf as String, url as String) as Object
+            ch = {}
+            ch.url   = url
+            grp = attrVal(extinf, "group-title")
+            ch.logo  = attrVal(extinf, "tvg-logo")
+            name = lastCommaVal(extinf)
+            if name = "" then name = "Unknown"
+            ch.name  = name
+            if grp = ""
+                first = UCase(Left(name, 1))
+                if first >= "A" and first <= "Z"
+                    grp = first
+                else
+                    grp = "#"
+                end if
+            end if
+            ch.group = grp
+            return ch
+        end function
+
+        function lastCommaVal(line as String) as String
+            lastPos = 0
+            cur = Instr(1, line, ",")
+            while cur > 0
+                lastPos = cur
+                cur = Instr(cur + 1, line, ",")
+            end while
+            if lastPos = 0 then return ""
+            val = Trim(Mid(line, lastPos + 1, Len(line) - lastPos))
+            if Left(val, 7) = "#EXTINF" then return ""
+            return val
+        end function
+
+        function attrVal(line as String, attr as String) as String
+            needle = attr + "=" + chr(34)
+            startPos = Instr(1, line, needle)
+            if startPos = 0 then return ""
+            valStart = startPos + Len(needle)
+            valEnd   = Instr(valStart, line, chr(34))
+            if valEnd = 0 then return ""
+            return Mid(line, valStart, valEnd - valStart)
+        end function
+
+    ]]></script>
+</component>

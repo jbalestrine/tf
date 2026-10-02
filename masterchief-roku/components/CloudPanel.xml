@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    CloudPanel - shows cloud accounts / resource health from /api/cloud/accounts
+-->
+<component name="CloudPanel" extends="Group">
+    <interface>
+        <function name="load" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+
+        sub init()
+            m.baseUrl = "http://10.0.0.159:8080"
+            m.scrollOffset = 0
+            m.items = []
+            buildChrome()
+            m.task = createObject("roSGNode", "ApiTask")
+            m.task.observeField("result", "onResult")
+        end sub
+
+        sub buildChrome()
+            bg = m.top.createChild("Rectangle")
+            bg.translation = [0, 0]
+            bg.width  = 1280
+            bg.height = 596
+            bg.color  = "0x0D1117FF"
+
+            titleBar = m.top.createChild("Rectangle")
+            titleBar.translation = [36, 12]
+            titleBar.width  = 1208
+            titleBar.height = 40
+            titleBar.color  = "0x161B22FF"
+
+            titleLbl = m.top.createChild("Label")
+            titleLbl.translation = [52, 18]
+            titleLbl.text  = "  CLOUD ACCOUNTS"
+            titleLbl.font  = "font:MediumBoldSystemFont"
+            titleLbl.color = "0xE6EDF3FF"
+
+            m.statusLbl = m.top.createChild("Label")
+            m.statusLbl.translation = [900, 22]
+            m.statusLbl.text  = "Loading..."
+            m.statusLbl.font  = "font:SmallSystemFont"
+            m.statusLbl.color = "0x8B949EFF"
+
+            ' headers
+            hdrBg = m.top.createChild("Rectangle")
+            hdrBg.translation = [36, 60]
+            hdrBg.width  = 1208
+            hdrBg.height = 28
+            hdrBg.color  = "0x21262DFF"
+
+            cols = [["ACCOUNT", 52], ["PROVIDER", 440], ["REGION", 620], ["STATUS", 800], ["RESOURCES", 1020]]
+            for each col in cols
+                h = m.top.createChild("Label")
+                h.translation = [col[1], 64]
+                h.text  = col[0]
+                h.font  = "font:SmallBoldSystemFont"
+                h.color = "0x58A6FFFF"
+            end for
+
+            m.rowGroup = m.top.createChild("Group")
+            m.rowGroup.translation = [0, 92]
+        end sub
+
+        function load(args as Dynamic)
+            m.statusLbl.text = "*  Fetching..."
+            m.task.url = m.baseUrl + "/api/cloud/accounts"
+        end function
+
+        sub onResult()
+            data = m.task.result
+            if data = invalid
+                m.statusLbl.text = "No response"
+                return
+            end if
+            if data.doesExist("error")
+                m.statusLbl.text = "X " + data.error
+                return
+            end if
+
+            items = invalid
+            if type(data) = "roArray" then items = data
+            keys = ["accounts", "data", "cloud_accounts", "results"]
+            for each k in keys
+                if items = invalid and data.doesExist(k) and type(data[k]) = "roArray"
+                    items = data[k]
+                end if
+            end for
+            if items = invalid then items = []
+
+            m.items = items
+            m.scrollOffset = 0
+            renderRows()
+
+            dt = CreateObject("roDateTime")
+            dt.ToLocalTime()
+            m.statusLbl.text = "Updated " + str(dt.GetHours()).trim() + ":" + rp(dt.GetMinutes())
+        end sub
+
+        sub renderRows()
+            while m.rowGroup.getChildCount() > 0
+                m.rowGroup.removeChildIndex(0)
+            end while
+
+            maxRows = 12
+            rowH    = 38
+            y       = 0
+            endIdx  = m.scrollOffset + maxRows - 1
+            if endIdx >= m.items.count() then endIdx = m.items.count() - 1
+
+            for i = m.scrollOffset to endIdx
+                item = m.items[i]
+
+                odd = m.rowGroup.createChild("Rectangle")
+                odd.translation = [36, y]
+                odd.width  = 1208
+                odd.height = rowH - 1
+                if i mod 2 = 0 then odd.color = "0x0D1117FF" else odd.color = "0x161B22FF"
+
+                name     = safeStr(item, "name",     safeStr(item, "account_name", safeStr(item, "id", "account-" + str(i).trim())))
+                provider = safeStr(item, "provider",  safeStr(item, "cloud",  safeStr(item, "type", "-")))
+                region   = safeStr(item, "region",    safeStr(item, "location", "-"))
+                status   = safeStr(item, "status",    safeStr(item, "health", "unknown"))
+                resources = safeStr(item, "resource_count", safeStr(item, "resources", "-"))
+
+                m_makeLbl(m.rowGroup, 52,   y + 9, name,      "0xE6EDF3FF", 380)
+                m_makeLbl(m.rowGroup, 440,  y + 9, UCase(provider), "0x58A6FFFF", 172)
+                m_makeLbl(m.rowGroup, 620,  y + 9, region,    "0x8B949EFF", 172)
+                m_makeLbl(m.rowGroup, 800,  y + 9, UCase(status), statusColor(status), 212)
+                m_makeLbl(m.rowGroup, 1020, y + 9, resources, "0x8B949EFF", 200)
+
+                y = y + rowH
+            end for
+
+            if m.items.count() > maxRows
+                hint = m.rowGroup.createChild("Label")
+                hint.translation = [36, y + 4]
+                hint.text  = "^ v scroll  (" + str(m.items.count()).trim() + " total)"
+                hint.font  = "font:SmallSystemFont"
+                hint.color = "0x8B949EFF"
+            end if
+
+            if m.items.count() = 0
+                empty = m.rowGroup.createChild("Label")
+                empty.translation = [52, 20]
+                empty.text  = "No cloud accounts configured."
+                empty.font  = "font:SmallSystemFont"
+                empty.color = "0x8B949EFF"
+            end if
+        end sub
+
+        sub m_makeLbl(grp as Object, x as Integer, y as Integer, text as String, color as String, w = 300 as Integer)
+            lbl = grp.createChild("Label")
+            lbl.translation = [x, y]
+            lbl.text  = text
+            lbl.font  = "font:SmallSystemFont"
+            lbl.color = color
+            lbl.width = w
+            lbl.truncateOnDelimiter = "..."
+        end sub
+
+        function onKeyEvent(key as String, press as Boolean) as Boolean
+            if not press then return false
+            if key = "down" and m.scrollOffset + 12 < m.items.count()
+                m.scrollOffset = m.scrollOffset + 1
+                renderRows()
+                return true
+            else if key = "up" and m.scrollOffset > 0
+                m.scrollOffset = m.scrollOffset - 1
+                renderRows()
+                return true
+            end if
+            return false
+        end function
+
+    ]]></script>
+</component>

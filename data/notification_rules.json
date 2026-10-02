@@ -1,0 +1,23 @@
+{
+  "rules": [
+    {
+      "id": "ddb300ca-c783-493b-9476-161c9453cf96",
+      "name": "login",
+      "event_type": "pipeline_failed",
+      "severity_filter": "all",
+      "channel_id": "1af9cbd8-5c3a-4365-8eaf-94a0ff8b852e",
+      "active": true,
+      "created": "2026-08-19T05:23:18.041839",
+      "severity": "all"
+    },
+    {
+      "id": "784cd3b5-f45c-4ead-985c-19cdaa06bf47",
+      "name": "masterchiefx login",
+      "event_type": "system_alert",
+      "severity_filter": "all",
+      "channel_id": "1af9cbd8-5c3a-4365-8eaf-94a0ff8b852e",
+      "active": true,
+      "created": "2026-09-22T02:30:44.931621"
+    }
+  ]
+}

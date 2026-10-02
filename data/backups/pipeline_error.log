@@ -123,3 +123,60 @@ Traceback (most recent call last):
     import torch
 ModuleNotFoundError: No module named 'torch'
 
+--- Sat May 30 20:27:28 2026 ---
+Traceback (most recent call last):
+  File "C:\Users\Echo\masterchief\image_worker.py", line 59, in load_pipeline
+    import torch
+ModuleNotFoundError: No module named 'torch'
+
+--- Sat May 30 20:48:43 2026 ---
+Traceback (most recent call last):
+  File "C:\Users\Echo\masterchief\venv\Lib\site-packages\diffusers\utils\import_utils.py", line 1015, in _get_module
+    return importlib.import_module("." + module_name, self.__name__)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Echo\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1398, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 759, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "C:\Users\Echo\masterchief\venv\Lib\site-packages\diffusers\pipelines\stable_diffusion\pipeline_stable_diffusion.py", line 19, in <module>
+    from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
+  File "C:\Users\Echo\masterchief\venv\Lib\site-packages\transformers\__init__.py", line 27, in <module>
+    from . import dependency_versions_check
+ImportError: cannot import name 'dependency_versions_check' from partially initialized module 'transformers' (most likely due to a circular import) (C:\Users\Echo\masterchief\venv\Lib\site-packages\transformers\__init__.py)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Echo\masterchief\image_worker.py", line 60, in load_pipeline
+    from diffusers import StableDiffusionPipeline
+  File "<frozen importlib._bootstrap>", line 1423, in _handle_fromlist
+  File "C:\Users\Echo\masterchief\venv\Lib\site-packages\diffusers\utils\import_utils.py", line 1006, in __getattr__
+    value = getattr(module, name)
+  File "C:\Users\Echo\masterchief\venv\Lib\site-packages\diffusers\utils\import_utils.py", line 1006, in __getattr__
+    value = getattr(module, name)
+  File "C:\Users\Echo\masterchief\venv\Lib\site-packages\diffusers\utils\import_utils.py", line 1005, in __getattr__
+    module = self._get_module(self._class_to_module[name])
+  File "C:\Users\Echo\masterchief\venv\Lib\site-packages\diffusers\utils\import_utils.py", line 1017, in _get_module
+    raise RuntimeError(
+    ...<2 lines>...
+    ) from e
+RuntimeError: Failed to import diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion because of the following error (look up to see its traceback):
+cannot import name 'dependency_versions_check' from partially initialized module 'transformers' (most likely due to a circular import) (C:\Users\Echo\masterchief\venv\Lib\site-packages\transformers\__init__.py)
+
+--- Sun May 31 00:01:28 2026 ---
+Traceback (most recent call last):
+  File "C:\Users\Echo\masterchief\image_worker.py", line 59, in load_pipeline
+    import torch
+ModuleNotFoundError: No module named 'torch'
+
+--- Sun May 31 00:02:18 2026 ---
+Traceback (most recent call last):
+  File "C:\Users\Echo\masterchief\image_worker.py", line 59, in load_pipeline
+    import torch
+ModuleNotFoundError: No module named 'torch'
+

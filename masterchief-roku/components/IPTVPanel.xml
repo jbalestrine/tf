@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- IPTVPanel - M3U playlist browser. Groups left, channels right. -->
+<component name="IPTVPanel" extends="Group">
+    <interface>
+        <function name="load" />
+        <field id="selectedChannel" type="assocarray" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+
+sub init()
+    m.m3uUrl = "http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u"
+    m.rowH    = 40
+    m.maxRows = 13
+    m.leftW   = 300
+    m.cBg     = "0x0D1117FF"
+    m.cCard   = "0x161B22FF"
+    m.cSel    = "0x238636FF"
+    m.cText   = "0xE6EDF3FF"
+    m.cSub    = "0x8B949EFF"
+    m.cBorder = "0x30363DFF"
+    m.cBlue   = "0x58A6FFFF"
+    m.cGreen  = "0x3FB950FF"
+    m.cRed    = "0xF85149FF"
+    m.allChannels = [50000]
+    m.groups      = []
+    m.groupIdx    = 0
+    m.groupOffset = 0
+    m.filtered    = []
+    m.streamOffset= 0
+    m.streamCursor= 0
+    m.focusSide   = "group"
+    m.loaded      = false
+    buildChrome()
+    m.task = CreateObject("roSGNode", "M3UTask")
+    m.task.observeField("groupsJson", "onData")
+    m.task.observeField("error",      "onError")
+end sub
+
+sub buildChrome()
+    bg = m.top.createChild("Rectangle")
+    bg.translation = [0, 0]
+    bg.width  = 1280
+    bg.height = 624
+    bg.color  = m.cBg
+
+    sideBar = m.top.createChild("Rectangle")
+    sideBar.translation = [20, 8]
+    sideBar.width  = m.leftW
+    sideBar.height = 580
+    sideBar.color  = m.cCard
+
+    sideHdr = m.top.createChild("Label")
+    sideHdr.translation = [34, 16]
+    sideHdr.text  = "GROUPS"
+    sideHdr.font  = "font:SmallBoldSystemFont"
+    sideHdr.color = m.cBlue
+
+    m.groupList = m.top.createChild("Group")
+    m.groupList.translation = [20, 46]
+
+    chArea = m.top.createChild("Rectangle")
+    chArea.translation = [330, 8]
+    chArea.width  = 930
+    chArea.height = 580
+    chArea.color  = m.cCard
+
+    chHdr = m.top.createChild("Label")
+    chHdr.translation = [344, 16]
+    chHdr.text  = "CHANNELS"
+    chHdr.font  = "font:SmallBoldSystemFont"
+    chHdr.color = m.cBlue
+
+    m.countLbl = m.top.createChild("Label")
+    m.countLbl.translation = [900, 16]
+    m.countLbl.text  = ""
+    m.countLbl.font  = "font:SmallSystemFont"
+    m.countLbl.color = m.cSub
+
+    m.streamList = m.top.createChild("Group")
+    m.streamList.translation = [330, 46]
+
+    m.statusLbl = m.top.createChild("Label")
+    m.statusLbl.translation = [34, 598]
+    m.statusLbl.text  = "Loading playlist..."
+    m.statusLbl.font  = "font:SmallSystemFont"
+    m.statusLbl.color = m.cSub
+    m.statusLbl.width = 1220
+end sub
+
+function load(args as Dynamic)
+    if m.loaded then return invalid
+    m.statusLbl.text  = "Downloading playlist..."
+    m.statusLbl.color = m.cSub
+    m.task.url = ""
+    m.task.url = m.m3uUrl
+end function
+
+sub onError()
+    msg = m.task.error
+    if msg = "" then return
+    m.statusLbl.text  = "Error: " + msg
+    m.statusLbl.color = m.cRed
+end sub
+
+sub onData()
+    gj = m.task.groupsJson
+    cj = m.task.channelsJson
+    if gj = "" then return
+    groups   = ParseJson(gj)
+    channels = ParseJson(cj)
+    if groups = invalid or channels = invalid
+        m.statusLbl.text  = "Parse error"
+        m.statusLbl.color = m.cRed
+        return
+    end if
+    m.allChannels = channels
+    m.groups      = groups
+    m.groupIdx    = 0
+    m.groupOffset = 0
+    m.loaded      = true
+    total = m.allChannels.count()
+    gc    = m.groups.count()
+    m.statusLbl.text  = stri(total).trim() + " ch  |  " + stri(gc).trim() + " groups   </> pane  OK play  * reload"
+    m.statusLbl.color = m.cGreen
+    filterGroup()
+    renderGroups()
+    renderStreams()
+end sub
+
+sub filterGroup()
+    m.filtered     = []
+    m.streamOffset = 0
+    m.streamCursor = 0
+    if m.groups.count() = 0 then return
+    g = m.groups[m.groupIdx]
+    for each ch in m.allChannels
+        chGroup = ch.group
+        if chGroup = "" then chGroup = "Uncategorized"
+        if chGroup = g then m.filtered.push(ch)
+    end for
+    m.countLbl.text = stri(m.filtered.count()).trim() + " ch"
+end sub
+
+sub renderGroups()
+    while m.groupList.getChildCount() > 0
+        m.groupList.removeChildIndex(0)
+    end while
+    if m.groups.count() = 0
+        lbl = m.groupList.createChild("Label")
+        lbl.translation = [12, 10]
+        lbl.text  = "Loading Your Bad ass movie..."
+        lbl.font  = "font:SmallSystemFont"
+        lbl.color = m.cSub
+        return
+    end if
+    y      = 0
+    startI = m.groupOffset
+    endI   = startI + m.maxRows - 1
+    if endI >= m.groups.count() then endI = m.groups.count() - 1
+    for i = startI to endI
+        isSel    = (i = m.groupIdx) and (m.focusSide = "group")
+        isActive = (i = m.groupIdx)
+        rowBg = m.groupList.createChild("Rectangle")
+        rowBg.translation = [0, y]
+        rowBg.width  = m.leftW
+        rowBg.height = m.rowH - 2
+        if isSel
+            rowBg.color = m.cSel
+        else if isActive
+            rowBg.color = "0x21262DFF"
+        else
+            rowBg.color = m.cBg
+        end if
+        lbl = m.groupList.createChild("Label")
+        lbl.translation = [12, y + 10]
+        lbl.text  = m.groups[i]
+        lbl.font  = "font:SmallSystemFont"
+        if isActive then lbl.color = m.cText else lbl.color = m.cSub
+        lbl.width = m.leftW - 16
+        lbl.truncateOnDelimiter = "..."
+        y = y + m.rowH
+    end for
+end sub
+
+sub renderStreams()
+    while m.streamList.getChildCount() > 0
+        m.streamList.removeChildIndex(0)
+    end while
+    if m.filtered.count() = 0
+        lbl = m.streamList.createChild("Label")
+        lbl.translation = [12, 10]
+        lbl.text  = "No channels."
+        lbl.font  = "font:SmallSystemFont"
+        lbl.color = m.cSub
+        return
+    end if
+    chW    = 920
+    y      = 0
+    endIdx = m.streamOffset + m.maxRows - 1
+    if endIdx >= m.filtered.count() then endIdx = m.filtered.count() - 1
+    for i = m.streamOffset to endIdx
+        s      = m.filtered[i]
+        localI = i - m.streamOffset
+        isSel  = (localI = m.streamCursor) and (m.focusSide = "stream")
+        rowBg = m.streamList.createChild("Rectangle")
+        rowBg.translation = [0, y]
+        rowBg.width  = chW
+        rowBg.height = m.rowH - 2
+        if isSel
+            rowBg.color = m.cSel
+        else if i mod 2 = 0
+            rowBg.color = m.cBg
+        else
+            rowBg.color = "0x161B22FF"
+        end if
+        numLbl = m.streamList.createChild("Label")
+        numLbl.translation = [10, y + 10]
+        numLbl.text  = stri(i + 1).trim()
+        numLbl.font  = "font:SmallSystemFont"
+        numLbl.color = m.cSub
+        numLbl.width = 52
+        name = s.name
+        nameLbl = m.streamList.createChild("Label")
+        nameLbl.translation = [66, y + 10]
+        nameLbl.text  = name
+        nameLbl.font  = "font:SmallSystemFont"
+        if isSel then nameLbl.color = "0xFFFFFFFF" else nameLbl.color = m.cText
+        nameLbl.width = chW - 70
+        nameLbl.truncateOnDelimiter = "..."
+        y = y + m.rowH
+    end for
+    if m.filtered.count() > m.maxRows
+        hint = m.streamList.createChild("Label")
+        hint.translation = [10, y + 6]
+        hint.text  = "^v scroll  (" + stri(m.filtered.count()).trim() + " total)"
+        hint.font  = "font:SmallSystemFont"
+        hint.color = m.cSub
+    end if
+end sub
+
+function onKeyEvent(key as String, press as Boolean) as Boolean
+    if not press then return false
+    if m.focusSide = "group"
+        if key = "up"
+            if m.groupIdx > 0
+                m.groupIdx = m.groupIdx - 1
+                if m.groupIdx < m.groupOffset then m.groupOffset = m.groupIdx
+                filterGroup()
+                renderGroups()
+                renderStreams()
+            end if
+            return true
+        else if key = "down"
+            if m.groupIdx < m.groups.count() - 1
+                m.groupIdx = m.groupIdx + 1
+                if m.groupIdx >= m.groupOffset + m.maxRows
+                    m.groupOffset = m.groupIdx - m.maxRows + 1
+                end if
+                filterGroup()
+                renderGroups()
+                renderStreams()
+            end if
+            return true
+        else if key = "right" or key = "OK"
+            if m.filtered.count() > 0
+                m.focusSide = "stream"
+                renderGroups()
+                renderStreams()
+            end if
+            return true
+        else if key = "replay"
+            m.loaded = false
+            m.statusLbl.text  = "Reloading..."
+            m.statusLbl.color = m.cSub
+            m.task.groupsJson = ""
+            m.task.url = ""
+            m.task.url = m.m3uUrl
+            return true
+        end if
+    else
+        if key = "left"
+            m.focusSide = "group"
+            renderGroups()
+            renderStreams()
+            return true
+        else if key = "up"
+            if m.streamCursor > 0
+                m.streamCursor = m.streamCursor - 1
+            else if m.streamOffset > 0
+                m.streamOffset = m.streamOffset - 1
+            end if
+            renderStreams()
+            return true
+        else if key = "down"
+            maxC   = m.maxRows - 1
+            totalC = m.filtered.count() - 1
+            if m.streamCursor < maxC and (m.streamOffset + m.streamCursor) < totalC
+                m.streamCursor = m.streamCursor + 1
+            else if m.streamOffset + m.maxRows < m.filtered.count()
+                m.streamOffset = m.streamOffset + 1
+            end if
+            renderStreams()
+            return true
+        else if key = "OK"
+            idx = m.streamOffset + m.streamCursor
+            if idx >= 0 and idx < m.filtered.count()
+                s = m.filtered[idx]
+                if s.url <> ""
+                    ch = {name: s.name, url: s.url, group: s.group, logo: s.logo}
+                    m.statusLbl.text  = "> NOW PLAYING: " + s.name
+                    m.statusLbl.color = m.cGreen
+                    m.top.selectedChannel = ch
+                end if
+            end if
+            return true
+        else if key = "replay"
+            filterGroup()
+            renderStreams()
+            return true
+        end if
+    end if
+    return false
+end function
+
+    ]]></script>
+</component>

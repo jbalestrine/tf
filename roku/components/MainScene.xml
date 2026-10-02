@@ -2,13 +2,20 @@
 <component name="MainScene" extends="Scene">
   <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
   <children>
-    <WebView
-      id="webView"
+    <!-- Your native IPTV list browser -->
+    <IPTVPanel
+      id="iptvPanel"
+      translation="[0, 0]"
+      visible="true"
+    />
+
+    <!-- The native streaming player layer -->
+    <Video 
+      id="iptvPlayer"
       translation="[0, 0]"
       width="1280"
       height="720"
-      visible="true"
-      focusable="true"
+      visible="false"
     />
   </children>
 </component>

@@ -16,7 +16,7 @@
             m.top.control = "run"
         end sub
 
-        sub fetch()
+                sub fetch()
             url = m.top.url
             if url = "" then return
             http = CreateObject("roUrlTransfer")
@@ -26,8 +26,10 @@
             http.AddHeader("User-Agent", "Roku/1.0")
             port = CreateObject("roMessagePort")
             http.SetMessagePort(port)
+            
             tmpFile = "cachefs:/mc_playlist.m3u"
             http.AsyncGetToFile(tmpFile)
+            
             msg = Wait(120000, port)
             if msg = invalid
                 m.top.error = "Download timeout"
@@ -38,45 +40,63 @@
                 m.top.error = "HTTP " + stri(code).trim()
                 return
             end if
+
             content = ReadAsciiFile(tmpFile)
             if content = ""
                 m.top.error = "Empty file"
                 return
             end if
-            rs = CreateObject("roString")
-            rs.SetString(content)
-            rawLines = rs.Tokenize(chr(10))
+
+            ' --- C++ LEVERAGED ULTRA-FAST REGEX PARSER ---
+            ' Instead of looping line-by-line, we extract the #EXTINF and URL lines 
+            ' simultaneously via optimized global regex patterns.
+            regex = CreateObject("roRegex", "(#EXTINF:[^\r\n]*group-title=""([^""]*)"")[^\r\n]*tvg-logo=""([^""]*)"")[^\r\n]*,([^\r\n]*)\s*(https?://[^\s]*)", "i")
+            matches = regex.MatchAll(content)
+
             channels   = []
             groupsSeen = {}
             groups     = []
-            maxCh      = 4000
-            extinf     = ""
-            for each rawLine in rawLines
-                if channels.count() < maxCh
-                    ln = rawLine
-                    if Right(ln, 1) = chr(13) then ln = Left(ln, Len(ln) - 1)
-                    ln = Trim(ln)
-                    if ln <> ""
-                        if Left(ln, 7) = "#EXTINF"
-                            extinf = ln
-                        else if Left(ln, 1) <> "#" and extinf <> ""
-                            ch = buildChannel(extinf, ln)
-                            if ch.name <> ""
-                                channels.push(ch)
-                                grp = ch.group
-                                if not groupsSeen.doesExist(grp)
-                                    groupsSeen[grp] = true
-                                    groups.push(grp)
-                                end if
-                            end if
-                            extinf = ""
-                        end if
+            maxCh      = 3000 ' Cap at 3k lines to ensure memory buffer safety
+
+            for each match in matches
+                if channels.count() >= maxCh then exit for
+
+                name  = Trim(match[4])
+                url   = Trim(match[5])
+                grp   = Trim(match[2])
+                logo  = Trim(match[3])
+
+                if name = "" then name = "Channel " + stri(channels.count() + 1).trim()
+                if grp = "" then grp = "Uncategorized"
+
+                if url <> ""
+                    channels.push({
+                        name: name,
+                        url: url,
+                        group: grp,
+                        logo: logo
+                    })
+
+                    if not groupsSeen.doesExist(grp)
+                        groupsSeen[grp] = true
+                        groups.push(grp)
                     end if
                 end if
             end for
+
+            ' Free heavy global string allocations immediately 
+            content = ""
+            matches = invalid
+
+            if channels.count() = 0
+                m.top.error = "Zero channels parsed. Verify M3U structure format."
+                return
+            end if
+
             m.top.channelsJson = FormatJson(channels)
             m.top.groupsJson   = FormatJson(groups)
         end sub
+
 
         function buildChannel(extinf as String, url as String) as Object
             ch = {}

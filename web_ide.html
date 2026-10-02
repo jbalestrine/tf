@@ -1524,8 +1524,9 @@ function createBlankFile() {
   const name = prompt('Filename (e.g., script.ps1):');
   if (!name) return;
   const lang = detectLang(name);
-  // Create path relative to current directory
-  const path = state.currentPath ? `${state.currentPath}/${name}` : name;
+  // Force project-root relative paths for Web IDE files so the backend treats them
+  // as IDE files instead of legacy script-manager entries.
+  const path = state.currentPath ? `${state.currentPath}/${name}` : `./${name}`;
   const tab = { id: Date.now(), name, path, content: '', dirty: true, lang };
   state.tabs.push(tab);
   switchTab(state.tabs.length - 1);
@@ -1693,7 +1694,9 @@ function createFromWizard() {
 
   // Create tab
   const lang = detectLang(fname);
-  const tab = { id: Date.now(), name: fname, path: fname, content: code, dirty: true, lang };
+  // Use a project-relative IDE path so new files appear in the visible file tree.
+  const tabPath = state.currentPath ? `${state.currentPath}/${fname}` : `./${fname}`;
+  const tab = { id: Date.now(), name: fname, path: tabPath, content: code, dirty: true, lang };
   state.tabs.push(tab);
   switchTab(state.tabs.length - 1);
   closeWizard();

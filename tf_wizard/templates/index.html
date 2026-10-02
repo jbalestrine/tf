@@ -49,6 +49,31 @@
           </div>
         </div>
 
+        <!-- Archetype Generator -->
+        <div class="form-section">
+          <h3>&#x2728; Archetype Generator</h3>
+          <div class="form-row">
+            <label for="archetype_select">Choose Blueprint Archetype</label>
+            <select id="archetype_select">
+              <option value="">Custom</option>
+              <option value="landing_zone">Azure Landing Zone</option>
+              <option value="aks_platform">AKS Platform</option>
+              <option value="serverless_api">Serverless API</option>
+              <option value="data_platform">Data Platform Foundation</option>
+            </select>
+          </div>
+          <div class="btn-group">
+            <button class="btn info sm" onclick="applyArchetypeSelection()">Apply Archetype</button>
+            <button class="btn secondary sm" onclick="injectArchetypeSchema()">Inject Schema</button>
+          </div>
+          <div class="archetype-grid">
+            <button class="archetype-card" onclick="quickArchetype('landing_zone')">Landing Zone</button>
+            <button class="archetype-card" onclick="quickArchetype('aks_platform')">AKS Platform</button>
+            <button class="archetype-card" onclick="quickArchetype('serverless_api')">Serverless API</button>
+            <button class="archetype-card" onclick="quickArchetype('data_platform')">Data Platform</button>
+          </div>
+        </div>
+
         <!-- Providers -->
         <div class="form-section">
           <h3>&#x2601;&#xFE0F; Providers</h3>
@@ -125,7 +150,7 @@
   <!-- Status bar -->
   <div id="statusbar">
     <span id="status-msg">Ready</span>
-    <span id="status-right">Terraform Wizard v1.0</span>
+    <span id="status-right">Terraform Wizard v2.0</span>
   </div>
 </div>
 

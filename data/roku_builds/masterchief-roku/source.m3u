@@ -1,0 +1,7 @@
+#EXTM3U
+#EXTINF:-1 tvg-group="News",BBC News
+https://example.com/bbc-news.m3u8
+#EXTINF:-1 tvg-group="Sports",Sky Sports
+https://example.com/sky-sports.m3u8
+#EXTINF:-1 tvg-group="Movies",Cinema Plus
+https://example.com/cinema-plus.m3u8

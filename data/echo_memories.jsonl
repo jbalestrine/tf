@@ -1,2 +1,0 @@
-{"id": "2902721a-bedf-43dc-998b-cd51e5016653", "content": "testing", "topics": ["working on masterchief devops platform"], "entities": ["flask", "python"], "source": "manual", "importance": 0.5, "created": "2026-02-15T22:29:04.661733", "accessed_count": 0, "pinned": false, "decay_factor": 1.0}
-{"id": "c5285eb9-b797-4331-8f06-5ab98471ae54", "content": "test", "topics": ["py"], "entities": ["flask"], "source": "chat", "importance": 0.5, "created": "2026-02-19T00:16:32.429617", "accessed_count": 0, "pinned": false, "decay_factor": 1.0}

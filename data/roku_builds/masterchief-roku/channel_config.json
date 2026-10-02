@@ -1,0 +1,74 @@
+{
+  "channel_name": "MasterChief Roku",
+  "bundle_id": "com.masterchief.roku",
+  "playlist_url": "",
+  "source_url": "",
+  "developer_ip": "",
+  "theme": "dark",
+  "playlist_count": 3,
+  "entries": [
+    {
+      "title": "BBC News",
+      "url": "https://example.com/bbc-news.m3u8",
+      "group": "News",
+      "category": "news",
+      "logo": "logo.png",
+      "raw_group": "News"
+    },
+    {
+      "title": "Sky Sports",
+      "url": "https://example.com/sky-sports.m3u8",
+      "group": "Sports",
+      "category": "sports",
+      "logo": "logo.png",
+      "raw_group": "Sports"
+    },
+    {
+      "title": "Cinema Plus",
+      "url": "https://example.com/cinema-plus.m3u8",
+      "group": "Movies",
+      "category": "movies",
+      "logo": "logo.png",
+      "raw_group": "Movies"
+    }
+  ],
+  "preview_model": {
+    "channel_name": "MasterChief Roku",
+    "bundle_id": "com.masterchief.roku",
+    "categories": {
+      "news": [
+        {
+          "title": "BBC News",
+          "url": "https://example.com/bbc-news.m3u8",
+          "group": "News"
+        }
+      ],
+      "sports": [
+        {
+          "title": "Sky Sports",
+          "url": "https://example.com/sky-sports.m3u8",
+          "group": "Sports"
+        }
+      ],
+      "movies": [
+        {
+          "title": "Cinema Plus",
+          "url": "https://example.com/cinema-plus.m3u8",
+          "group": "Movies"
+        }
+      ]
+    },
+    "search_index": [
+      "BBC News",
+      "Sky Sports",
+      "Cinema Plus"
+    ],
+    "source_url": "uploaded_playlist",
+    "developer_ip": "",
+    "theme": "dark"
+  },
+  "created_at": "2026-09-23T23:12:42Z",
+  "target": "Roku TV streaming app",
+  "deployment": "Developer Mode / sideload / upload to TV",
+  "notes": "Use the Roku developer portal to sideload the generated zip and confirm the playlist loads on-device."
+}

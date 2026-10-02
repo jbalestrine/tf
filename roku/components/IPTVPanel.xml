@@ -21,7 +21,7 @@ sub init()
     m.cBlue   = "0x58A6FFFF"
     m.cGreen  = "0x3FB950FF"
     m.cRed    = "0xF85149FF"
-    m.allChannels = []
+    m.allChannels = [50000]
     m.groups      = []
     m.groupIdx    = 0
     m.groupOffset = 0
@@ -148,7 +148,7 @@ sub renderGroups()
     if m.groups.count() = 0
         lbl = m.groupList.createChild("Label")
         lbl.translation = [12, 10]
-        lbl.text  = "Loading..."
+        lbl.text  = "Loading Your Bad ass movie..."
         lbl.font  = "font:SmallSystemFont"
         lbl.color = m.cSub
         return

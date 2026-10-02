@@ -1,0 +1,15 @@
+[
+  {
+    "id": "4502962b-6a14-4a09-ad7b-acfda6664a26",
+    "title": "jb",
+    "description": "",
+    "assignee": "jb",
+    "module": "echo",
+    "feature": "chat",
+    "workflow_item": "",
+    "tags": [],
+    "priority": "medium",
+    "status": "todo",
+    "created_at": "2026-06-04T00:28:13.179353"
+  }
+]

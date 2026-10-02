@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    DiagPanel - system diagnostics from /sys/diagnostics
+    Shows: uptime, routes, issues, top-level health indicators
+-->
+<component name="DiagPanel" extends="Group">
+    <interface>
+        <function name="load" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+
+        sub init()
+            m.baseUrl = "http://10.0.0.159:8080"
+            buildChrome()
+            m.task = createObject("roSGNode", "ApiTask")
+            m.task.observeField("result", "onResult")
+            m.issueOffset = 0
+            m.issues = []
+        end sub
+
+        sub buildChrome()
+            bg = m.top.createChild("Rectangle")
+            bg.translation = [0, 0]
+            bg.width  = 1280
+            bg.height = 596
+            bg.color  = "0x0D1117FF"
+
+            ' -- top summary bar -------------------------------------
+            topBar = m.top.createChild("Rectangle")
+            topBar.translation = [36, 12]
+            topBar.width  = 1208
+            topBar.height = 40
+            topBar.color  = "0x161B22FF"
+
+            titleLbl = m.top.createChild("Label")
+            titleLbl.translation = [52, 18]
+            titleLbl.text  = "  SYSTEM DIAGNOSTICS"
+            titleLbl.font  = "font:MediumBoldSystemFont"
+            titleLbl.color = "0xE6EDF3FF"
+
+            m.statusLbl = m.top.createChild("Label")
+            m.statusLbl.translation = [900, 22]
+            m.statusLbl.text  = "Loading..."
+            m.statusLbl.font  = "font:SmallSystemFont"
+            m.statusLbl.color = "0x8B949EFF"
+
+            ' -- big stat tiles (row of 5) ---------------------------
+            tileLabels = ["Routes", "Functions", "Python Files", "Issues", "Errors"]
+            m.tileVals = []
+            tileW = 230
+            for i = 0 to 4
+                tileBg = m.top.createChild("Rectangle")
+                tileBg.translation = [36 + i * (tileW + 4), 62]
+                tileBg.width  = tileW
+                tileBg.height = 88
+                tileBg.color  = "0x161B22FF"
+
+                kl = m.top.createChild("Label")
+                kl.translation = [36 + i * (tileW + 4) + 12, 68]
+                kl.text  = tileLabels[i]
+                kl.font  = "font:SmallSystemFont"
+                kl.color = "0x8B949EFF"
+
+                vl = m.top.createChild("Label")
+                vl.translation = [36 + i * (tileW + 4) + 12, 96]
+                vl.text  = "-"
+                vl.font  = "font:MediumBoldSystemFont"
+                vl.color = "0xE6EDF3FF"
+                m.tileVals.push(vl)
+            end for
+
+            ' -- issues list -----------------------------------------
+            issHdr = m.top.createChild("Rectangle")
+            issHdr.translation = [36, 160]
+            issHdr.width  = 1208
+            issHdr.height = 28
+            issHdr.color  = "0x21262DFF"
+
+            issHdrLbl = m.top.createChild("Label")
+            issHdrLbl.translation = [52, 164]
+            issHdrLbl.text  = "ISSUES"
+            issHdrLbl.font  = "font:SmallBoldSystemFont"
+            issHdrLbl.color = "0x58A6FFFF"
+
+            sevHdr = m.top.createChild("Label")
+            sevHdr.translation = [200, 164]
+            sevHdr.text  = "SEVERITY"
+            sevHdr.font  = "font:SmallBoldSystemFont"
+            sevHdr.color = "0x58A6FFFF"
+
+            fileHdr = m.top.createChild("Label")
+            fileHdr.translation = [400, 164]
+            fileHdr.text  = "FILE"
+            fileHdr.font  = "font:SmallBoldSystemFont"
+            fileHdr.color = "0x58A6FFFF"
+
+            m.issueGroup = m.top.createChild("Group")
+            m.issueGroup.translation = [0, 192]
+        end sub
+
+        function load(args as Dynamic)
+            m.statusLbl.text = "*  Fetching..."
+            m.task.url = m.baseUrl + "/sys/diagnostics"
+        end function
+
+        sub onResult()
+            data = m.task.result
+            if data = invalid or data.doesExist("error")
+                errMsg = "no data"
+                if data <> invalid then errMsg = data.error
+                m.statusLbl.text = "X " + errMsg
+                ' fallback: try the scan API
+                m.task.url = m.baseUrl + "/api/diagnostics"
+                return
+            end if
+
+            ' populate tiles
+            summary = invalid
+            if data.doesExist("summary") then summary = data.summary
+            if summary = invalid then summary = data
+
+            tileKeys = [["routes", "route_count"], ["functions", "function_count"], ["python_files", "total_files"], ["issues", "total_issues"], ["errors", "error_count"]]
+            for i = 0 to 4
+                v = "-"
+                keys = tileKeys[i]
+                for each k in keys
+                    if v = "-" and summary.doesExist(k) then v = str(summary[k]).trim()
+                end for
+                m.tileVals[i].text = v
+                ' colour issues/errors red if > 0
+                if (i = 3 or i = 4) and v <> "-" and val(v) > 0
+                    m.tileVals[i].color = "0xF85149FF"
+                else if (i = 3 or i = 4) and v = "0"
+                    m.tileVals[i].color = "0x3FB950FF"
+                end if
+            end for
+
+            ' collect issues list
+            m.issues = []
+            issueKeys = ["issues_list", "issues", "errors_list", "warnings"]
+            for each k in issueKeys
+                if data.doesExist(k) and type(data[k]) = "roArray"
+                    m.issues = data[k]
+                    exit for
+                end if
+            end for
+            m.issueOffset = 0
+            renderIssues()
+
+            dt = CreateObject("roDateTime")
+            dt.ToLocalTime()
+            m.statusLbl.text = "Updated " + str(dt.GetHours()).trim() + ":" + rp(dt.GetMinutes())
+        end sub
+
+        sub renderIssues()
+            while m.issueGroup.getChildCount() > 0
+                m.issueGroup.removeChildIndex(0)
+            end while
+
+            maxRows = 9
+            rowH    = 38
+            y       = 0
+            endIdx  = m.issueOffset + maxRows - 1
+            if endIdx >= m.issues.count() then endIdx = m.issues.count() - 1
+
+            if m.issues.count() = 0
+                empty = m.issueGroup.createChild("Label")
+                empty.translation = [52, 8]
+                empty.text  = "OK  No issues detected."
+                empty.font  = "font:SmallSystemFont"
+                empty.color = "0x3FB950FF"
+                return
+            end if
+
+            for i = m.issueOffset to endIdx
+                item = m.issues[i]
+
+                rowBg = m.issueGroup.createChild("Rectangle")
+                rowBg.translation = [36, y]
+                rowBg.width  = 1208
+                rowBg.height = rowH - 1
+                if i mod 2 = 0 then rowBg.color = "0x0D1117FF" else rowBg.color = "0x161B22FF"
+
+                msg  = ""
+                sev  = ""
+                file = ""
+                if type(item) = "roString" or type(item) = "String"
+                    msg = item
+                else if type(item) = "roAssociativeArray"
+                    msg  = safeStr(item, "message", safeStr(item, "text", safeStr(item, "msg", str(item).trim())))
+                    sev  = safeStr(item, "severity", safeStr(item, "level", safeStr(item, "type", "")))
+                    file = safeStr(item, "file",     safeStr(item, "path",  ""))
+                end if
+
+                m_makeLbl(m.issueGroup, 52,  y + 9, msg,         "0xE6EDF3FF", 140)
+                m_makeLbl(m.issueGroup, 200, y + 9, UCase(sev),  sevColor(sev), 192)
+                m_makeLbl(m.issueGroup, 400, y + 9, file,        "0x8B949EFF", 840)
+
+                y = y + rowH
+            end for
+
+            if m.issues.count() > maxRows
+                hint = m.issueGroup.createChild("Label")
+                hint.translation = [36, y + 4]
+                hint.text  = "^ v scroll  (" + str(m.issues.count()).trim() + " issues)"
+                hint.font  = "font:SmallSystemFont"
+                hint.color = "0x8B949EFF"
+            end if
+        end sub
+
+        sub m_makeLbl(grp as Object, x as Integer, y as Integer, text as String, color as String, w = 300 as Integer)
+            lbl = grp.createChild("Label")
+            lbl.translation = [x, y]
+            lbl.text  = text
+            lbl.font  = "font:SmallSystemFont"
+            lbl.color = color
+            lbl.width = w
+            lbl.truncateOnDelimiter = "..."
+        end sub
+
+        function onKeyEvent(key as String, press as Boolean) as Boolean
+            if not press then return false
+            if key = "down" and m.issueOffset + 9 < m.issues.count()
+                m.issueOffset = m.issueOffset + 1
+                renderIssues()
+                return true
+            else if key = "up" and m.issueOffset > 0
+                m.issueOffset = m.issueOffset - 1
+                renderIssues()
+                return true
+            end if
+            return false
+        end function
+
+        function sevColor(s as String) as String
+            sl = LCase(s)
+            if sl = "error" or sl = "critical" then return "0xF85149FF"
+            if sl = "warning" or sl = "warn" then return "0xD29922FF"
+            return "0x8B949EFF"
+        end function
+
+    ]]></script>
+</component>

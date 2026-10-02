@@ -1,0 +1,39 @@
+{
+  "rbac": {
+    "enabled": true,
+    "db_path": "data/rbac.json"
+  },
+  "vault": {
+    "enabled": true,
+    "db_path": "data/vault.json",
+    "key_path": "data/vault.key",
+    "audit_path": "data/vault_audit.json"
+  },
+  "notification": {
+    "enabled": true,
+    "db_path": "data/notifications.json",
+    "channels_path": "data/notification_channels.json",
+    "rules_path": "data/notification_rules.json"
+  },
+  "pipeline": {
+    "enabled": true,
+    "db_path": "data/pipelines.json",
+    "runs_path": "data/pipeline_runs.json"
+  },
+  "cloud": {
+    "enabled": true,
+    "db_path": "data/cloud_accounts.json"
+  },
+  "memory": {
+    "enabled": true,
+    "memories_path": "data/echo_memories.jsonl",
+    "index_path": "data/echo_memory_index.json"
+  },
+  "marketplace": {
+    "enabled": true,
+    "db_path": "data/marketplace.json"
+  },
+  "script": {
+    "enabled": true
+  }
+}

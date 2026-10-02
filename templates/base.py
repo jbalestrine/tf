@@ -18,9 +18,17 @@ body{font-family:Arial,sans-serif;background:#1a1a1a;color:#e0e0e0;line-height:1
 header{background:#2d2d2d;padding:20px;margin-bottom:30px;border-bottom:3px solid #4CAF50;}
 h1{color:#4CAF50;font-size:2.5em;margin-bottom:10px;}
 .subtitle{color:#888;font-size:1.1em;}
-nav{background:#252525;padding:15px;margin-bottom:30px;border-radius:8px;}
-nav a{color:#4CAF50;text-decoration:none;margin-right:20px;padding:8px 15px;border-radius:5px;display:inline-block;transition:all 0.3s;}
-nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
+nav{background:rgba(18,22,31,0.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:12px 18px;margin-bottom:30px;border-radius:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;border:1px solid rgba(148,163,184,0.18);box-shadow:0 8px 24px rgba(15,23,42,0.38);}
+.nav-group{position:relative;display:inline-block;}
+.nav-group > summary.dropbtn{list-style:none;cursor:pointer;background:linear-gradient(135deg,rgba(22,27,39,0.9),rgba(15,118,110,0.2));color:#8ae2a0;border:1px solid rgba(122,217,167,0.32);border-radius:12px;padding:10px 14px;font-weight:700;text-decoration:none;display:inline-block;transition:all 0.25s ease;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 6px 18px rgba(16,185,129,0.08);}
+.nav-group > summary.dropbtn::-webkit-details-marker{display:none;}
+.nav-group[open] > summary.dropbtn,.nav-group > summary.dropbtn:hover{background:linear-gradient(135deg,#4CAF50,#2b6b43);color:#fff;transform:translateY(-1px);box-shadow:0 10px 22px rgba(76,175,80,0.22);}
+.nav-group-content{display:none;position:absolute;left:0;top:calc(100% + 8px);min-width:240px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.18);border-radius:14px;box-shadow:0 18px 38px rgba(2,6,23,0.6);z-index:50;padding:8px 0;margin-top:0;backdrop-filter:blur(10px);}
+.nav-group[open] .nav-group-content{display:block;}
+.nav-group-content a{display:block;color:#dbeafe;text-decoration:none;padding:9px 12px;border-left:3px solid transparent;white-space:nowrap;font-size:0.96rem;transition:all 0.2s ease;}
+.nav-group-content a:hover,.nav-group-content a.active{background:linear-gradient(90deg,rgba(76,175,80,0.15),rgba(59,130,246,0.08));border-left-color:#4CAF50;color:#9ae6b4;}
+nav a{color:#9ae6b4;text-decoration:none;margin-right:0;padding:9px 12px;border-radius:10px;display:inline-block;transition:all 0.25s ease;border:1px solid transparent;}
+nav a:hover,nav a.active{background:linear-gradient(135deg,#4CAF50,#2e7d32);color:#fff;border-color:rgba(255,255,255,0.08);box-shadow:0 10px 20px rgba(76,175,80,0.18);}
 .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-bottom:30px;}
 .card{background:#2d2d2d;padding:25px;border-radius:10px;border-left:4px solid #4CAF50;box-shadow:0 4px 6px rgba(0,0,0,0.3);}
 .card h3{color:#4CAF50;margin-bottom:15px;font-size:1.4em;}
@@ -72,19 +80,67 @@ code{color:#4CAF50;}
     </div>
 </header>
 <nav>
-<a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
-<a href="/echo-chat" class="{{ 'active' if '/echo-chat' in request.path else '' }}">🌙 Echo Chat</a>
-<a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">Scripts</a>
-<a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">Processes</a>
-<a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">Services</a>
-<a href="/addons" class="{{ 'active' if '/addons' in request.path and '/modules' not in request.path else '' }}">Addons</a>
-<a href="/modules" class="{{ 'active' if request.path=='/modules' else '' }}">⚙️ Modules</a>
-<a href="/addons/modules" class="{{ 'active' if '/addons/modules' in request.path else '' }}">🧩 Addon Modules</a>
-<a href="/sys/diagnostics" class="{{ 'active' if '/sys/diagnostics' in request.path else '' }}">🔬 Diagnostics</a>
-<a href="/sys/scm" class="{{ 'active' if '/sys/scm' in request.path else '' }}">🗂 SCM</a>
-<a href="/echo-train" class="{{ 'active' if '/echo-train' in request.path else '' }}">Training</a>
-{% if ui_modules is defined %}{% for _mod_name, _mod in ui_modules.items() %}<a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Addon Module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
-{% endfor %}{% endif %}
+  <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
+
+  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') else '' }}">
+    <summary class="dropbtn">Operate</summary>
+    <div class="nav-group-content">
+      <a href="/master-menu" class="{{ 'active' if '/master-menu' in request.path else '' }}">🧭 Master Menu</a>
+      <a href="/manager" class="{{ 'active' if '/manager' in request.path else '' }}">📋 Manager</a>
+      <a href="/site-map" class="{{ 'active' if '/site-map' in request.path else '' }}">🗺 Unified Site Map</a>
+      <a href="/sys/diagnostics" class="{{ 'active' if '/sys/diagnostics' in request.path else '' }}">🔬 Diagnostics</a>
+      <a href="/sys/scm" class="{{ 'active' if '/sys/scm' in request.path else '' }}">🗂 SCM</a>
+      <a href="/sys/ops" class="{{ 'active' if '/sys/ops' in request.path else '' }}">🧭 Ops Center</a>
+      <a href="/cloud" class="{{ 'active' if '/cloud' in request.path else '' }}">☁️ Cloud</a>
+      <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
+      <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
+      <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
+      <a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">🛠 Services</a>
+      <a href="/about" class="{{ 'active' if '/about' in request.path else '' }}">ℹ️ About</a>
+    </div>
+  </details>
+
+  <details class="nav-group {{ 'active' if request.path.startswith('/pipelines') or request.path.startswith('/modules') or request.path.startswith('/addons') or request.path.startswith('/arm_creator') or request.path.startswith('/iac_manager') or request.path.startswith('/blueprint-wizard') else '' }}">
+    <summary class="dropbtn">Build</summary>
+    <div class="nav-group-content">
+      <a href="/pipelines" class="{{ 'active' if '/pipelines' in request.path else '' }}">🚀 Pipelines</a>
+      <a href="/modules" class="{{ 'active' if request.path=='/modules' else '' }}">🧱 Modules</a>
+      <a href="/addons" class="{{ 'active' if '/addons' in request.path and '/modules' not in request.path else '' }}">📦 Addons</a>
+      <a href="/addons/modules" class="{{ 'active' if '/addons/modules' in request.path else '' }}">🧩 Addon Modules</a>
+      <a href="/blueprint-wizard" class="{{ 'active' if '/blueprint-wizard' in request.path else '' }}">🧩 Blueprint Wizard</a>
+      <a href="/arm_creator" class="{{ 'active' if '/arm_creator' in request.path else '' }}">🧱 ARM Creator</a>
+      <a href="/iac_manager" class="{{ 'active' if '/iac_manager' in request.path else '' }}">🏗 IaC Manager</a>
+      <a href="/features" class="{{ 'active' if '/features' in request.path else '' }}">⚡ Features</a>
+    </div>
+  </details>
+
+  <details class="nav-group {{ 'active' if request.path.startswith('/echo-') or request.path.startswith('/echo') or request.path.startswith('/web_ide') or request.path.startswith('/masterchief_code_ui') or request.path.startswith('/marketplace') else '' }}">
+    <summary class="dropbtn">AI &amp; Tools</summary>
+    <div class="nav-group-content">
+      <a href="/echo-chat" class="{{ 'active' if '/echo-chat' in request.path else '' }}">🌙 Echo Chat</a>
+      <a href="/echo-train" class="{{ 'active' if '/echo-train' in request.path else '' }}">🎓 Training</a>
+      <a href="/echo-memory" class="{{ 'active' if '/echo-memory' in request.path else '' }}">🧠 Echo Memory</a>
+      <a href="/web_ide" class="{{ 'active' if '/web_ide' in request.path else '' }}">💻 Web IDE</a>
+      <a href="/masterchief_code_ui" class="{{ 'active' if '/masterchief_code_ui' in request.path else '' }}">🧠 MasterChief Code UI</a>
+      <a href="/marketplace" class="{{ 'active' if '/marketplace' in request.path else '' }}">🛍 Marketplace</a>
+    </div>
+  </details>
+
+  <details class="nav-group {{ 'active' if request.path.startswith('/rbac') or request.path.startswith('/secrets') or request.path.startswith('/teams') or request.path.startswith('/okta') else '' }}">
+    <summary class="dropbtn">Secure</summary>
+    <div class="nav-group-content">
+      <a href="/rbac" class="{{ 'active' if '/rbac' in request.path else '' }}">🛡 RBAC</a>
+      <a href="/secrets" class="{{ 'active' if '/secrets' in request.path else '' }}">🔐 Secrets</a>
+      <a href="/teams" class="{{ 'active' if request.path=='/teams' else '' }}">📅 Teams</a>
+      <a href="/okta" class="{{ 'active' if request.path=='/okta' else '' }}">🔒 Okta</a>
+    </div>
+  </details>
+
+  {% if ui_modules is defined %}
+    {% for _mod_name, _mod in ui_modules.items() %}
+      <a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Addon Module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
+    {% endfor %}
+  {% endif %}
 </nav>
 {% with messages=get_flashed_messages(with_categories=true) %}
 {% if messages %}

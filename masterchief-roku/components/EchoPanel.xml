@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    EchoPanel - Echo AI model status, capabilities, recent activity
+    Endpoints: /api/echo/status  and  /api/echo/recent (if available)
+-->
+<component name="EchoPanel" extends="Group">
+    <interface>
+        <function name="load" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+
+        sub init()
+            m.baseUrl = "http://10.0.0.159:8080"
+            buildChrome()
+            m.statusTask = createObject("roSGNode", "ApiTask")
+            m.statusTask.observeField("result", "onStatusResult")
+        end sub
+
+        sub buildChrome()
+            bg = m.top.createChild("Rectangle")
+            bg.translation = [0, 0]
+            bg.width  = 1280
+            bg.height = 596
+            bg.color  = "0x0D1117FF"
+
+            ' -- left card: model status -----------------------------
+            leftCard = m.top.createChild("Rectangle")
+            leftCard.translation = [36, 12]
+            leftCard.width  = 580
+            leftCard.height = 550
+            leftCard.color  = "0x161B22FF"
+
+            titleLbl = m.top.createChild("Label")
+            titleLbl.translation = [52, 20]
+            titleLbl.text  = "[BOT]  ECHO AI"
+            titleLbl.font  = "font:MediumBoldSystemFont"
+            titleLbl.color = "0xE6EDF3FF"
+
+            m.statusLbl = m.top.createChild("Label")
+            m.statusLbl.translation = [400, 24]
+            m.statusLbl.text  = "Loading..."
+            m.statusLbl.font  = "font:SmallSystemFont"
+            m.statusLbl.color = "0x8B949EFF"
+
+            sep = m.top.createChild("Rectangle")
+            sep.translation = [36, 58]
+            sep.width  = 580
+            sep.height = 2
+            sep.color  = "0x30363DFF"
+
+            ' stat rows - we'll populate these dynamically
+            m.statLabels = []
+            statKeys = ["Model", "Status", "Backend", "Context", "Temperature", "Memory entries", "Capabilities"]
+            y = 70
+            for each k in statKeys
+                keyLbl = m.top.createChild("Label")
+                keyLbl.translation = [52, y]
+                keyLbl.text  = k + ":"
+                keyLbl.font  = "font:SmallBoldSystemFont"
+                keyLbl.color = "0x8B949EFF"
+                keyLbl.width = 180
+
+                valLbl = m.top.createChild("Label")
+                valLbl.translation = [240, y]
+                valLbl.text  = "-"
+                valLbl.font  = "font:SmallSystemFont"
+                valLbl.color = "0xE6EDF3FF"
+                valLbl.width = 360
+
+                m.statLabels.push(valLbl)
+                y = y + 36
+            end for
+
+            ' -- right card: capabilities + memory ------------------
+            rightCard = m.top.createChild("Rectangle")
+            rightCard.translation = [636, 12]
+            rightCard.width  = 608
+            rightCard.height = 550
+            rightCard.color  = "0x161B22FF"
+
+            rightTitle = m.top.createChild("Label")
+            rightTitle.translation = [656, 20]
+            rightTitle.text  = "CAPABILITIES & RECENT MEMORY"
+            rightTitle.font  = "font:SmallBoldSystemFont"
+            rightTitle.color = "0x58A6FFFF"
+
+            sep2 = m.top.createChild("Rectangle")
+            sep2.translation = [636, 48]
+            sep2.width  = 608
+            sep2.height = 2
+            sep2.color  = "0x30363DFF"
+
+            m.capsGroup = m.top.createChild("Group")
+            m.capsGroup.translation = [656, 58]
+        end sub
+
+        function load(args as Dynamic)
+            m.statusLbl.text = "*  Fetching..."
+            m.statusTask.url = m.baseUrl + "/api/echo/status"
+        end function
+
+        sub onStatusResult()
+            data = m.statusTask.result
+            if data = invalid
+                m.statusLbl.text = "X no response"
+                return
+            end if
+            if data.doesExist("error")
+                m.statusLbl.text = "X " + data.error
+                for i = 0 to m.statLabels.count() - 1
+                    m.statLabels[i].text = "-"
+                end for
+                return
+            end if
+
+            ' populate stat rows
+            vals = [
+                safeStr(data, "model",         safeStr(data, "current_model",    "not loaded")),
+                safeStr(data, "status",         safeStr(data, "state",           "unknown")),
+                safeStr(data, "backend",        safeStr(data, "engine",          "-")),
+                safeStr(data, "context_length", safeStr(data, "ctx_length",      "-")),
+                safeStr(data, "temperature",    "-"),
+                safeStr(data, "memory_count",   safeStr(data, "memories",        "-")),
+                capsString(data)
+            ]
+
+            for i = 0 to vals.count() - 1
+                if i < m.statLabels.count()
+                    m.statLabels[i].text  = vals[i]
+                    if i = 1    ' status row gets colour
+                        m.statLabels[1].color = statusColor(vals[1])
+                    end if
+                end if
+            end for
+
+            ' render capabilities + memory on right panel
+            renderRightPanel(data)
+
+            dt = CreateObject("roDateTime")
+            dt.ToLocalTime()
+            m.statusLbl.text = "Updated " + str(dt.GetHours()).trim() + ":" + rp(dt.GetMinutes())
+        end sub
+
+        sub renderRightPanel(data as Dynamic)
+            while m.capsGroup.getChildCount() > 0
+                m.capsGroup.removeChildIndex(0)
+            end while
+
+            y = 0
+            ' Capabilities section
+            capsHdr = m.capsGroup.createChild("Label")
+            capsHdr.translation = [0, y]
+            capsHdr.text  = "ENABLED CAPABILITIES"
+            capsHdr.font  = "font:SmallBoldSystemFont"
+            capsHdr.color = "0x58A6FFFF"
+            y = y + 26
+
+            caps = invalid
+            if data.doesExist("capabilities") then caps = data.capabilities
+            if data.doesExist("enabled_capabilities") then caps = data.enabled_capabilities
+
+            if type(caps) = "roArray" and caps.count() > 0
+                for each cap in caps
+                    cl = m.capsGroup.createChild("Label")
+                    cl.translation = [0, y]
+                    cl.text  = "  OK  " + str(cap).trim()
+                    cl.font  = "font:SmallSystemFont"
+                    cl.color = "0x3FB950FF"
+                    y = y + 26
+                end for
+            else
+                nc = m.capsGroup.createChild("Label")
+                nc.translation = [0, y]
+                nc.text  = "  No capability data"
+                nc.font  = "font:SmallSystemFont"
+                nc.color = "0x8B949EFF"
+                y = y + 26
+            end if
+
+            ' Hooks / extensions section
+            y = y + 12
+            hooksHdr = m.capsGroup.createChild("Label")
+            hooksHdr.translation = [0, y]
+            hooksHdr.text  = "ACTIVE HOOKS"
+            hooksHdr.font  = "font:SmallBoldSystemFont"
+            hooksHdr.color = "0x58A6FFFF"
+            y = y + 26
+
+            hooks = invalid
+            if data.doesExist("hooks") then hooks = data.hooks
+            if data.doesExist("active_hooks") then hooks = data.active_hooks
+
+            if type(hooks) = "roArray" and hooks.count() > 0
+                for each hook in hooks
+                    hl = m.capsGroup.createChild("Label")
+                    hl.translation = [0, y]
+                    hl.text  = "   " + str(hook).trim()
+                    hl.font  = "font:SmallSystemFont"
+                    hl.color = "0xD29922FF"
+                    y = y + 24
+                end for
+            else
+                nh = m.capsGroup.createChild("Label")
+                nh.translation = [0, y]
+                nh.text  = "  No active hooks"
+                nh.font  = "font:SmallSystemFont"
+                nh.color = "0x8B949EFF"
+            end if
+        end sub
+
+        function capsString(data as Dynamic) as String
+            caps = invalid
+            if data.doesExist("capabilities") then caps = data.capabilities
+            if type(caps) <> "roArray" then return "-"
+            if caps.count() = 0 then return "none"
+            return str(caps.count()).trim() + " enabled"
+        end function
+
+    ]]></script>
+</component>

@@ -1,0 +1,19 @@
+{
+  "channel_name": "Demo Roku",
+  "bundle_id": "com.demo.roku",
+  "playlist_url": "",
+  "source_url": "",
+  "developer_ip": "",
+  "theme": "dark",
+  "playlist_count": 1,
+  "entries": [
+    {
+      "title": "Test",
+      "url": "https://example.com/test.m3u8"
+    }
+  ],
+  "created_at": "2026-09-23T23:03:15Z",
+  "target": "Roku TV streaming app",
+  "deployment": "Developer Mode / sideload / upload to TV",
+  "notes": "Use the Roku developer portal to sideload the generated zip and confirm the playlist loads on-device."
+}

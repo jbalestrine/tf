@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    ApiTask - reusable background HTTP GET task.
+    Fields:
+      url     (string) - full URL to request
+      result  (assocarray) - parsed JSON response, or {error: "..."}
+-->
+<component name="ApiTask" extends="Task">
+    <interface>
+        <field id="url"    type="string"    onChange="onUrlChange" />
+        <field id="result" type="assocarray" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+        sub init()
+            m.top.functionName = "fetch"
+        end sub
+
+        sub onUrlChange()
+            m.top.control = "run"
+        end sub
+
+        sub fetch()
+            url = m.top.url
+            if url = "" then return
+
+            http = CreateObject("roUrlTransfer")
+            http.SetUrl(url)
+            http.SetCertificatesFile("common:/certs/ca-bundle.crt")
+            http.InitClientCertificates()
+            http.AddHeader("Accept", "application/json")
+            http.AddHeader("User-Agent", "MasterChief-Roku/1.0")
+
+            resp = http.GetToString()
+            code = http.GetResponseCode()
+
+            if code >= 200 and code < 300
+                parsed = ParseJSON(resp)
+                if parsed <> invalid
+                    ' RSG assocarray fields cannot hold roArray directly;
+                    ' wrap arrays so the field assignment always succeeds.
+                    if type(parsed) = "roArray"
+                        m.top.result = {_arr: parsed, _isArray: true}
+                    else
+                        m.top.result = parsed
+                    end if
+                else
+                    ' Try XML fallback (some Xtream Codes servers return XML)
+                    xmlResult = parseXmlResponse(resp)
+                    if xmlResult <> invalid
+                        m.top.result = {_arr: xmlResult, _isArray: true}
+                    else
+                        m.top.result = {error: "Parse failed", raw: Left(resp, 300)}
+                    end if
+                end if
+            else
+                m.top.result = {error: "HTTP " + str(code)}
+            end if
+        end sub
+
+        ' Parse XML response into an array of assoc arrays.
+        ' Handles both attribute-style and child-element-style Xtream Codes XML.
+        function parseXmlResponse(s as String) as Object
+            xml = CreateObject("roXMLElement")
+            if not xml.Parse(s) then return invalid
+            children = xml.GetChildElements()
+            if children = invalid then return invalid
+
+            result = []
+            for each child in children
+                item = {}
+
+                ' attributes (e.g. <category category_id="1" category_name="News"/>)
+                attrs = child.GetAttributes()
+                if attrs <> invalid
+                    keys = attrs.Keys()
+                    for each k in keys
+                        item[k] = attrs[k]
+                    end for
+                end if
+
+                ' child element text (e.g. <category><category_id>1</category_id></category>)
+                grandChildren = child.GetChildElements()
+                if grandChildren <> invalid
+                    for each gc in grandChildren
+                        item[gc.GetName()] = gc.GetText()
+                    end for
+                end if
+
+                result.push(item)
+            end for
+
+            if result.count() = 0 then return invalid
+            return result
+        end function
+    ]]></script>
+</component>
