@@ -3,6 +3,7 @@ param(
     [string]$PythonPath,
     [string]$PyPIRepositoryUrl = 'https://upload.pypi.org/legacy/',
     [string]$ChocolateySource = 'https://push.chocolatey.org/',
+    [switch]$UseVault,
     [switch]$DryRun
 )
 
@@ -10,6 +11,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $chocoBuilder = Join-Path $repositoryRoot 'chocolatey\release.ps1'
 $buildRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("masterchief-dual-release-" + [guid]::NewGuid().ToString('N'))
+$loadedVaultSecretNames = @()
 
 function Invoke-Checked {
     param([string]$Executable, [string[]]$Arguments)
@@ -31,6 +33,29 @@ function Get-StatusCode {
         return [int]$ErrorRecord.Exception.Response.StatusCode
     }
     return 0
+}
+
+function Get-VaultSecretValue {
+    param([string]$Name)
+
+    $pythonCode = @'
+import sys
+from pathlib import Path
+from managers.vault import VaultManager
+
+root = Path(sys.argv[1])
+name = sys.argv[2]
+vault = VaultManager(root / "data/vault.json", root / "data/vault.key", root / "data/vault_audit.json")
+secret = next((item for item in vault.list_secrets() if item.get("name") == name), None)
+if secret is None:
+    raise SystemExit(f"Vault secret not found: {name}")
+sys.stdout.write(vault.get_secret(secret["id"], user="package-deploy")["value"])
+'@
+    $value = & $PythonPath -c $pythonCode $repositoryRoot $Name 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $value) {
+        throw "Could not read Vault secret '$Name'. Add it in /secrets and retry."
+    }
+    return [string]$value
 }
 
 if (-not $PythonPath) {
@@ -99,6 +124,16 @@ try {
     }
 
     if (-not $DryRun) {
+        if ($UseVault) {
+            if (-not $env:TWINE_PASSWORD) {
+                $env:TWINE_PASSWORD = Get-VaultSecretValue 'TWINE_PASSWORD'
+                $loadedVaultSecretNames += 'TWINE_PASSWORD'
+            }
+            if (-not $env:CHOCOLATEY_API_KEY) {
+                $env:CHOCOLATEY_API_KEY = Get-VaultSecretValue 'CHOCOLATEY_API_KEY'
+                $loadedVaultSecretNames += 'CHOCOLATEY_API_KEY'
+            }
+        }
         if (-not $env:TWINE_PASSWORD) { throw 'Set TWINE_PASSWORD in this PowerShell process before publishing.' }
         if (-not $env:CHOCOLATEY_API_KEY) { throw 'Set CHOCOLATEY_API_KEY in this PowerShell process before publishing.' }
     }
@@ -145,5 +180,8 @@ try {
     Write-Error $_
     throw 'Combined deployment stopped. If the first registry accepted its upload, that release cannot be rolled back; check both package pages before retrying.'
 } finally {
+    foreach ($secretName in $loadedVaultSecretNames) {
+        [Environment]::SetEnvironmentVariable($secretName, $null, 'Process')
+    }
     Remove-Item -LiteralPath $buildRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

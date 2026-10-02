@@ -159,14 +159,14 @@ For a prebuilt Python package install, use `python -m pip install masterchief` a
 
 The single release entry point is [CHOCO_PYPI_DEPLOY.ps1](CHOCO_PYPI_DEPLOY.ps1). First update `setup.py` to a new version, commit the intended source, create and push a matching `v*` tag, then run from that tagged checkout. Tag pushes run package-build validation only; they do not publish separately.
 
-Set `TWINE_PASSWORD` and `CHOCOLATEY_API_KEY` in the PowerShell process or a secret manager, then run:
+In `/secrets`, add encrypted entries named `TWINE_PASSWORD` and `CHOCOLATEY_API_KEY`. Choose `API Key` for `TWINE_PASSWORD` and `Chocolatey API Key` for `CHOCOLATEY_API_KEY`. Then run:
 
 ```powershell
 .\CHOCO_PYPI_DEPLOY.ps1 -DryRun
-.\CHOCO_PYPI_DEPLOY.ps1
+.\CHOCO_PYPI_DEPLOY.ps1 -UseVault
 ```
 
-The script builds both packages from the exact tag, verifies availability and metadata, and uploads PyPI followed by Chocolatey. Registry uploads are not atomic: if the second upload fails, the first may already be published. Never retry the same version; fix the failed registry and check both package pages first.
+The script reads the secrets from the local encrypted Vault, builds both packages from the exact tag, verifies availability and metadata, uploads PyPI followed by Chocolatey, then clears the loaded values from its process environment. Registry uploads are not atomic: if the second upload fails, the first may already be published. Never retry the same version; fix the failed registry and check both package pages first.
 
 ## Core Application Layout
 
