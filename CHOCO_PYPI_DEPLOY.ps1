@@ -65,9 +65,14 @@ sys.stdout.write(vault.get_secret(secret["id"], user="package-deploy")["value"])
 }
 
 if (-not $PythonPath) {
-    $venvPython = Join-Path $repositoryRoot '.venv\Scripts\python.exe'
-    if (Test-Path $venvPython) {
-        $PythonPath = $venvPython
+    $venvCandidates = @(
+        (Join-Path $repositoryRoot '.venv\Scripts\python.exe'),
+        (Join-Path $repositoryRoot 'venv\Scripts\python.exe'),
+        (Join-Path $repositoryRoot 'venv310\Scripts\python.exe')
+    )
+    $existingVenvPython = $venvCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($existingVenvPython) {
+        $PythonPath = $existingVenvPython
     } elseif (Get-Command py -ErrorAction SilentlyContinue) {
         $PythonPath = (Get-Command py).Source
     } elseif (Get-Command python -ErrorAction SilentlyContinue) {
