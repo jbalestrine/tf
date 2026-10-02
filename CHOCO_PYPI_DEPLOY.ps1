@@ -51,11 +51,17 @@ if secret is None:
     raise SystemExit(f"Vault secret not found: {name}")
 sys.stdout.write(vault.get_secret(secret["id"], user="package-deploy")["value"])
 '@
-    $value = & $PythonPath -c $pythonCode $repositoryRoot $Name 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $value) {
-        throw "Could not read Vault secret '$Name'. Add it in /secrets and retry."
+    $helperPath = Join-Path ([System.IO.Path]::GetTempPath()) ("masterchief-vault-read-" + [guid]::NewGuid().ToString('N') + '.py')
+    [System.IO.File]::WriteAllText($helperPath, $pythonCode, [System.Text.UTF8Encoding]::new($false))
+    try {
+        $value = & $PythonPath $helperPath $repositoryRoot $Name 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $value) {
+            throw "Could not read Vault secret '$Name'. Add it in /secrets and retry."
+        }
+        return [string]$value
+    } finally {
+        Remove-Item -LiteralPath $helperPath -Force -ErrorAction SilentlyContinue
     }
-    return [string]$value
 }
 
 if (-not $PythonPath) {
@@ -136,6 +142,9 @@ try {
         }
         if (-not $env:TWINE_PASSWORD) { throw 'Set TWINE_PASSWORD in this PowerShell process before publishing.' }
         if (-not $env:CHOCOLATEY_API_KEY) { throw 'Set CHOCOLATEY_API_KEY in this PowerShell process before publishing.' }
+        if ($PyPIRepositoryUrl -eq 'https://upload.pypi.org/legacy/' -and $env:TWINE_PASSWORD -notmatch '^pypi-') {
+            throw 'TWINE_PASSWORD does not look like a PyPI API token. Do not use the Chocolatey key here; update the TWINE_PASSWORD Vault entry with a token from PyPI.'
+        }
     }
 
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey CLI is required to build the .nupkg.' }
