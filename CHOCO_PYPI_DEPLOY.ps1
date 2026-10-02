@@ -142,9 +142,6 @@ try {
         }
         if (-not $env:TWINE_PASSWORD) { throw 'Set TWINE_PASSWORD in this PowerShell process before publishing.' }
         if (-not $env:CHOCOLATEY_API_KEY) { throw 'Set CHOCOLATEY_API_KEY in this PowerShell process before publishing.' }
-        if ($PyPIRepositoryUrl -eq 'https://upload.pypi.org/legacy/' -and $env:TWINE_PASSWORD -notmatch '^pypi-') {
-            throw 'TWINE_PASSWORD does not look like a PyPI API token. Do not use the Chocolatey key here; update the TWINE_PASSWORD Vault entry with a token from PyPI.'
-        }
     }
 
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey CLI is required to build the .nupkg.' }
