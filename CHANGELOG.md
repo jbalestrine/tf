@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.8] - 2026-10-01
+
+### Added
+- One-command cross-platform setup instructions and the prompted `MASTER_SETUP.ps1` menu.
+- PyPI extras for optional audio, async, database, and utility dependencies.
+- Combined PyPI and Chocolatey deployment script with preflight and dry-run support.
+
+### Changed
+- First-run scripts bootstrap a virtual environment without downloading AI models by default.
+- Chocolatey packaging pins its source archive and verifies its SHA-256 checksum.
+
 ## [2.2.6] - 2026-05-30
 
 ### Added

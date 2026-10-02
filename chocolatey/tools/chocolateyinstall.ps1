@@ -4,16 +4,12 @@ $packageName = 'masterchief'
 $toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 $installDir = Join-Path $env:ChocolateyInstall 'lib\masterchief\masterchief'
 
-# Package version (updated during build)
+# Package version
 $packageVersion = $env:ChocolateyPackageVersion
 if (-not $packageVersion) { $packageVersion = 'main' }
 
-# Determine download URL based on version
-if ($packageVersion -eq 'main' -or $packageVersion -match '^\d+\.\d+\.\d+$') {
-    $zipUrl = "https://github.com/jbalestrine/masterchief/archive/refs/heads/main.zip"
-} else {
-    $zipUrl = "https://github.com/jbalestrine/masterchief/archive/refs/tags/v$packageVersion.zip"
-}
+$zipUrl = '__MASTERCHIEF_ARCHIVE_URL__'
+$zipChecksum = '__MASTERCHIEF_ARCHIVE_SHA256__'
 
 Write-Host "Installing MasterChief DevOps Platform v$packageVersion..."
 
@@ -48,7 +44,7 @@ if (-not (Test-Path $installDir)) {
 
 # Download and extract the package
 $zipFile = Join-Path $env:TEMP 'masterchief.zip'
-Get-ChocolateyWebFile -PackageName $packageName -FileFullPath $zipFile -Url $zipUrl
+Get-ChocolateyWebFile -PackageName $packageName -FileFullPath $zipFile -Url $zipUrl -Checksum $zipChecksum -ChecksumType 'sha256'
 
 # Extract to installation directory
 Get-ChocolateyUnzip -FileFullPath $zipFile -Destination $installDir

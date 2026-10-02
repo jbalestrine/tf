@@ -1,77 +1,28 @@
-# 🚀 GET IT RUNNING - SIMPLE INSTRUCTIONS
+# Fresh Install and Run
 
-## ONE COMMAND TO RUN EVERYTHING:
+## Prerequisites
 
-```bash
-python run.py
+- Python 3.10 or newer
+- Git
+
+## One-command Install and Run
+
+From the parent directory, paste one command for your shell. It clones the repository, sets up the base environment and bundled CLI/modules, then starts the app.
+
+PowerShell:
+
+```powershell
+git clone https://github.com/jbalestrine/masterchief.git; if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }; Set-Location masterchief; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned; .\MasterchiefRun.ps1
 ```
 
-That's it! This single file starts the entire platform including the data upload web GUI.
-
-## Step-by-Step (First Time):
-
-### 1. Install Dependencies (One Time Only)
+Linux/macOS:
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/jbalestrine/masterchief.git && cd masterchief && bash scripts/start.sh
 ```
 
-This installs Flask, SocketIO, and all other required packages.
+If already cloned, run `.\MasterchiefRun.ps1` in PowerShell or `bash scripts/start.sh` in a POSIX shell. Windows uses port 8084; Linux/macOS uses port 8080. For optional integrations and advanced profiles, see [QUICKSTART.md](QUICKSTART.md) and [MASTER_SETUP.ps1](MASTER_SETUP.ps1).
 
-### 2. Run the Platform
+## Optional Dependencies
 
-```bash
-python run.py
-```
-
-### 3. Open Your Browser
-
-Go to: **http://localhost:8080/api/v1/data/upload**
-
-You'll see:
-- 📤 **Upload Page** - Drag and drop files
-- 📁 **Browse Page** - View all files
-- ⚙️ **Manage Page** - Statistics and analytics
-
-## What Gets Started:
-
-✅ Flask web server  
-✅ Data upload REST API  
-✅ Three web GUI pages  
-✅ All platform features  
-
-## Upload Training Data for Echo:
-
-1. Open http://localhost:8080/api/v1/data/upload
-2. Drag a file onto the upload area
-3. Select "Training" or "Ingestion"
-4. Click "Upload File"
-5. Done! Echo can now learn from your data
-
-## Supported Files:
-
-- **Text**: `.txt`, `.md`, `.log`
-- **Data**: `.json`, `.yaml`, `.csv`, `.xml`
-- **Audio**: `.wav`, `.mp3`, `.ogg`, `.flac` ← For voice training!
-- **Archives**: `.zip`, `.tar`, `.gz`
-
-## Troubleshooting:
-
-**Problem**: `ModuleNotFoundError: No module named 'flask'`  
-**Solution**: Run `pip install -r requirements.txt`
-
-**Problem**: Port 8080 already in use  
-**Solution**: Edit `run.py` line 87 and change `port=8080` to another port
-
-**Problem**: Can't access web interface  
-**Solution**: Make sure you see "✅ Platform ready!" message, then open http://localhost:8080/api/v1/data/upload
-
-## That's It!
-
-**ONE FILE. ONE COMMAND. EVERYTHING WORKS.**
-
-```bash
-python run.py
-```
-
-🌙 MasterChief makes it simple.
+AI and audio packages are intentionally separate from the basic install. Install all optional integrations with `python -m pip install -r requirements-optional.txt`, or install selected package extras such as `.[ai]` and `.[audio]`. Install `requirements-dev.txt` for tests and development tools.

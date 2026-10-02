@@ -20,15 +20,29 @@ fi
 # Change to project root
 cd "$PROJECT_ROOT"
 
-# Check for Python
-PYTHON=$(find_python)
+# Reuse an existing project environment or create one for a fresh checkout.
+BASE_PYTHON=$(find_python)
+if [[ -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
+    PYTHON="$PROJECT_ROOT/.venv/bin/python"
+elif [[ -x "$PROJECT_ROOT/venv/bin/python" ]]; then
+    PYTHON="$PROJECT_ROOT/venv/bin/python"
+else
+    log_info "Creating project virtual environment..."
+    "$BASE_PYTHON" -m venv "$PROJECT_ROOT/.venv"
+    PYTHON="$PROJECT_ROOT/.venv/bin/python"
+fi
 log_info "Using Python: $PYTHON"
 
-# Check if dependencies are installed
-if ! $PYTHON -c "import flask" 2>/dev/null; then
-    log_warn "Dependencies not installed"
-    log_info "Installing dependencies..."
-    $PYTHON -m pip install -r requirements.txt
+# Install the repository requirements only when the environment is incomplete.
+if ! "$PYTHON" -c "import flask" 2>/dev/null; then
+    log_info "Installing repository requirements..."
+    "$PYTHON" -m pip install --upgrade pip
+    "$PYTHON" -m pip install -r "$PROJECT_ROOT/requirements.txt"
+fi
+
+if ! "$PYTHON" -m pip show masterchief >/dev/null 2>&1; then
+    log_info "Installing MasterChief from the source checkout..."
+    "$PYTHON" -m pip install -e "$PROJECT_ROOT"
 fi
 
 # Start the platform

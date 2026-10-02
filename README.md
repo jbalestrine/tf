@@ -135,18 +135,38 @@ git push origin masterchief-V4 --follow-tags
 
 This creates a clean, recordable version marker for the recovered build.
 
-## Minimum Local Run
+## Fresh Setup
 
-Use the venv in this workspace:
+Install Python 3.10 or newer and Git first. From the parent folder, paste the one-line command for your shell; it clones the repository, installs the base app and bundled modules into a virtual environment, registers the CLI, and starts the web app.
+
+### Windows PowerShell
 
 ```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-.\venv\Scripts\Activate.ps1
-python main.py --port 8084
+git clone https://github.com/jbalestrine/masterchief.git; if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }; Set-Location masterchief; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned; .\MasterchiefRun.ps1
 ```
 
-Then open:
-- http://127.0.0.1:8084/
+### Linux or macOS
+
+```bash
+git clone https://github.com/jbalestrine/masterchief.git && cd masterchief && bash scripts/start.sh
+```
+
+If the repository is already cloned, run `.\MasterchiefRun.ps1` in PowerShell or `bash scripts/start.sh` on Linux/macOS. For prompted profiles and advanced options, use [MASTER_SETUP.ps1](MASTER_SETUP.ps1). Optional AI, audio, and cloud dependencies are available through `requirements-optional.txt` or the package extras.
+
+For a prebuilt Python package install, use `python -m pip install masterchief` and then `masterchief --help`. See [QUICKSTART.md](QUICKSTART.md) for additional setup options.
+
+## Release PyPI and Chocolatey Together
+
+The single release entry point is [CHOCO_PYPI_DEPLOY.ps1](CHOCO_PYPI_DEPLOY.ps1). First update `setup.py` to a new version, commit the intended source, create and push a matching `v*` tag, then run from that tagged checkout. Tag pushes run package-build validation only; they do not publish separately.
+
+Set `TWINE_PASSWORD` and `CHOCOLATEY_API_KEY` in the PowerShell process or a secret manager, then run:
+
+```powershell
+.\CHOCO_PYPI_DEPLOY.ps1 -DryRun
+.\CHOCO_PYPI_DEPLOY.ps1
+```
+
+The script builds both packages from the exact tag, verifies availability and metadata, and uploads PyPI followed by Chocolatey. Registry uploads are not atomic: if the second upload fails, the first may already be published. Never retry the same version; fix the failed registry and check both package pages first.
 
 ## Core Application Layout
 

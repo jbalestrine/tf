@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: PyPI Package Validation
 
 on:
   release:
@@ -25,28 +25,12 @@ jobs:
       - name: Build distributions
         run: |
           python -m pip install --upgrade pip
-          pip install build
-          python -m build
+          pip install build twine
+          python -m build --outdir dist
+          python -m twine check dist/*
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pypi-dist
           path: dist/
-
-  publish:
-    needs: [build]
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Download dist artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: pypi-dist
-          path: dist/
-
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1

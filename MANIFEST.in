@@ -2,6 +2,9 @@ include README.md
 include LICENSE
 include CHANGELOG.md
 include requirements.txt
+include MasterchiefRun.ps1
+include MASTER_SETUP.ps1
+include CHOCO_PYPI_DEPLOY.ps1
 include api_settings.json
 include cert_audit.json
 include config.yml

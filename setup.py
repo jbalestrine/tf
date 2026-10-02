@@ -2,7 +2,7 @@
 MasterChief Enterprise DevOps Platform
 A comprehensive, modular enterprise DevOps automation platform.
 
-v2.2.7 — October 2026
+v2.2.8 — October 2026
 """
 import glob
 from setuptools import setup, find_packages
@@ -92,7 +92,7 @@ packages = find_packages(
 
 setup(
     name="masterchief",
-    version="2.2.7",
+    version="2.2.8",
     author="MasterChief Team",
     description="Enterprise DevOps Automation Platform",
     long_description=long_description,
@@ -203,6 +203,41 @@ setup(
             "scipy>=1.10.0",
             "scikit-learn>=1.3.0",
         ],
+        "audio": [
+            "pyttsx3>=2.90",
+            "openai-whisper>=20231117",
+            "sounddevice>=0.4.6",
+            "soundfile>=0.12.1",
+            "librosa>=0.10.0",
+            "pygame>=2.5.0",
+            "webrtcvad>=2.0.10",
+            "openwakeword>=0.5.0",
+            "TTS>=0.22.0",
+        ],
+        "async": [
+            "aiokafka>=0.10.0",
+            "pika>=1.3.0",
+            "aiohttp>=3.9.0",
+            "eventlet>=0.33.0",
+        ],
+        "database": [
+            "redis>=5.0.0",
+            "psycopg2-binary>=2.9.0",
+            "asyncpg>=0.29.0",
+            "aiomysql>=0.2.0",
+            "aiosqlite>=0.19.0",
+            "motor>=3.3.0",
+            "alembic>=1.13.0",
+            "influxdb-client>=1.38.0",
+        ],
+        "extras": [
+            "watchdog>=3.0.0",
+            "ollama>=0.1.0",
+            "croniter>=1.3.0",
+            "ruff>=0.1.0",
+            "statsd>=4.0.1",
+            "celery>=5.3.0",
+        ],
         "dev": [
             "pytest>=7.4.0",
             "pytest-asyncio>=0.21.0",
@@ -218,6 +253,8 @@ setup(
             "sphinx-rtd-theme>=2.0.0",
             "ipython>=8.18.0",
             "pre-commit>=3.6.0",
+            "build>=1.2.2",
+            "twine>=6.0.0",
         ],
         "all": [
             "azure-identity>=1.15.0",
@@ -251,6 +288,33 @@ setup(
             "numpy>=1.24.0",
             "scipy>=1.10.0",
             "scikit-learn>=1.3.0",
+            "pyttsx3>=2.90",
+            "openai-whisper>=20231117",
+            "sounddevice>=0.4.6",
+            "soundfile>=0.12.1",
+            "librosa>=0.10.0",
+            "pygame>=2.5.0",
+            "webrtcvad>=2.0.10",
+            "openwakeword>=0.5.0",
+            "TTS>=0.22.0",
+            "aiokafka>=0.10.0",
+            "pika>=1.3.0",
+            "aiohttp>=3.9.0",
+            "eventlet>=0.33.0",
+            "redis>=5.0.0",
+            "psycopg2-binary>=2.9.0",
+            "asyncpg>=0.29.0",
+            "aiomysql>=0.2.0",
+            "aiosqlite>=0.19.0",
+            "motor>=3.3.0",
+            "alembic>=1.13.0",
+            "influxdb-client>=1.38.0",
+            "watchdog>=3.0.0",
+            "ollama>=0.1.0",
+            "croniter>=1.3.0",
+            "ruff>=0.1.0",
+            "statsd>=4.0.1",
+            "celery>=5.3.0",
             "pytest>=7.4.0",
             "pytest-asyncio>=0.21.0",
             "pytest-cov>=4.1.0",
@@ -265,6 +329,8 @@ setup(
             "sphinx-rtd-theme>=2.0.0",
             "ipython>=8.18.0",
             "pre-commit>=3.6.0",
+            "build>=1.2.2",
+            "twine>=6.0.0",
         ],
     },
     entry_points={

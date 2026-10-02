@@ -2,25 +2,42 @@
 
 ## Installation
 
-### Using pip
+### One-command setup from source
 
-```bash
-# Clone the repository
-git clone https://github.com/jbalestrine/masterchief.git
-cd masterchief
+From the parent directory, run the command for your shell. It clones the repo, installs the base app and CLI, then starts the web app.
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+PowerShell:
 
-# Install dependencies
-pip install -r requirements.txt
+```powershell
+git clone https://github.com/jbalestrine/masterchief.git; if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }; Set-Location masterchief; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned; .\MasterchiefRun.ps1
 ```
 
-### Run from source
+Linux/macOS:
 
 ```bash
-# CLI commands
+git clone https://github.com/jbalestrine/masterchief.git && cd masterchief && bash scripts/start.sh
+```
+
+If already cloned, run `.\MasterchiefRun.ps1` in PowerShell or `bash scripts/start.sh` in a POSIX shell. The Windows app opens on port 8084; the POSIX starter runs on port 8080.
+
+The base install does not download local AI models. To install all optional integrations, run:
+
+```bash
+python -m pip install -r requirements-optional.txt
+```
+
+To install only selected groups from the repository root, use extras such as `python -m pip install -e ".[ai]"`, `python -m pip install -e ".[audio]"`, or `python -m pip install -e ".[cloud]"`. For development and tests, install `requirements-dev.txt` instead of adding test tools to a production environment.
+
+### From PyPI
+
+```bash
+python -m pip install --upgrade masterchief
+masterchief --help
+```
+
+### Run the CLI from source
+
+```bash
 python -m core.cli.main --help
 python -m core.cli.main status
 python -m core.cli.main module list
