@@ -2,7 +2,7 @@
 MasterChief Enterprise DevOps Platform
 A comprehensive, modular enterprise DevOps automation platform.
 
-v2.2.6 — May 2026
+v2.2.7 — October 2026
 """
 import glob
 from setuptools import setup, find_packages
@@ -92,7 +92,7 @@ packages = find_packages(
 
 setup(
     name="masterchief",
-    version="2.2.6",
+    version="2.2.7",
     author="MasterChief Team",
     description="Enterprise DevOps Automation Platform",
     long_description=long_description,

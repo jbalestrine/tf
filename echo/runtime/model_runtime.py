@@ -29,8 +29,8 @@ def load_model(model_path: str, force: bool = False, **kwargs):
 
     _llm = Llama(
         model_path=str(p),
-        n_ctx=kwargs.get("n_ctx", 2048),
-        n_threads=kwargs.get("n_threads", 4),
+        n_ctx=kwargs.get("n_ctx", 4096),
+        n_threads=kwargs.get("n_threads", 8),
         n_batch=kwargs.get("n_batch", 512),
         use_mmap=True,
         use_mlock=False,

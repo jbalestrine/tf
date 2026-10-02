@@ -21,6 +21,7 @@ core_scripts_bp = Blueprint('core_scripts', __name__)
 def _root() -> Path:
     return Path(current_app.root_path).resolve()
 
+
 def _core_scripts_enabled() -> bool:
     return is_feature_enabled(_root(), 'core_scripts', logger=current_app.logger)
 
@@ -58,7 +59,7 @@ def api_core_scripts_dry_check():
     return jsonify(dry_check_script(_root(), script_path))
 
 
-@core_scripts_bp.route('/api/core-scripts/execute', methods=['POST'])
+@core_scripts_bp.route('/api/core-scripts/run', methods=['POST'])
 def api_core_scripts_run():
     data_in = request.get_json(silent=True) or {}
     script_path = str(data_in.get('path') or '').strip()

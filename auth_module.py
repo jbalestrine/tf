@@ -21,39 +21,23 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def requires_permission(permission):
-    """Decorator to check if user has required permission.
-
-    This is intentionally resilient when the app was started without the auth
-    subsystem initialized. In that case the platform should still serve the
-    feature pages and menu links instead of failing with a 500.
-    """
+    """Decorator to check if user has required permission"""
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            try:
-                if not hasattr(current_app, 'login_manager') or current_app.login_manager is None:
-                    return f(*args, **kwargs)
-            except Exception:
+            # If auth subsystem is not initialized, allow route access instead
+            # of crashing on current_app.login_manager lookups.
+            if not hasattr(current_app, 'login_manager'):
                 return f(*args, **kwargs)
 
-            try:
-                return login_required(f)(*args, **kwargs)
-            except Exception:
-                pass
-
-            try:
-                if not current_user.is_authenticated:
-                    return redirect(url_for('login'))
-            except Exception:
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+            
+            # Admin has all permissions
+            if hasattr(current_user, 'permissions') and ('*' in current_user.permissions or permission in current_user.permissions):
                 return f(*args, **kwargs)
-
-            try:
-                permissions = getattr(current_user, 'permissions', []) or []
-                if '*' in permissions or permission in permissions:
-                    return f(*args, **kwargs)
-            except Exception:
-                return f(*args, **kwargs)
-
+            
+            # Permission denied - redirect to login instead of dashboard to avoid infinite loop
             flash(f'Access denied: {permission} permission required', 'error')
             return redirect(url_for('login'))
         return wrapper
@@ -85,7 +69,6 @@ class AuthModule:
         self.oauth = OAuth(app)
         self.login_manager = LoginManager()
         self.login_manager.init_app(app)
-        app.login_manager = self.login_manager
         self.login_manager.login_view = 'login'
 
         # Configure OAuth providers
