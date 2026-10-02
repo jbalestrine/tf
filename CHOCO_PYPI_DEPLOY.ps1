@@ -13,7 +13,13 @@ $buildRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("masterchief-dual-rele
 
 function Invoke-Checked {
     param([string]$Executable, [string[]]$Arguments)
-    & $Executable @Arguments
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Executable @Arguments
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "$Executable failed with exit code $LASTEXITCODE."
     }
