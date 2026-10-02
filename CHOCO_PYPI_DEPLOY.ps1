@@ -60,11 +60,15 @@ try {
     Invoke-Checked 'git' @('-C', $repositoryRoot, 'archive', '--format=zip', "--output=$archivePath", $releaseTag)
     $sourceDirectory = Join-Path $buildRoot 'source'
     Expand-Archive -LiteralPath $archivePath -DestinationPath $sourceDirectory -Force
-    $sourceRoot = Get-ChildItem -LiteralPath $sourceDirectory -Directory | Select-Object -First 1
-    if (-not $sourceRoot -or -not (Test-Path (Join-Path $sourceRoot.FullName 'setup.py'))) {
+    $sourceRoot = $sourceDirectory
+    if (-not (Test-Path (Join-Path $sourceRoot 'setup.py'))) {
+        $sourceRoot = Get-ChildItem -LiteralPath $sourceDirectory -Directory |
+            Where-Object { Test-Path (Join-Path $_.FullName 'setup.py') } |
+            Select-Object -First 1 -ExpandProperty FullName
+    }
+    if (-not $sourceRoot -or -not (Test-Path (Join-Path $sourceRoot 'setup.py'))) {
         throw 'Could not locate setup.py in the tagged source archive.'
     }
-    $sourceRoot = $sourceRoot.FullName
 
     $setupContents = Get-Content (Join-Path $sourceRoot 'setup.py') -Raw
     if ($setupContents -notmatch 'version="([^"]+)"') { throw 'Could not read package version from tagged setup.py.' }
