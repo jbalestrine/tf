@@ -167,13 +167,13 @@ try {
         return
     }
 
-    $env:TWINE_USERNAME = '__token__'
-    Write-Host 'Uploading to PyPI...'
-    Invoke-Checked $PythonPath (@('-m', 'twine', 'upload', '--non-interactive', '--repository-url', $PyPIRepositoryUrl) + @($pythonArtifacts | ForEach-Object { $_.FullName }))
-
     Write-Host 'Uploading to Chocolatey...'
     $chocoArguments = @('push', $chocoPackage, '--source', $ChocolateySource, "--api-key=$($env:CHOCOLATEY_API_KEY)")
     Invoke-Checked 'choco' $chocoArguments
+
+    $env:TWINE_USERNAME = '__token__'
+    Write-Host 'Uploading to PyPI...'
+    Invoke-Checked $PythonPath (@('-m', 'twine', 'upload', '--non-interactive', '--repository-url', $PyPIRepositoryUrl) + @($pythonArtifacts | ForEach-Object { $_.FullName }))
 
     Write-Host "Published masterchief $packageVersion to PyPI and Chocolatey." -ForegroundColor Green
 } catch {

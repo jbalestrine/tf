@@ -166,7 +166,7 @@ In `/secrets`, add encrypted entries named `TWINE_PASSWORD` and `CHOCOLATEY_API_
 .\CHOCO_PYPI_DEPLOY.ps1 -UseVault
 ```
 
-The script reads the secrets from the local encrypted Vault, builds both packages from the exact tag, verifies availability and metadata, uploads PyPI followed by Chocolatey, then clears the loaded values from its process environment. Registry uploads are not atomic: if the second upload fails, the first may already be published. Never retry the same version; fix the failed registry and check both package pages first.
+The script reads the secrets from the local encrypted Vault, builds both packages from the exact tag, verifies availability and metadata, uploads Chocolatey first and PyPI second, then clears any Vault-loaded values from its process environment. Registry uploads are not atomic: if the PyPI upload fails after Chocolatey accepts the package, fix PyPI and check both package pages before retrying.
 
 ## Core Application Layout
 
