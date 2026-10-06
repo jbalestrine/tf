@@ -65,22 +65,7 @@
     {
       "name": "viewer",
       "permissions": [
-        "dashboard",
-        "echo-chat",
-        "scripts",
-        "web_ide",
-        "processes",
-        "services",
-        "addons",
-        "training",
-        "pipelines",
-        "cloud",
-        "secrets_read",
-        "secrets_write",
-        "resources",
-        "notifications",
-        "rbac",
-        "marketplace"
+        "dashboard"
       ],
       "builtin": true
     },
@@ -347,6 +332,13 @@
       "user": "admin",
       "action": "login",
       "details": "User admin logged in"
+    },
+    {
+      "id": "59918488-ba32-4bda-9e58-a084a583cd4f",
+      "timestamp": "2026-10-02T02:18:33.851702",
+      "user": "system",
+      "action": "role_updated",
+      "details": "Role viewer updated"
     }
   ]
 }

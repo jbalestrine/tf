@@ -23,6 +23,222 @@
       "action": "accessed",
       "secret_name": "masterchiefx",
       "details": ""
+    },
+    {
+      "id": "9d306178-3ecc-481e-ba1a-763143c6131e",
+      "timestamp": "2026-10-01T23:49:41.248044",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "masterchiefx",
+      "details": ""
+    },
+    {
+      "id": "67c259e3-85d5-48d6-a55e-e54c7e18930a",
+      "timestamp": "2026-10-01T23:51:53.873996",
+      "user": "system",
+      "action": "created",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": "Secret CHOCOLATEY_API_KEY created (type=chocolatey_api_key)"
+    },
+    {
+      "id": "b035ccf1-d684-47b8-8aee-d4c4fb01a2a3",
+      "timestamp": "2026-10-01T23:52:04.208968",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "dc5f51e6-f0ca-427a-ac77-3b6023d83a9b",
+      "timestamp": "2026-10-01T23:52:12.717762",
+      "user": "system",
+      "action": "updated",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "c2d85f6b-eca2-4cee-92b1-e16ffc2f794b",
+      "timestamp": "2026-10-01T23:52:53.551282",
+      "user": "system",
+      "action": "created",
+      "secret_name": "TWINE_PASSWORD",
+      "details": "Secret TWINE_PASSWORD created (type=api_key)"
+    },
+    {
+      "id": "66a53176-12a9-42e5-9e4e-9edd80d174ae",
+      "timestamp": "2026-10-01T23:52:59.975440",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
+    },
+    {
+      "id": "fcc6d59f-b106-4522-afb5-6a137859bbe5",
+      "timestamp": "2026-10-01T23:53:30.612471",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "5c5ef1f2-867e-4b0d-b0d4-33af89561b0e",
+      "timestamp": "2026-10-01T23:53:49.793430",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "masterchiefx",
+      "details": ""
+    },
+    {
+      "id": "e239031c-df5d-429a-821b-38c244df2d48",
+      "timestamp": "2026-10-01T23:53:53.503422",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "3f80774c-a75d-4aa7-8456-04690ba33439",
+      "timestamp": "2026-10-01T23:53:59.250464",
+      "user": "system",
+      "action": "updated",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "1b022e0c-2f0b-4991-8f16-cbe2aec2cdbe",
+      "timestamp": "2026-10-01T23:54:06.911553",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "91ed32fb-f083-44d9-a30f-6f5c9f795dc9",
+      "timestamp": "2026-10-02T00:00:36.982587",
+      "user": "deploy-diagnostic",
+      "action": "accessed",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
+    },
+    {
+      "id": "74288ea4-a716-445d-999a-b18e5e2d365f",
+      "timestamp": "2026-10-02T00:02:09.308181",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "27d9ce7b-f72a-47d6-9684-d07e59a28454",
+      "timestamp": "2026-10-02T00:02:50.483006",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
+    },
+    {
+      "id": "53bb7bdc-97a4-4f23-88b9-87d708d7fcab",
+      "timestamp": "2026-10-02T00:02:56.554954",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
+    },
+    {
+      "id": "e00ee8d4-70eb-4602-9d3a-1d49163613d9",
+      "timestamp": "2026-10-02T00:08:25.205740",
+      "user": "deploy-preflight",
+      "action": "accessed",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
+    },
+    {
+      "id": "d767b110-070c-411b-a2f0-0cf03ab1a8a2",
+      "timestamp": "2026-10-02T00:08:25.221741",
+      "user": "deploy-preflight",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "da70f19a-30c6-4d19-9120-1195c76a7f14",
+      "timestamp": "2026-10-02T00:11:53.252186",
+      "user": "system",
+      "action": "updated",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
+    },
+    {
+      "id": "01833d6a-21b4-4144-b1f3-669f5cf3c027",
+      "timestamp": "2026-10-02T00:17:15.874360",
+      "user": "package-deploy",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "4a1cc92c-996c-4c83-96ba-fd199f8a96b6",
+      "timestamp": "2026-10-02T00:30:14.293128",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
+    },
+    {
+      "id": "471a86d6-34a0-473e-8a0c-607b97855bda",
+      "timestamp": "2026-10-02T00:32:13.531115",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "b0ddcae4-5a16-437e-8c9c-cfb47ac9c0f5",
+      "timestamp": "2026-10-02T00:34:38.298173",
+      "user": "deploy-check",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "b1883144-e00e-4ee5-a527-7db8f36da6d1",
+      "timestamp": "2026-10-02T01:01:03.004845",
+      "user": "choco-moderation-resubmit",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "96c9f404-7dce-4bd2-8843-dcfd222d0147",
+      "timestamp": "2026-10-02T02:14:58.314132",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "a678a935-e2fd-4040-8574-6a1c1df1f8c4",
+      "timestamp": "2026-10-02T02:15:32.553840",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "masterchiefx",
+      "details": ""
+    },
+    {
+      "id": "d0e2d9d0-6dac-4d58-9662-5f57dea44382",
+      "timestamp": "2026-10-02T02:15:34.718836",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "CHOCOLATEY_API_KEY",
+      "details": ""
+    },
+    {
+      "id": "babbc6db-db16-421a-9819-f291eb86d8e1",
+      "timestamp": "2026-10-02T02:15:35.890660",
+      "user": "system",
+      "action": "accessed",
+      "secret_name": "TWINE_PASSWORD",
+      "details": ""
     }
   ]
 }

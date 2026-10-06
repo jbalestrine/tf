@@ -8,12 +8,61 @@
       "rotation_days": 99,
       "created": "2026-09-22T02:28:39.877063",
       "updated": "2026-09-22T02:28:39.877074",
-      "last_accessed": "2026-09-22T05:15:32.490492",
+      "last_accessed": "2026-10-02T02:15:32.553019",
       "versions": [
         {
           "version": 1,
           "timestamp": "2026-09-22T02:28:39.877076",
           "encrypted_value": "gAAAAABqskpHS5r3Ubub6CnINFzhWxBnD53nGcB_G4zHM1_5OAdvxZsSnmJz59ySg3vgO4uu8JzAThNvxZWXQ9z89OvEQiVg1g=="
+        }
+      ]
+    },
+    {
+      "id": "50cc2f7e-e635-4dc3-b542-2ae9bd513d81",
+      "name": "CHOCOLATEY_API_KEY",
+      "type": "chocolatey_api_key",
+      "encrypted_value": "gAAAAABqv1UHC3fmczDIc1FOL4jmrnMUs0XSo43STukKrAI0w_SocthnuDhDnkxQbYTumq5_jECJWvqJb0QopyoRrxPJChM1zf67DDkTdLGuinx9qjTkJUIjK9zo0NY4_ZNhU_evFexm",
+      "rotation_days": 180,
+      "created": "2026-10-01T23:51:53.867116",
+      "updated": "2026-10-01T23:53:59.242107",
+      "last_accessed": "2026-10-02T02:15:34.712792",
+      "versions": [
+        {
+          "version": 1,
+          "timestamp": "2026-10-01T23:51:53.867130",
+          "encrypted_value": "gAAAAABqv1SJgigxUi_zVyV_ax_XQC0Turc6EXn2oNxLAHnEXCiAZ1UPRtj1VOirj0K9ylwMi6sv2RuD6d7CuvDjMQPdfY70UPYcIn9WlOvtLyVt3iVQO9mpt4dT91rnLlQx5ZwQkfRR"
+        },
+        {
+          "version": 2,
+          "timestamp": "2026-10-01T23:52:12.710984",
+          "encrypted_value": "gAAAAABqv1ScNMvG1E43Kn_WBpbL0RPDd0um8SWFhy1Vo_o1DjM4X30oOuBTuNOXxHzkbeUGnHaf_HNeglObUbv9aNrQOCJM-h43GE-VuN5Tv786UmpMfBetw9Gdh5AE7-8kkeT0cLyh"
+        },
+        {
+          "version": 3,
+          "timestamp": "2026-10-01T23:53:59.241964",
+          "encrypted_value": "gAAAAABqv1UHkcV0e4jtiyxqvKUqwlmehTDVDVuDTIxzkkmtYfac32p-IJH4WoJDsQH-zJg-5TPxtTvkFkgTkfC4mIYxIL_iKwDgUzHKMk6JQfKHdxkEZXxXBlQ9wRJ95LtOmKg_LGgw"
+        }
+      ]
+    },
+    {
+      "id": "ef794cd5-ec18-4196-96a6-daf644fc0546",
+      "name": "TWINE_PASSWORD",
+      "type": "api_key",
+      "encrypted_value": "gAAAAABqv1k5OzXxirqqJsskeGRfVXOM12AktJxCtj56I3SUluqeAUb5UmD8212c-QM7mJ6cLg6un5hHopwWvufCrPma4L6QAqd5ccelogZxo6ZCRNeqC_a6NRoWiwFt4sZi-mH-Resrj9Iba_-MCpELFW1G27M9ytOrsyKyFTngEgVj1u59NqMfhW-YGaaqgDJMYNwj4YP5Kq0M892_53g36pvZDk_hm55H81b7CivHfGRqxNEPjDS05fCeT6nVwB0Tjd81gt8eO5Z6N-rIpwC2t9ZugdUCMLmsoJPomhEt9ojTP1YdBOA66NR0trmjk1uVsaacXYIP",
+      "rotation_days": 180,
+      "created": "2026-10-01T23:52:53.542579",
+      "updated": "2026-10-02T00:11:53.244630",
+      "last_accessed": "2026-10-02T02:15:35.884228",
+      "versions": [
+        {
+          "version": 1,
+          "timestamp": "2026-10-01T23:52:53.542596",
+          "encrypted_value": "gAAAAABqv1TFxWGcofk6h-Qj5YhLtrxwDEbg_UMqsqXFK9W-149UI-BNApe5K_Tf7j3Noaq25aBh37ZGjUrubnlIDG79wK8IeIm2km8CmO88y6kb6DsX7Y0RA-FAZTXUZDbGa09ILsbT"
+        },
+        {
+          "version": 2,
+          "timestamp": "2026-10-02T00:11:53.235651",
+          "encrypted_value": "gAAAAABqv1k5dWkzN8EtcjtjdZ9JrO4f5tvCi_ZkceUDo1ycMVgiiLfTXUepTogiVuAW2jicRtBpI67zIuXFUtweWyTFcVRhwxjA4_IYyXGA02PfIqdj6buU031tt0-c8HJtz_1sv8MKQpPf82C7_Ru5V1BtZs8MLCUnm3gK70Z9dMfttl4iDe0IW2sWznKUtyExX8seHbHzJdgPMfymyGPTw5Q5ejKUkPz--GQ2nxQ7ititGdfrAbrH_M-SKMaiiiwhjCtEzgO9-QkZCjG3MvOPxwdbNk_ACzxvZ7LyfWdFuvJf22CR7P4HlHJ6nUB_iyHJVzOFqUna"
         }
       ]
     }

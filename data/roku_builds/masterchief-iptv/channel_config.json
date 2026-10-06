@@ -3,7 +3,7 @@
   "bundle_id": "com.masterchief.iptv",
   "playlist_url": "http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u",
   "source_url": "http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u",
-  "developer_ip": "10.0.0.220",
+  "developer_ip": "10.0.0.160",
   "theme": "dark",
   "playlist_count": 50000,
   "entries": [
@@ -2217,12 +2217,12 @@
       "CA TSN 1 (E)"
     ],
     "source_url": "http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u",
-    "developer_ip": "10.0.0.220",
+    "developer_ip": "10.0.0.160",
     "theme": "dark",
     "sample_size": 50000,
     "preview_limited": true
   },
-  "created_at": "2026-09-24T10:33:30Z",
+  "created_at": "2026-10-02T10:39:49Z",
   "target": "Roku TV streaming app",
   "deployment": "Developer Mode / sideload / upload to TV",
   "notes": "Use the Roku developer portal to sideload the generated zip and confirm the playlist loads on-device."

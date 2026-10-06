@@ -2,6 +2,7 @@
 param(
     [string]$OutputDirectory = (Join-Path $PSScriptRoot 'dist'),
     [string]$SourceRef,
+    [string]$PackageVersion,
     [switch]$Push
 )
 
@@ -19,10 +20,16 @@ if ($Push -and -not $env:CHOCOLATEY_API_KEY) {
 }
 
 $setupContent = Get-Content (Join-Path $repositoryRoot 'setup.py') -Raw
-if ($setupContent -notmatch 'version="([^"]+)"') {
-    throw 'Could not read the package version from setup.py.'
+if (-not $PackageVersion) {
+    if ($setupContent -notmatch 'version="([^"]+)"') {
+        throw 'Could not read the package version from setup.py.'
+    }
+    $PackageVersion = $Matches[1]
 }
-$packageVersion = $Matches[1]
+if ($PackageVersion -notmatch '^\d+\.\d+\.\d+$') {
+    throw "Invalid Chocolatey package version: $PackageVersion"
+}
+$packageVersion = $PackageVersion
 
 if (-not $SourceRef) {
     $SourceRef = git -C $repositoryRoot describe --tags --exact-match HEAD 2>$null
@@ -86,12 +93,7 @@ try {
     Write-Host "Built $packagePath from $SourceRef (SHA-256 $archiveChecksum)."
 
     if ($Push) {
-        & choco apikey --key $env:CHOCOLATEY_API_KEY --source $packageSource
-        if ($LASTEXITCODE -ne 0) {
-            throw "Could not configure the Chocolatey API key (exit code $LASTEXITCODE)."
-        }
-
-        & choco push $packagePath --source $packageSource
+        & choco push $packagePath --source $packageSource "--api-key=$($env:CHOCOLATEY_API_KEY)"
         if ($LASTEXITCODE -ne 0) {
             throw "Chocolatey push failed with exit code $LASTEXITCODE. Check the API key and package version on Chocolatey.org."
         }

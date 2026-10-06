@@ -10,6 +10,6 @@ splash_screen_hd=pkg:/images/splash_hd.png
 splash_screen_sd=pkg:/images/splash_sd.png
 supports_input_launch=true
 ui_resolutions=fhd,hd,sd
-developer_ip=10.0.0.220
+developer_ip=10.0.0.160
 theme=dark
 channel_id=com.masterchief.iptv

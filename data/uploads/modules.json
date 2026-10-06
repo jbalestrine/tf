@@ -511,9 +511,9 @@
   },
   "Echo_Chat2": {
     "name": "Echo_Chat2",
-    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat2",
-    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat2",
-    "installed_at": "2026-09-22T05:10:24.482391",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat2",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\Echo_Chat2",
+    "installed_at": "2026-10-02T02:19:40.100192",
     "entry_point": "addon.py",
     "entry_type": "python"
   },

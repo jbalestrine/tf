@@ -3,7 +3,7 @@
 - Channel name: MasterChief IPTV
 - Bundle ID: com.masterchief.iptv
 - Playlist source: http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u
-- Developer IP: 10.0.0.220
+- Developer IP: 10.0.0.160
 - Theme: dark
 
 ## Preview model
@@ -2057,7 +2057,7 @@
     "CA TSN 1 (E)"
   ],
   "source_url": "http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u",
-  "developer_ip": "10.0.0.220",
+  "developer_ip": "10.0.0.160",
   "theme": "dark",
   "sample_size": 50000,
   "preview_limited": true

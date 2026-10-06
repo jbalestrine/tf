@@ -1,0 +1,5 @@
+{
+    "id": "Echo_Chat2",
+    "name": "Echo Chat Local Module",
+    "entry_point": "addon.py"
+}
