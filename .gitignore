@@ -2,7 +2,14 @@
 *.gguf
 data/github_repos/
 build/
+# Ignore PyPI token configs
+.pyirc
+.pyirc.txt
 
+# General safety fallbacks
+.env
+*.tfstate*
+.terraform/
 venv/
 venv310/
 .venv/
