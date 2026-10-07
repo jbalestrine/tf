@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import difflib
 import hashlib
 import json
 import os
@@ -412,3 +413,82 @@ class EchoChangeApprovalManager:
             "files": [item["path"] for item in files],
             "backups": backups,
         }
+
+    _DIFF_LINE_LIMIT = 400
+
+    def _diff_preview(self, item: dict) -> str:
+        target = self._resolve_target(item["path"])
+        try:
+            before = target.read_text(encoding="utf-8") if target.is_file() else ""
+        except (OSError, UnicodeError):
+            before = ""
+        lines = list(
+            difflib.unified_diff(
+                before.splitlines(),
+                str(item.get("content", "")).splitlines(),
+                fromfile=f"a/{item['path']}" if before else "/dev/null",
+                tofile=f"b/{item['path']}",
+                lineterm="",
+            )
+        )
+        if len(lines) > self._DIFF_LINE_LIMIT:
+            hidden = len(lines) - self._DIFF_LINE_LIMIT
+            lines = lines[: self._DIFF_LINE_LIMIT] + [f"... {hidden} more diff lines not shown"]
+        return "\n".join(lines)
+
+    def list_pending(self, user_id: str) -> list[dict]:
+        """Return every unconfirmed proposal owned by the user, with a diff preview per file."""
+        with self._connection() as db:
+            rows = db.execute(
+                """
+                SELECT proposal_id, session_id, summary, created_at
+                FROM echo_change_proposals
+                WHERE user_id = ? AND status = 'pending'
+                ORDER BY created_at DESC
+                """,
+                (str(user_id),),
+            ).fetchall()
+        proposals = []
+        for row in rows:
+            entry = {
+                "proposal_id": row["proposal_id"],
+                "session_id": row["session_id"],
+                "summary": row["summary"],
+                "created_at": row["created_at"],
+                "files": [],
+                "error": None,
+            }
+            try:
+                pending = self.get_pending(row["session_id"], user_id)
+                for item in (pending or {}).get("files", []):
+                    entry["files"].append(
+                        {"path": item["path"], "is_new": bool(item.get("is_new")), "diff": self._diff_preview(item)}
+                    )
+            except EchoChangeError as exc:
+                entry["error"] = str(exc)
+            proposals.append(entry)
+        return proposals
+
+    def list_history(self, user_id: str, limit: int = 20) -> list[dict]:
+        """Return the most recent applied or cancelled proposals owned by the user."""
+        with self._connection() as db:
+            rows = db.execute(
+                """
+                SELECT proposal_id, summary, status, created_at, applied_at, files_json
+                FROM echo_change_proposals
+                WHERE user_id = ? AND status != 'pending'
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                (str(user_id), max(1, min(int(limit), 100))),
+            ).fetchall()
+        return [
+            {
+                "proposal_id": row["proposal_id"],
+                "summary": row["summary"],
+                "status": row["status"],
+                "created_at": row["created_at"],
+                "applied_at": row["applied_at"],
+                "files": [item["path"] for item in json.loads(row["files_json"])],
+            }
+            for row in rows
+        ]

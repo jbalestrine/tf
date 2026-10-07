@@ -91,7 +91,7 @@ code{color:#4CAF50;}
   <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
   <label class="nav-search"><span class="sr-only">Search pages</span><input id="nav-search" type="search" placeholder="Find a page…  Ctrl+K" autocomplete="off" aria-label="Find a page"><span id="nav-search-status" class="nav-search-status" aria-live="polite"></span></label>
 
-  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') or request.path.startswith('/chaos-monkey') else '' }}">
+  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') or request.path.startswith('/chaos-monkey') or request.path.startswith('/backups') else '' }}">
     <summary class="dropbtn">Operate</summary>
     <div class="nav-group-content">
       <a href="/master-menu" class="{{ 'active' if '/master-menu' in request.path else '' }}">🧭 Master Menu</a>
@@ -104,6 +104,7 @@ code{color:#4CAF50;}
       <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
       <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
       <a href="/chaos-monkey" class="{{ 'active' if request.path.startswith('/chaos-monkey') else '' }}">🐒 Chaos Monkey Area</a>
+      <a href="/backups" class="{{ 'active' if '/backups' in request.path else '' }}">💾 Data Backups</a>
       <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
       <a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">🛠 Services</a>
       <a href="/about" class="{{ 'active' if '/about' in request.path else '' }}">ℹ️ About</a>
@@ -141,6 +142,8 @@ code{color:#4CAF50;}
       <a href="/echo-commands" class="{{ 'active' if '/echo-commands' in request.path else '' }}">⌨ Echo Commands</a>
       <a href="/echo-train" class="{{ 'active' if '/echo-train' in request.path else '' }}">🎓 Training</a>
       <a href="/echo-memory" class="{{ 'active' if '/echo-memory' in request.path else '' }}">🧠 Echo Memory</a>
+      <a href="/echo-approvals" class="{{ 'active' if '/echo-approvals' in request.path else '' }}">✅ Echo Approvals</a>
+      <a href="/chaos-monkey#ideas-panel">💡 Ideas Basket</a>
       <a href="/web_ide" class="{{ 'active' if '/web_ide' in request.path else '' }}">💻 Web IDE</a>
       <a href="/masterchief_code_ui" class="{{ 'active' if '/masterchief_code_ui' in request.path else '' }}">🧠 MasterChief Code UI</a>
     </div>

@@ -196,7 +196,7 @@ except ImportError as e:
     print(f"⚠️  Warning: Failed to initialize feature manager: {e}")
     FEATURE_MANAGER_AVAILABLE = False
 
-from flask import Flask, render_template_string, request, jsonify, redirect, url_for, flash, get_flashed_messages, send_file, session
+from flask import Flask, render_template, render_template_string, request, jsonify, redirect, url_for, flash, get_flashed_messages, send_file, session
 
 from flask_cors import CORS
 
@@ -14612,65 +14612,18 @@ def api_echo_chat():
                 }), 403
             user_id = str(current_user.get_id())
             try:
-                change_manager = _echo_change_approval_manager()
                 if change_command == '!cancelchange':
-                    bot = get_chat_bot()
-                    bot.clear_app_change_intake(session_id)
-                    proposal_id = change_manager.cancel_pending(session_id, user_id)
-                    response_text = (
-                        f"Cancelled proposal {proposal_id}; no app files were changed."
-                        if proposal_id else "Cancelled the unfinished app-change request; no files were changed."
-                    )
+                    response_text = _echo_cancel_pending_change(session_id, user_id)
                 else:
-                    pending = change_manager.get_pending(session_id, user_id)
-                    if pending is None:
-                        return jsonify({'error': 'There is no pending app-change proposal to confirm.'}), 409
-                    try:
-                        _echo_operator_audit(
-                            'app_change_confirmed',
-                            proposal_id=pending['proposal_id'],
-                            paths=[item['path'] for item in pending['files']],
-                        )
-                    except OSError:
-                        app.logger.exception('Unable to audit Echo app-change confirmation')
-                        return jsonify({'error': 'The app change was not applied because its approval could not be audited.'}), 500
-                    applied = change_manager.confirm_pending(session_id, user_id)
-                    bot = get_chat_bot()
-                    bot._refresh_language_reference_index(force=True)
-                    test_result = _run_echo_change_tests(applied['files'])
-                    test_stage = (
-                        'verification_passed'
-                        if test_result.startswith('Focused tests passed:')
-                        else 'verification_incomplete'
-                    )
-                    bot._set_conversation_focus(
-                        session_id,
-                        f"{applied['summary']} — {test_result[:1200]}",
-                        test_stage,
-                    )
-                    static_result = (
-                        "Changed Python/JSON files passed syntax validation."
-                        if any(Path(path).suffix.casefold() in {'.py', '.json'} for path in applied['files'])
-                        else "No Python/JSON files needed syntax validation."
-                    )
-                    response_text = (
-                        f"Applied proposal `{applied['proposal_id']}`: {applied['summary']}\n"
-                        "Changed files:\n"
-                        + '\n'.join(f"- `{path}`" for path in applied['files'])
-                        + (
-                            "\nBackups:\n" + '\n'.join(f"- `{path}`" for path in applied['backups'])
-                            if applied['backups'] else "\nThis proposal created only new files; no backups were needed."
-                        )
-                        + f"\n{static_result}\n{test_result}\n"
-                        "Echo did not run generated application scripts, commit, or push. "
-                        "Refresh MasterChief Code UI to inspect the updated files. Restart MasterChief if a changed Python module must be reloaded."
-                    )
+                    response_text = _echo_apply_pending_change(session_id, user_id)
                 return jsonify({
                     'response': response_text,
                     'session_id': session_id,
                     'timestamp': time.time(),
                     'message_id': f"bot_{int(time.time()*1000)}",
                 })
+            except _EchoApprovalAuditError:
+                return jsonify({'error': 'The app change was not applied because its approval could not be audited.'}), 500
             except Exception as exc:
                 from managers.echo_change_approvals import EchoChangeError
                 if isinstance(exc, EchoChangeError):
@@ -16499,6 +16452,198 @@ def api_echo_train_cancel():
 
 
 
+
+
+class _EchoApprovalAuditError(Exception):
+    """The approval could not be written to the audit log, so nothing was applied."""
+
+
+def _echo_cancel_pending_change(session_id, user_id):
+    bot = get_chat_bot()
+    bot.clear_app_change_intake(session_id)
+    proposal_id = _echo_change_approval_manager().cancel_pending(session_id, user_id)
+    return (
+        f"Cancelled proposal {proposal_id}; no app files were changed."
+        if proposal_id else "Cancelled the unfinished app-change request; no files were changed."
+    )
+
+
+def _echo_apply_pending_change(session_id, user_id):
+    """Apply the pending proposal for a chat and return the human-readable result."""
+    from managers.echo_change_approvals import EchoChangeError
+
+    change_manager = _echo_change_approval_manager()
+    pending = change_manager.get_pending(session_id, user_id)
+    if pending is None:
+        raise EchoChangeError('There is no pending app-change proposal to confirm.')
+    try:
+        _echo_operator_audit(
+            'app_change_confirmed',
+            proposal_id=pending['proposal_id'],
+            paths=[item['path'] for item in pending['files']],
+        )
+    except OSError as exc:
+        app.logger.exception('Unable to audit Echo app-change confirmation')
+        raise _EchoApprovalAuditError() from exc
+    applied = change_manager.confirm_pending(session_id, user_id)
+    bot = get_chat_bot()
+    bot._refresh_language_reference_index(force=True)
+    test_result = _run_echo_change_tests(applied['files'])
+    test_stage = (
+        'verification_passed'
+        if test_result.startswith('Focused tests passed:')
+        else 'verification_incomplete'
+    )
+    bot._set_conversation_focus(
+        session_id,
+        f"{applied['summary']} ? {test_result[:1200]}",
+        test_stage,
+    )
+    static_result = (
+        "Changed Python/JSON files passed syntax validation."
+        if any(Path(path).suffix.casefold() in {'.py', '.json'} for path in applied['files'])
+        else "No Python/JSON files needed syntax validation."
+    )
+    return (
+        f"Applied proposal `{applied['proposal_id']}`: {applied['summary']}\n"
+        "Changed files:\n"
+        + '\n'.join(f"- `{path}`" for path in applied['files'])
+        + (
+            "\nBackups:\n" + '\n'.join(f"- `{path}`" for path in applied['backups'])
+            if applied['backups'] else "\nThis proposal created only new files; no backups were needed."
+        )
+        + f"\n{static_result}\n{test_result}\n"
+        "Echo did not run generated application scripts, commit, or push. "
+        "Refresh MasterChief Code UI to inspect the updated files. Restart MasterChief if a changed Python module must be reloaded."
+    )
+
+
+def _admin_page_or_error(json_response):
+    """Return an error response unless the caller is the authenticated RBAC admin; None means allowed."""
+    if not _echo_operator_account_authorized():
+        if json_response:
+            return jsonify({'ok': False, 'error': 'This requires the authenticated RBAC admin account.'}), 403
+        return redirect('/login')
+    return None
+
+
+def _admin_post_guard():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    if not _echo_operator_request_is_same_origin():
+        return jsonify({'ok': False, 'error': 'Request must come from the same-origin MasterChief page.'}), 403
+    return None
+
+
+def _render_admin_fragment(template_name, **context):
+    content = render_template(template_name, **context)
+    return render_template_string(
+        HTML_TEMPLATE.replace('{% block content %}{% endblock %}', content),
+        request=request,
+        get_flashed_messages=get_flashed_messages,
+    )
+
+
+@app.route('/echo-approvals')
+def echo_approvals_page():
+    denied = _admin_page_or_error(False)
+    if denied is not None:
+        return denied
+    return _render_admin_fragment('echo_approvals.html')
+
+
+@app.route('/api/echo/approvals', methods=['GET'])
+def api_echo_approvals():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    manager = _echo_change_approval_manager()
+    user_id = str(current_user.get_id())
+    return jsonify({
+        'ok': True,
+        'pending': manager.list_pending(user_id),
+        'history': manager.list_history(user_id),
+    })
+
+
+@app.route('/api/echo/approvals/<path:session_id>/<action>', methods=['POST'])
+def api_echo_approval_decision(session_id, action):
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    if action not in {'confirm', 'cancel'}:
+        return jsonify({'ok': False, 'error': 'Unknown action.'}), 404
+    from managers.echo_change_approvals import EchoChangeError
+
+    user_id = str(current_user.get_id())
+    try:
+        if action == 'confirm':
+            message = _echo_apply_pending_change(session_id, user_id)
+        else:
+            message = _echo_cancel_pending_change(session_id, user_id)
+        return jsonify({'ok': True, 'message': message.splitlines()[0]})
+    except _EchoApprovalAuditError:
+        return jsonify({'ok': False, 'error': 'The app change was not applied because its approval could not be audited.'}), 500
+    except EchoChangeError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 409
+    except Exception:
+        app.logger.exception('Echo approval decision failed')
+        return jsonify({'ok': False, 'error': 'Echo could not complete the approval operation.'}), 500
+
+
+def _data_backup_manager():
+    from managers.data_backup import DataBackupManager
+
+    return DataBackupManager(Path(__file__).resolve().parent)
+
+
+@app.route('/backups')
+def data_backups_page():
+    denied = _admin_page_or_error(False)
+    if denied is not None:
+        return denied
+    return _render_admin_fragment('data_backups.html')
+
+
+@app.route('/api/backups', methods=['GET'])
+def api_list_backups():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return jsonify({'ok': True, 'backups': _data_backup_manager().list_backups()})
+
+
+@app.route('/api/backups', methods=['POST'])
+def api_create_backup():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    from managers.data_backup import DataBackupError
+
+    try:
+        result = _data_backup_manager().create_backup()
+        _echo_operator_audit('data_backup_created', name=result['name'], files=result['files'])
+        return jsonify({'ok': True, **result})
+    except DataBackupError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except Exception:
+        app.logger.exception('Data backup failed')
+        return jsonify({'ok': False, 'error': 'The backup could not be created.'}), 500
+
+
+@app.route('/api/backups/<name>/download', methods=['GET'])
+def api_download_backup(name):
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    from managers.data_backup import DataBackupError
+
+    try:
+        path = _data_backup_manager().backup_path(name)
+    except DataBackupError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 404
+    return send_file(path, as_attachment=True, download_name=path.name)
 
 
 @app.route('/api/echo/models', methods=['GET'])

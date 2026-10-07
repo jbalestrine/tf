@@ -1,0 +1,131 @@
+<div class="section">
+    <h2>Echo Approvals</h2>
+    <p style="color:#9aa4b2;margin-bottom:8px;">Review app changes that Echo has drafted. Nothing is written to your files until you approve it here or send <code>!confirmed</code> in Echo Chat. Every applied change keeps a backup under <code>data/echo_change_backups</code>.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="btn btn-info" id="approvals-refresh" type="button">Refresh</button>
+        <a class="btn" href="/echo-chat">Open Echo Chat</a>
+        <span id="approvals-status" aria-live="polite" style="color:#9aa4b2;"></span>
+    </div>
+    <h3>Pending proposals</h3>
+    <div id="approvals-pending" style="display:grid;gap:12px;margin-bottom:20px;"></div>
+    <h3>Recent history</h3>
+    <div id="approvals-history" style="display:grid;gap:6px;"></div>
+</div>
+<script>
+(function () {
+    const pendingBox = document.getElementById('approvals-pending');
+    const historyBox = document.getElementById('approvals-history');
+    const statusBox = document.getElementById('approvals-status');
+
+    function el(tag, props, children) {
+        const node = document.createElement(tag);
+        Object.assign(node, props || {});
+        (children || []).forEach(function (child) {
+            node.append(child);
+        });
+        return node;
+    }
+
+    function setStatus(text) {
+        statusBox.textContent = text || '';
+    }
+
+    async function call(url, options) {
+        const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, options || {}));
+        let data = {};
+        try { data = await response.json(); } catch (error) { /* non-JSON response */ }
+        if (!response.ok || data.ok === false) {
+            throw new Error(data.error || ('HTTP ' + response.status));
+        }
+        return data;
+    }
+
+    function renderDiff(diffText) {
+        const pre = el('pre', {
+            style: 'max-height:320px;overflow:auto;background:#0b1220;border:1px solid #334155;border-radius:6px;padding:8px;font-size:12px;margin:6px 0 0;'
+        });
+        diffText.split('\n').forEach(function (line) {
+            const color = line.startsWith('+') ? '#86efac' : line.startsWith('-') ? '#fca5a5' : line.startsWith('@@') ? '#93c5fd' : '#cbd5e1';
+            pre.append(el('div', { textContent: line || ' ', style: 'color:' + color + ';white-space:pre;' }));
+        });
+        return pre;
+    }
+
+    function renderProposal(proposal) {
+        const card = el('div', { style: 'background:#1f2937;border:1px solid #334155;border-radius:8px;padding:12px;' });
+        card.append(el('div', { textContent: proposal.summary, style: 'font-weight:700;color:#e5e7eb;' }));
+        card.append(el('div', {
+            textContent: 'Proposal ' + proposal.proposal_id + ' · chat ' + proposal.session_id + ' · ' + proposal.created_at,
+            style: 'font-size:12px;color:#9aa4b2;margin:4px 0 8px;'
+        }));
+        if (proposal.error) {
+            card.append(el('div', { textContent: proposal.error, style: 'color:#fca5a5;margin-bottom:8px;' }));
+        }
+        proposal.files.forEach(function (file) {
+            const details = el('details', { style: 'margin-bottom:6px;' });
+            details.append(el('summary', {
+                textContent: (file.is_new ? 'New file: ' : 'Edit: ') + file.path,
+                style: 'cursor:pointer;color:#93c5fd;'
+            }));
+            details.append(renderDiff(file.diff || ''));
+            card.append(details);
+        });
+        const actions = el('div', { style: 'display:flex;gap:10px;margin-top:10px;' });
+        const approve = el('button', { className: 'btn btn-success', type: 'button', textContent: 'Approve and apply' });
+        const reject = el('button', { className: 'btn btn-danger', type: 'button', textContent: 'Reject' });
+        approve.disabled = !!proposal.error;
+        approve.addEventListener('click', function () { decide(proposal, 'confirm', approve, reject); });
+        reject.addEventListener('click', function () { decide(proposal, 'cancel', approve, reject); });
+        actions.append(approve, reject);
+        card.append(actions);
+        return card;
+    }
+
+    async function decide(proposal, action, approve, reject) {
+        if (action === 'confirm' && !window.confirm('Apply these changes to your app files?')) {
+            return;
+        }
+        approve.disabled = true;
+        reject.disabled = true;
+        setStatus(action === 'confirm' ? 'Applying…' : 'Rejecting…');
+        try {
+            const data = await call('/api/echo/approvals/' + encodeURIComponent(proposal.session_id) + '/' + action, { method: 'POST' });
+            setStatus(data.message || 'Done.');
+        } catch (error) {
+            setStatus('Failed: ' + error.message);
+        }
+        load();
+    }
+
+    function renderHistory(items) {
+        historyBox.replaceChildren();
+        if (!items.length) {
+            historyBox.append(el('div', { textContent: 'No applied or rejected proposals yet.', style: 'color:#9aa4b2;' }));
+            return;
+        }
+        items.forEach(function (item) {
+            historyBox.append(el('div', {
+                textContent: item.status.toUpperCase() + ' · ' + (item.applied_at || item.created_at) + ' · ' + item.summary + ' (' + item.files.join(', ') + ')',
+                style: 'background:#111827;border-radius:6px;padding:6px 10px;font-size:13px;color:#cbd5e1;'
+            }));
+        });
+    }
+
+    async function load() {
+        try {
+            const data = await call('/api/echo/approvals');
+            pendingBox.replaceChildren();
+            if (!data.pending.length) {
+                pendingBox.append(el('div', { textContent: 'Nothing is waiting for approval.', style: 'color:#9aa4b2;' }));
+            }
+            data.pending.forEach(function (proposal) { pendingBox.append(renderProposal(proposal)); });
+            renderHistory(data.history);
+        } catch (error) {
+            setStatus('Failed to load: ' + error.message);
+        }
+    }
+
+    document.getElementById('approvals-refresh').addEventListener('click', load);
+    load();
+})();
+</script>

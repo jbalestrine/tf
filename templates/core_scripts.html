@@ -232,3 +232,12 @@
     filterRows();
 })();
 </script>
+<script>
+(function () {
+    const panel = document.getElementById('ideas-panel');
+    if (panel && window.location.hash === '#ideas-panel') {
+        panel.open = true;
+        panel.scrollIntoView();
+    }
+})();
+</script>

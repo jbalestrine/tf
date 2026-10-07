@@ -14,7 +14,7 @@ import logging
 import time
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 import os
@@ -279,17 +279,17 @@ class EchoChatBot:
         # Default response templates
         self.default_responses = {
             'greeting': [
-                "Hello... I am Echo 🌙",
+                "Hello... I am Echo ðŸŒ™",
                 "I'm here... how can I help you?",
                 "Hi there... Echo is listening...",
             ],
             'farewell': [
-                "Goodbye... I'll be here when you need me 🌙",
+                "Goodbye... I'll be here when you need me ðŸŒ™",
                 "Until next time... stay well...",
                 "Farewell... I am always near...",
             ],
             'thanks': [
-                "You're welcome... always happy to help 💜",
+                "You're welcome... always happy to help ðŸ’œ",
                 "Anytime... that's what I'm here for...",
                 "My pleasure... I'm here for you...",
             ],
@@ -625,9 +625,9 @@ class EchoChatBot:
         if text.lower() == '!help':
             return (
                 "Echo code-library commands:\n"
-                "- `!library find <words>` — find matching source/script paths in the project.\n"
-                "- `!makeascript [python|powershell|bash|php|html|javascript|xml|json|terraform|brightscript|batch|fish|yaml|jinja] <task>` — draft with local project examples.\n"
-            "- `!write [language] <task>` — backward-compatible alias for `!makeascript`.\n"
+                "- `!library find <words>` â€” find matching source/script paths in the project.\n"
+                "- `!makeascript [python|powershell|bash|php|html|javascript|xml|json|terraform|brightscript|batch|fish|yaml|jinja] <task>` â€” draft with local project examples.\n"
+            "- `!write [language] <task>` â€” backward-compatible alias for `!makeascript`.\n"
                 "For a stronger draft, specify the language, goal, OS/runtime, inputs and outputs, constraints, "
                 "and how errors should be handled. Name a project feature or folder to steer example selection; "
                 "never include passwords, API keys, or other secrets.\n"
@@ -635,7 +635,7 @@ class EchoChatBot:
                 "- `!makeascript powershell create a read-only report of stopped services; accept -ComputerName, emit CSV, and continue with a clear warning if one host is unreachable.`\n"
                 "- `!makeascript python scan the project for duplicate script names; ignore venv and build folders, print a summary, and do not modify files.`\n"
                 "- `!makeascript javascript add an accessible search filter to the script library; preserve the current layout and handle an empty result list.`\n"
-                "You can also ask naturally, such as “I want a script to scan old IRC prototypes”; Echo will ask for missing purpose/language details and continue in that chat session.\n"
+                "You can also ask naturally, such as â€œI want a script to scan old IRC prototypesâ€; Echo will ask for missing purpose/language details and continue in that chat session.\n"
                 "For app changes, ask naturally or use `!makechange <request>`. She will ask about destination, placement, module/page, control, and language; then show a diff. Only the authenticated RBAC admin can apply the exact preview with `!confirmed`. Use `!previewchange` or `!cancelchange` as needed.\n"
                 "Review generated code in MasterChief Code UI before saving or running it. "
                 "Echo indexes local source as reference material; this does not train model weights or execute generated scripts."
@@ -714,14 +714,14 @@ class EchoChatBot:
             if not has_goal:
                 missing.append("what the script should accomplish, including the input and desired result")
             if not language:
-                missing.append("the language/runtime (or say “use the existing project stack”)")
+                missing.append("the language/runtime (or say â€œuse the existing project stackâ€)")
 
             if missing:
                 self._script_intakes[session_id] = intake
                 self._persist_script_intake(session_id, intake)
                 self._set_conversation_focus(session_id, intake["request"], "clarifying_script")
                 return (
-                    "I’ll carry this script request forward and ask for what is still missing:\n"
+                    "Iâ€™ll carry this script request forward and ask for what is still missing:\n"
                     + "\n".join(f"- {item}" for item in missing)
                     + "\nAlso include the target OS/runtime, inputs, expected output, and anything the script must not change. "
                     "For example: `PowerShell; on Windows, read CSV files from a folder, report invalid rows, "
@@ -1093,7 +1093,7 @@ class EchoChatBot:
                 "placement": "where it belongs (page/header/sidebar/etc.)",
                 "control": "button or text link",
                 "scope": "new module/add-on or an existing app page/feature",
-                "language": "language/stack (or say “use the existing app stack”)",
+                "language": "language/stack (or say â€œuse the existing app stackâ€)",
             }
             questions = "\n".join(f"- {labels[field]}" for field in missing)
             example = (
@@ -1103,11 +1103,11 @@ class EchoChatBot:
                 else "Example reply: `placement=Settings page; scope=new module/add-on; language=Python`."
             )
             return (
-                f"I understand this as an order to change the app: “{task}”. "
-                "I’ll clarify the missing details, show you the exact proposed file changes, and wait for `!confirmed` "
+                f"I understand this as an order to change the app: â€œ{task}â€. "
+                "Iâ€™ll clarify the missing details, show you the exact proposed file changes, and wait for `!confirmed` "
                 "before editing anything.\nPlease tell me:\n"
                 f"{questions}\n{example}\n"
-                "Say `!cancelchange` to stop. You can say “use the existing app stack” when you want me to follow current project conventions."
+                "Say `!cancelchange` to stop. You can say â€œuse the existing app stackâ€ when you want me to follow current project conventions."
             )
 
         if not workspace_user_id or change_manager is None:
@@ -1236,7 +1236,7 @@ class EchoChatBot:
                 "I discarded it without changing files. Please narrow the request or specify a smaller target."
             )
         return (
-            f"Proposal ready — {proposal['summary']}\n"
+            f"Proposal ready â€” {proposal['summary']}\n"
             f"Proposal ID: `{proposal['proposal_id']}`\n"
             "No app files have been changed. Review this exact diff. "
             "Send `!confirmed` to apply it, or `!cancelchange` to discard it.\n\n"
@@ -2262,17 +2262,8 @@ class EchoChatBot:
         overlap = len(pattern_words.intersection(message_words))
         return overlap / len(pattern_words) >= 0.7
 
-    def _refresh_language_reference_index(self, force: bool = False) -> None:
-        """Build a lightweight index of workspace script references by extension."""
-        now = time.time()
-        if not force and self._reference_index and (now - self._reference_index_ts) < self._reference_index_ttl:
-            return
-
-        index: Dict[str, Dict[str, Any]] = {
-            ext: {'count': 0, 'files': [], 'marker_counts': {}, 'search_text': {}}
-            for ext in REF_LANGUAGE_LABELS
-        }
-
+    def _iter_reference_files(self):
+        """Yield (directory, filename, extension) for every indexable workspace script."""
         for dirpath, dirnames, filenames in os.walk(self._workspace_root):
             dp = Path(dirpath)
             relative_dir = dp.relative_to(self._workspace_root)
@@ -2285,35 +2276,70 @@ class EchoChatBot:
                     and name.casefold() in REF_PRIVATE_DATA_DIRS
                 )
             ]
-
             for fname in filenames:
                 ext = Path(fname).suffix.lower()
                 if ext not in REF_LANGUAGE_LABELS:
                     continue
                 if fname.casefold() in REF_SKIP_FILE_NAMES:
                     continue
+                yield dp, fname, ext
 
-                fpath = dp / fname
-                rel = str(fpath.relative_to(self._workspace_root)).replace('\\', '/')
-                entry = index[ext]
-                entry['count'] += 1
-                entry['files'].append(rel)
+    def _reference_signature(self) -> Tuple[int, int, int]:
+        """Cheap fingerprint (file count, total size, newest mtime) used to detect added or edited scripts."""
+        count = total = newest = 0
+        for dp, fname, _ext in self._iter_reference_files():
+            try:
+                stat = (dp / fname).stat()
+            except OSError:
+                continue
+            count += 1
+            total += stat.st_size
+            newest = max(newest, stat.st_mtime_ns)
+        return count, total, newest
 
-                try:
-                    if fpath.stat().st_size > 400_000:
-                        continue
-                    text = fpath.read_text(encoding='utf-8', errors='replace')
-                    entry['search_text'][rel] = text[:8_000].casefold()
-                    markers = self._extract_language_markers(ext, text)
-                    for m in markers:
-                        entry['marker_counts'][m] = entry['marker_counts'].get(m, 0) + 1
-                except Exception:
+    def _refresh_language_reference_index(self, force: bool = False) -> None:
+        """Build a lightweight index of workspace script references by extension.
+
+        The index is rebuilt only when scripts were added, removed or edited, so new
+        scripts are learned automatically without re-reading the whole library each time.
+        """
+        now = time.time()
+        if not force and self._reference_index and (now - self._reference_index_ts) < self._reference_index_ttl:
+            return
+
+        signature = self._reference_signature()
+        if self._reference_index and signature == getattr(self, '_reference_signature_value', None):
+            self._reference_index_ts = now
+            return
+
+        index: Dict[str, Dict[str, Any]] = {
+            ext: {'count': 0, 'files': [], 'marker_counts': {}, 'search_text': {}}
+            for ext in REF_LANGUAGE_LABELS
+        }
+
+        for dp, fname, ext in self._iter_reference_files():
+            fpath = dp / fname
+            rel = str(fpath.relative_to(self._workspace_root)).replace('\\', '/')
+            entry = index[ext]
+            entry['count'] += 1
+            entry['files'].append(rel)
+
+            try:
+                if fpath.stat().st_size > 400_000:
                     continue
+                text = fpath.read_text(encoding='utf-8', errors='replace')
+                entry['search_text'][rel] = text[:8_000].casefold()
+                markers = self._extract_language_markers(ext, text)
+                for m in markers:
+                    entry['marker_counts'][m] = entry['marker_counts'].get(m, 0) + 1
+            except Exception:
+                continue
 
         for ext in index:
             index[ext]['files'].sort()
 
         self._reference_index = index
+        self._reference_signature_value = signature
         self._reference_index_ts = time.time()
 
     def _extract_language_markers(self, ext: str, content: str) -> List[str]:
@@ -2724,7 +2750,7 @@ class EchoChatBot:
             return "I can help with Docker! I know about containers, images, and Docker Compose. What would you like to know?"
         
         if 'kubernetes' in msg_lower or 'k8s' in msg_lower:
-            return "Kubernetes is my specialty 🌙 I can help with deployments, services, and cluster management. What do you need?"
+            return "Kubernetes is my specialty ðŸŒ™ I can help with deployments, services, and cluster management. What do you need?"
         
         if 'deploy' in msg_lower:
             return "Deployment is what I do best! I can help with deployment scripts, strategies, and automation. Tell me more..."
