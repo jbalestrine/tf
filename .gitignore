@@ -37,3 +37,9 @@ echo_memories.jsonl
 gui/backups/
 *.egg-info/
 *.log
+data/roku_builds/
+data/chatserv.sqlite3
+data/echo_operator_audit.jsonl
+data/script_index_repo.json
+data/scripts/*.stdout
+data/scripts/*.stderr
