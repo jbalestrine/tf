@@ -4,11 +4,5 @@
     "url": "/addons/modules/create_a_new_module_when_i_say_module_cr/manager",
     "icon": "\ud83e\udde9",
     "added_at": "2026-09-22T05:29:54.477145"
-  },
-  "Echo_Chat2": {
-    "name": "Echo_Chat2",
-    "url": "/addons/modules/Echo_Chat2/manager",
-    "icon": "\ud83e\udde9",
-    "added_at": "2026-10-02T02:21:35.036021"
   }
 }

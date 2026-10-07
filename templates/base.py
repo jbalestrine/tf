@@ -91,7 +91,7 @@ code{color:#4CAF50;}
   <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
   <label class="nav-search"><span class="sr-only">Search pages</span><input id="nav-search" type="search" placeholder="Find a page…  Ctrl+K" autocomplete="off" aria-label="Find a page"><span id="nav-search-status" class="nav-search-status" aria-live="polite"></span></label>
 
-  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') else '' }}">
+  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') or request.path.startswith('/chaos-monkey') else '' }}">
     <summary class="dropbtn">Operate</summary>
     <div class="nav-group-content">
       <a href="/master-menu" class="{{ 'active' if '/master-menu' in request.path else '' }}">🧭 Master Menu</a>
@@ -103,6 +103,7 @@ code{color:#4CAF50;}
       <a href="/cloud" class="{{ 'active' if '/cloud' in request.path else '' }}">☁️ Cloud</a>
       <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
       <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
+      <a href="/chaos-monkey" class="{{ 'active' if request.path.startswith('/chaos-monkey') else '' }}">🐒 Chaos Monkey Area</a>
       <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
       <a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">🛠 Services</a>
       <a href="/about" class="{{ 'active' if '/about' in request.path else '' }}">ℹ️ About</a>

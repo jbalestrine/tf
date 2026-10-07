@@ -1,24 +1,15 @@
-"""Test command processor."""
-
-from pathlib import Path
+"""Tests for the command processor."""
 
 import pytest
 
-_VOICE_AUTOMATION = (
-    Path(__file__).resolve().parents[1]
-    / "chatops"
-    / "irc"
-    / "bot_engine"
-    / "voice"
-    / "automation"
-)
-if not (_VOICE_AUTOMATION / "command_processor.py").is_file():
-    pytest.skip(
-        "Legacy voice automation source is not included in this checkout.",
-        allow_module_level=True,
-    )
+from tests.voice_automation_loader import load_voice_automation_modules
 
-from chatops.irc.bot_engine.voice.automation.command_processor import CommandProcessor
+CommandProcessor = load_voice_automation_modules()["command_processor"].CommandProcessor
+
+
+@pytest.fixture(autouse=True)
+def disable_optional_ollama_network_probe(monkeypatch):
+    monkeypatch.setattr(CommandProcessor, "_check_ollama", lambda self: None)
 
 
 class TestCommandProcessor:

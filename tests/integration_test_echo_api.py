@@ -40,6 +40,14 @@ class TestEchoAPI(unittest.TestCase):
         self.assertEqual(state.status_code, 200)
         self.assertIn('Welcome to MasterChief Echo ChatServ', state.get_json()['motd'])
 
+    def test_gguf_model_listing_uses_success_response_contract(self):
+        response = self.client.get('/api/echo/models')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertIsInstance(data['models'], list)
+
     def test_gguf_selection_requires_rbac_admin(self):
         response = self.client.post(
             '/api/echo/select_model',

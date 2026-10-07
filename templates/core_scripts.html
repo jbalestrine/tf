@@ -1,15 +1,39 @@
 <div class="section">
-    <h2>Core Scripts Library</h2>
-    <p style="color:#9aa4b2;margin-bottom:12px;">Legacy and blueprint scripts surfaced in GUI so they stay visible and reusable.</p>
+    <h2>Chaos Monkey Area</h2>
+    <p style="color:#9aa4b2;margin-bottom:8px;">A searchable CLI library for valuable standalone tools, early project experiments such as IRC or game prototypes, and service sanity checks. “Orphaned” means disconnected from the current app flow—not useless.</p>
+    <p style="color:#f0c674;margin-bottom:12px;"><strong>Safety:</strong> inspect the source first. Dry Check validates without running it. CLI tools can change files, settings, or external services; Run asks for confirmation and requires Scripts permission. Sanity checks under <code>tests/</code> run through pytest.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-        <input id="script-filter" placeholder="Filter by file name or extension" style="max-width:360px;" />
+        <input id="script-filter" placeholder="Search name, folder, or type" aria-label="Search scripts by name, folder, or type" style="max-width:360px;" />
+        <select id="category-filter" aria-label="Filter scripts by folder" style="max-width:260px;">
+            <option value="">All folders ({{ scripts|length }})</option>
+            {% for category in categories %}
+            <option value="{{ category|lower }}">{{ category }}</option>
+            {% endfor %}
+        </select>
+        <span id="visible-count" aria-live="polite" style="color:#9aa4b2;">{{ scripts|length }} scripts</span>
+        <a class="btn btn-info" href="/sys/diagnostics">Diagnostics / orphan report</a>
         <a class="btn btn-info" href="/master-menu">Master Menu</a>
         <a class="btn" href="/web_ide" target="_blank">Open Web IDE</a>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-        <input id="module-name" placeholder="Module name for import" style="max-width:280px;" />
-        <span style="font-size:12px;color:#9aa4b2;">Select a row, then use Dry Check, Run, or Import as Module.</span>
+        <textarea id="script-arguments" rows="2" placeholder="Optional CLI arguments, one per line" aria-label="Optional command-line arguments, one per line" style="min-width:300px;max-width:100%;"></textarea>
+        <span style="font-size:12px;color:#9aa4b2;">One line equals one argument; passed directly to the CLI without shell expansion.</span>
     </div>
+    <details id="ideas-panel" style="margin:10px 0 14px;background:#111827;border:1px solid #334155;border-radius:8px;padding:10px 14px;">
+        <summary style="cursor:pointer;font-weight:700;color:#93c5fd;">Ideas Basket — park valuable disconnected work here (<span id="ideas-count">{{ ideas|length }}</span>)</summary>
+        <p style="font-size:12px;color:#9aa4b2;margin:8px 0;">This is a reminder list, not a file move. Original scripts stay in place. Use a note to capture the idea, such as “IRC bot prototype” or “game-app concept.”</p>
+        <div id="ideas-list" style="display:grid;gap:8px;">
+            {% for idea in ideas %}
+            <div class="idea-card" data-path="{{ idea.path }}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#1f2937;border-radius:6px;padding:8px 10px;">
+                <code>{{ idea.path }}</code>
+                <span style="flex:1;color:#cbd5e1;">{{ idea.note or 'No idea note yet.' }}</span>
+                <button class="btn btn-sm idea-remove" type="button">Remove from basket</button>
+            </div>
+            {% else %}
+            <div id="ideas-empty" style="color:#94a3b8;font-size:12px;">Nothing parked yet. Use “Save idea” on a script or an orphan candidate in Diagnostics.</div>
+            {% endfor %}
+        </div>
+    </details>
     <div style="overflow:auto;max-height:70vh;">
         <table id="scripts-table">
             <thead>
@@ -24,7 +48,7 @@
             </thead>
             <tbody>
                 {% for s in scripts %}
-                <tr data-name="{{ s.name|lower }}" data-ext="{{ s.ext|lower }}" data-path="{{ s.path }}">
+                <tr data-name="{{ s.name|lower }}" data-ext="{{ s.ext|lower }}" data-path="{{ s.path }}" data-search-path="{{ s.path|lower }}" data-category="{{ s.category|lower }}" data-kind="{{ s.kind }}" data-in-ideas="{{ 'true' if s.path in idea_paths else 'false' }}">
                     <td><code>{{ s.name }}</code></td>
                     <td><code>{{ s.path }}</code></td>
                     <td>{{ s.category }}</td>
@@ -34,8 +58,10 @@
                         <a class="btn btn-sm" href="/sys/api/file?path={{ s.path|urlencode }}&raw=1" target="_blank">Raw</a>
                         <a class="btn btn-sm btn-info" href="/sys/api/file?path={{ s.path|urlencode }}" target="_blank">JSON</a>
                         <button class="btn btn-sm btn-info action-dry">Dry Check</button>
-                        <button class="btn btn-sm action-run">Run</button>
-                        <button class="btn btn-sm action-import">Import</button>
+                        {% if s.ext in ['.py', '.ps1', '.sh', '.bash', '.js', '.tf'] %}
+                        <button class="btn btn-sm action-run" type="button">{{ 'Run sanity check' if s.kind == 'sanity_test' else 'Run CLI tool' }}</button>
+                        {% endif %}
+                        <button class="btn btn-sm action-idea" type="button">{{ 'In Ideas Basket' if s.path in idea_paths else 'Save idea' }}</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -48,60 +74,161 @@
 </div>
 <script>
 (() => {
+    const _ideas = {{ ideas|tojson }};
     const input = document.getElementById('script-filter');
+    const categoryInput = document.getElementById('category-filter');
     const rows = Array.from(document.querySelectorAll('#scripts-table tbody tr'));
     const out = document.getElementById('core-action-output');
-    const moduleNameInput = document.getElementById('module-name');
+    const scriptArguments = document.getElementById('script-arguments');
+    const visibleCount = document.getElementById('visible-count');
+    const ideasList = document.getElementById('ideas-list');
+    const ideasCount = document.getElementById('ideas-count');
 
-    async function postJson(url, payload) {
-        const res = await fetch(url, {
-            method: 'POST',
+    async function requestJson(url, method, payload) {
+        const options = {
+            method,
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload),
-        });
-        return await res.json();
+        };
+        if (payload !== undefined) options.body = JSON.stringify(payload);
+        const res = await fetch(url, options);
+        const data = await res.json();
+        if (!res.ok || data.ok === false) {
+            throw new Error(data.error || `Request failed (${res.status})`);
+        }
+        return data;
     }
+
+    const postJson = (url, payload) => requestJson(url, 'POST', payload);
 
     function printResult(label, data) {
         out.textContent = label + "\n\n" + JSON.stringify(data, null, 2);
     }
 
-    input.addEventListener('input', () => {
-        const q = (input.value || '').trim().toLowerCase();
-        rows.forEach(r => {
-            const hit = !q || r.dataset.name.includes(q) || r.dataset.ext.includes(q) || r.dataset.path.toLowerCase().includes(q);
-            r.style.display = hit ? '' : 'none';
+    function renderIdeas() {
+        ideasCount.textContent = _ideas.length;
+        ideasList.replaceChildren();
+        if (!_ideas.length) {
+            const empty = document.createElement('div');
+            empty.style.color = '#94a3b8';
+            empty.style.fontSize = '12px';
+            empty.textContent = 'Nothing parked yet. Use “Save idea” on a script or an orphan candidate in Diagnostics.';
+            ideasList.appendChild(empty);
+            return;
+        }
+        _ideas.forEach(idea => {
+            const card = document.createElement('div');
+            card.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#1f2937;border-radius:6px;padding:8px 10px;';
+            const path = document.createElement('code');
+            path.textContent = idea.path;
+            const note = document.createElement('span');
+            note.style.cssText = 'flex:1;color:#cbd5e1;';
+            note.textContent = idea.note || 'No idea note yet.';
+            const remove = document.createElement('button');
+            remove.className = 'btn btn-sm';
+            remove.type = 'button';
+            remove.textContent = 'Remove from basket';
+            remove.addEventListener('click', async () => {
+                try {
+                    await requestJson('/api/core-scripts/ideas', 'DELETE', {path: idea.path});
+                    const index = _ideas.findIndex(item => item.path === idea.path);
+                    if (index >= 0) _ideas.splice(index, 1);
+                    const row = rows.find(item => item.dataset.path === idea.path);
+                    if (row) {
+                        row.dataset.inIdeas = 'false';
+                        row.querySelector('.action-idea').textContent = 'Save idea';
+                    }
+                    renderIdeas();
+                } catch (error) {
+                    printResult('Could not remove idea', {ok: false, error: error.message});
+                }
+            });
+            card.append(path, note, remove);
+            ideasList.appendChild(card);
         });
-    });
+    }
+
+    async function saveIdea(path, note) {
+        const saved = await postJson('/api/core-scripts/ideas', {path, note});
+        const index = _ideas.findIndex(item => item.path === path);
+        if (index >= 0) _ideas[index] = saved.idea;
+        else _ideas.unshift(saved.idea);
+        const row = rows.find(item => item.dataset.path === path);
+        if (row) {
+            row.dataset.inIdeas = 'true';
+            row.querySelector('.action-idea').textContent = 'In Ideas Basket';
+        }
+        renderIdeas();
+        document.getElementById('ideas-panel').open = true;
+        printResult('Saved for later: ' + path, {ok: true, source_file_changed: false, idea: saved.idea});
+    }
+
+    function filterRows() {
+        const q = (input.value || '').trim().toLowerCase();
+        const category = categoryInput.value;
+        let visible = 0;
+        rows.forEach(r => {
+            const matchesQuery = !q || r.dataset.name.includes(q) || r.dataset.ext.includes(q) || r.dataset.path.includes(q);
+            const matchesCategory = !category || r.dataset.category === category;
+            const hit = matchesQuery && matchesCategory;
+            r.style.display = hit ? '' : 'none';
+            if (hit) visible += 1;
+        });
+        visibleCount.textContent = `${visible} of ${rows.length} scripts`;
+    }
+
+    input.addEventListener('input', filterRows);
+    categoryInput.addEventListener('change', filterRows);
 
     rows.forEach((r) => {
         const path = r.dataset.path;
         const dryBtn = r.querySelector('.action-dry');
         const runBtn = r.querySelector('.action-run');
-        const importBtn = r.querySelector('.action-import');
+        const ideaBtn = r.querySelector('.action-idea');
 
         dryBtn.addEventListener('click', async () => {
-            printResult('Dry check: ' + path, {ok: true, status: 'running'});
-            const result = await postJson('/api/core-scripts/dry-check', {path});
-            printResult('Dry check: ' + path, result);
+            printResult('Dry Check: ' + path, {status: 'checking syntax or file format'});
+            try {
+                const result = await postJson('/api/core-scripts/dry-check', {path});
+                printResult('Dry Check: ' + path, result);
+            } catch (error) {
+                printResult('Dry Check failed: ' + path, {ok: false, error: error.message});
+            }
         });
 
         runBtn.addEventListener('click', async () => {
-            printResult('Run: ' + path, {ok: true, status: 'running'});
-            const result = await postJson('/api/core-scripts/run', {path});
-            printResult('Run: ' + path, result);
-        });
-
-        importBtn.addEventListener('click', async () => {
-            const moduleName = (moduleNameInput.value || '').trim();
-            if (!moduleName) {
-                printResult('Import', {ok: false, error: 'module name required'});
+            const isSanityTest = r.dataset.kind === 'sanity_test';
+            const warning = isSanityTest
+                ? 'This runs the selected pytest sanity check.'
+                : 'Scripts may modify or delete files, change settings, or affect external services. Inspect the source first.';
+            if (!window.confirm(`Run ${path}?\n\n${warning}`)) {
                 return;
             }
-            printResult('Import: ' + path + ' -> ' + moduleName, {ok: true, status: 'running'});
-            const result = await postJson('/api/core-scripts/import-module', {path, module_name: moduleName});
-            printResult('Import: ' + path + ' -> ' + moduleName, result);
+            printResult('Run: ' + path, {status: 'running'});
+            try {
+                const arguments = scriptArguments.value.split(/\r?\n/).filter(argument => argument.length > 0);
+                const result = await postJson('/api/core-scripts/run', {path, arguments});
+                printResult('Run: ' + path, result);
+            } catch (error) {
+                printResult('Run failed: ' + path, {ok: false, error: error.message});
+            }
+        });
+
+        ideaBtn.addEventListener('click', async () => {
+            const existing = _ideas.find(idea => idea.path === path);
+            const note = window.prompt(
+                'What might this script become or connect to?\n\nThis only saves a note in the Ideas Basket. It does not change the source file.',
+                existing ? existing.note : ''
+            );
+            if (note === null) return;
+            try {
+                await saveIdea(path, note);
+            } catch (error) {
+                printResult('Could not save idea', {ok: false, error: error.message});
+            }
         });
     });
+
+    renderIdeas();
+    filterRows();
 })();
 </script>

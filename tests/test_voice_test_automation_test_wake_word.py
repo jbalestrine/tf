@@ -1,39 +1,8 @@
-"""Test wake word detection."""
+"""Tests for wake word detection."""
 
-from pathlib import Path
+from tests.voice_automation_loader import load_voice_automation_modules
 
-import pytest
-
-_VOICE_AUTOMATION = (
-    Path(__file__).resolve().parents[1]
-    / "chatops"
-    / "irc"
-    / "bot-engine"
-    / "voice"
-    / "automation"
-)
-if not (_VOICE_AUTOMATION / "wake_word.py").is_file():
-    pytest.skip(
-        "Legacy voice automation source is not included in this checkout.",
-        allow_module_level=True,
-    )
-
-# Direct imports from file path since bot-engine has dashes
-import importlib.util
-import sys
-
-def load_module_from_path(module_name, file_path):
-    """Load a module from a file path."""
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-# Load wake_word module
-wake_word_module = load_module_from_path(
-    "wake_word", str(_VOICE_AUTOMATION / "wake_word.py")
-)
+wake_word_module = load_voice_automation_modules()["wake_word"]
 WakeWordDetector = wake_word_module.WakeWordDetector
 
 

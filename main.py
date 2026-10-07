@@ -2177,6 +2177,7 @@ app.config['_rbac_mgr'] = rbac_mgr
 from blueprints import (
     azure,
     chatserv_routes,
+    core_scripts,
     diagnostics_routes,
     feature_routes,
     iac_routes,
@@ -2202,6 +2203,7 @@ app.register_blueprint(mock.mock_bp)
 app.register_blueprint(observability_routes.observability_bp)
 app.register_blueprint(azure.azure_bp)
 app.register_blueprint(manager.manager_bp)
+app.register_blueprint(core_scripts.core_scripts_bp)
 app.register_blueprint(ui_pages.ui_pages_bp)
 app.register_blueprint(feature_routes.feature_routes_bp)
 app.register_blueprint(ops_routes.ops_bp)
@@ -13846,6 +13848,10 @@ _ECHO_BUILTIN_COMMANDS = [
     {'name': 'commands', 'description': 'List built-in and configured commands', 'operator_required': False},
     {'name': 'library', 'description': 'Find source files: !library find <words>', 'operator_required': False},
     {'name': 'write', 'description': 'Draft a script from local examples', 'operator_required': False},
+    {'name': 'makeascript', 'description': 'Draft a script using indexed local source references', 'operator_required': False},
+    {'name': 'makechange', 'description': 'Draft an app change for review; apply only after !confirmed', 'operator_required': True},
+    {'name': 'confirmed', 'description': 'Apply the exact pending app-change proposal', 'operator_required': True},
+    {'name': 'cancelchange', 'description': 'Discard an app-change proposal or unfinished request', 'operator_required': False},
     {'name': 'team', 'description': 'Ask the configured local model team to collaborate', 'operator_required': True},
     {'name': 'op', 'description': 'Enable authenticated operator mode for 15 minutes', 'operator_required': True},
     {'name': 'masterchief', 'description': 'Alias for !OP', 'operator_required': True},
@@ -13856,6 +13862,80 @@ _ECHO_BUILTIN_COMMANDS = [
     {'name': 'github_deploy', 'description': 'Alias for !deploy; push committed changes to GitHub upstream', 'operator_required': True},
 ]
 _ECHO_RESERVED_COMMAND_NAMES = {item['name'] for item in _ECHO_BUILTIN_COMMANDS}
+
+
+def _echo_change_approval_manager():
+    manager = app.extensions.get('echo_change_approval_manager')
+    if manager is None:
+        from managers.echo_change_approvals import EchoChangeApprovalManager
+
+        project_root = Path(__file__).resolve().parent
+        manager = EchoChangeApprovalManager(
+            project_root / 'data' / 'echo_change_approvals.sqlite3',
+            project_root,
+        )
+        app.extensions['echo_change_approval_manager'] = manager
+    return manager
+
+
+def _run_echo_change_tests(changed_paths):
+    """Run only explicitly proposed pytest files, and decline tests with risky operations."""
+    project_root = Path(__file__).resolve().parent
+    test_paths = []
+    for relative in changed_paths:
+        normalized = str(relative).replace('\\', '/')
+        if not normalized.startswith('tests/test_') or not normalized.endswith('.py'):
+            continue
+        candidate = (project_root / normalized).resolve()
+        try:
+            candidate.relative_to((project_root / 'tests').resolve())
+        except ValueError:
+            continue
+        if candidate.is_file():
+            test_paths.append(candidate)
+
+    if not test_paths:
+        return 'No focused pytest file was included in the approved change; only Python/JSON syntax checks ran.'
+
+    unsafe_test = re.compile(
+        r'\b(?:subprocess|Popen|os\.system|requests\.|socket\.|urllib\.request|'
+        r'shutil\.rmtree|rmtree|unlink)\b',
+        re.IGNORECASE,
+    )
+    for test_path in test_paths:
+        try:
+            content = test_path.read_text(encoding='utf-8')
+        except (OSError, UnicodeError):
+            app.logger.exception('Unable to inspect proposed Echo test %s', test_path)
+            return f'Tests were not run because {test_path.name} could not be inspected safely.'
+        if unsafe_test.search(content):
+            return (
+                f'Tests were not run because {test_path.name} contains process, network, or deletion operations. '
+                'Review that test manually before running it.'
+            )
+
+    command = [sys.executable, '-m', 'pytest', '-q', *[str(path) for path in test_paths]]
+    try:
+        result = subprocess.run(
+            command,
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        app.logger.warning('Echo focused tests timed out for %s', test_paths)
+        return 'Focused tests timed out after 120 seconds; their result is unknown.'
+    except OSError:
+        app.logger.exception('Unable to start Echo focused test run')
+        return 'Focused tests could not be started; inspect the server log for details.'
+
+    output = (result.stdout or '') + (result.stderr or '')
+    output = output[-6000:].strip() or '(pytest produced no output)'
+    if result.returncode == 0:
+        return f'Focused tests passed:\n{output}'
+    return f'Focused tests failed (exit code {result.returncode}); the app changes remain applied:\n{output}'
 
 
 def _echo_operator_account_authorized():
@@ -14180,7 +14260,18 @@ def _echo_operator_command(message, remote_sender=None):
             "- `!status` — show signed-in identity and operator-mode state.\n\n"
             "Code library:\n"
             "- `!library find <words>` — find project source/script paths.\n"
-            "- `!write [python|powershell|bash|terraform] <task>` — draft using local examples.\n\n"
+            "- `!makeascript [python|powershell|bash|php|html|javascript|xml|json|terraform] <task>` — draft using matching local project examples.\n"
+            "- `!write [language] <task>` — backward-compatible alias for `!makeascript`.\n\n"
+            "App changes:\n"
+            "- Ask Echo naturally to add or change an app feature, or use `!makechange <request>`.\n"
+            "- Echo asks for missing details, shows a file diff, and waits for `!confirmed` before changing source.\n"
+            "- `!previewchange` — show the pending diff again; `!cancelchange` — discard it.\n\n"
+            "For a precise result, state the language, purpose, OS/runtime, inputs, outputs, constraints, and error behavior. "
+            "Mention a feature or folder to steer the local examples. Do not paste secrets.\n"
+            "Examples:\n"
+            "- `!makeascript powershell create a read-only report of stopped services; accept -ComputerName and export CSV.`\n"
+            "- `!makeascript python find duplicate script names; ignore venv/build and do not modify files.`\n"
+            "- `!makeascript javascript add an accessible search filter to the script library and show an empty state.`\n\n"
             "Model team (RBAC admin operator mode required):\n"
             "- `!team <prompt>` — run a bounded discussion with configured local Ollama models; result is queued for explicit training approval.\n"
             "- `!team approve <candidate-id>` — approve one queued example for offline adapter training.\n\n"
@@ -14190,7 +14281,7 @@ def _echo_operator_command(message, remote_sender=None):
             "- `!run <project-relative-script>` — explicitly run a project script while operator mode is on.\n"
             "- `!deploy` / `!github_deploy` — push committed changes to the configured Git upstream; never force-pushes.\n"
             + ('\nAdd-on commands:\n' + '\n'.join(user_commands) + '\n' if user_commands else '')
-            + "\nGenerated drafts and model-team conversations are not run or trained automatically."
+            + "\nThe local source library is retrieved as reference context, not used to train model weights. Generated drafts and model-team conversations are not run or trained automatically."
         )
 
     if command_lower in {'!deploy', '!github_deploy'}:
@@ -14229,7 +14320,9 @@ def _echo_operator_command(message, remote_sender=None):
         except (OSError, ValueError, json.JSONDecodeError):
             app.logger.exception('Unable to dispatch configured Echo command')
             return 'Command configuration could not be loaded.'
-        if command_lower in {'!help', '!write'} or command_lower.startswith(('!write ', '!library ')):
+        if command_lower in {'!help', '!write', '!makeascript', '!makechange', '!confirmed', '!cancelchange', '!previewchange'} or command_lower.startswith(
+            ('!write ', '!makeascript ', '!makechange ', '!library ', '!previewchange ')
+        ):
             return None
         return f'Unknown Echo command: `{name}`. Send `!commands` to see available commands.'
 
@@ -14509,6 +14602,111 @@ def api_echo_chat():
                     'timestamp': time.time(),
                     'message_id': f"bot_{int(time.time()*1000)}",
                 })
+
+        session_id = str(session_id or 'default').strip()[:128] or 'default'
+        change_command = message_text.casefold()
+        if change_command in {'!confirmed', '!cancelchange'}:
+            if not _echo_operator_request_is_same_origin() or not _echo_operator_account_authorized():
+                return jsonify({
+                    'error': 'App changes require the authenticated RBAC admin account from the same-origin Echo Chat page.'
+                }), 403
+            user_id = str(current_user.get_id())
+            try:
+                change_manager = _echo_change_approval_manager()
+                if change_command == '!cancelchange':
+                    bot = get_chat_bot()
+                    bot.clear_app_change_intake(session_id)
+                    proposal_id = change_manager.cancel_pending(session_id, user_id)
+                    response_text = (
+                        f"Cancelled proposal {proposal_id}; no app files were changed."
+                        if proposal_id else "Cancelled the unfinished app-change request; no files were changed."
+                    )
+                else:
+                    pending = change_manager.get_pending(session_id, user_id)
+                    if pending is None:
+                        return jsonify({'error': 'There is no pending app-change proposal to confirm.'}), 409
+                    try:
+                        _echo_operator_audit(
+                            'app_change_confirmed',
+                            proposal_id=pending['proposal_id'],
+                            paths=[item['path'] for item in pending['files']],
+                        )
+                    except OSError:
+                        app.logger.exception('Unable to audit Echo app-change confirmation')
+                        return jsonify({'error': 'The app change was not applied because its approval could not be audited.'}), 500
+                    applied = change_manager.confirm_pending(session_id, user_id)
+                    bot = get_chat_bot()
+                    bot._refresh_language_reference_index(force=True)
+                    test_result = _run_echo_change_tests(applied['files'])
+                    test_stage = (
+                        'verification_passed'
+                        if test_result.startswith('Focused tests passed:')
+                        else 'verification_incomplete'
+                    )
+                    bot._set_conversation_focus(
+                        session_id,
+                        f"{applied['summary']} — {test_result[:1200]}",
+                        test_stage,
+                    )
+                    static_result = (
+                        "Changed Python/JSON files passed syntax validation."
+                        if any(Path(path).suffix.casefold() in {'.py', '.json'} for path in applied['files'])
+                        else "No Python/JSON files needed syntax validation."
+                    )
+                    response_text = (
+                        f"Applied proposal `{applied['proposal_id']}`: {applied['summary']}\n"
+                        "Changed files:\n"
+                        + '\n'.join(f"- `{path}`" for path in applied['files'])
+                        + (
+                            "\nBackups:\n" + '\n'.join(f"- `{path}`" for path in applied['backups'])
+                            if applied['backups'] else "\nThis proposal created only new files; no backups were needed."
+                        )
+                        + f"\n{static_result}\n{test_result}\n"
+                        "Echo did not run generated application scripts, commit, or push. "
+                        "Refresh MasterChief Code UI to inspect the updated files. Restart MasterChief if a changed Python module must be reloaded."
+                    )
+                return jsonify({
+                    'response': response_text,
+                    'session_id': session_id,
+                    'timestamp': time.time(),
+                    'message_id': f"bot_{int(time.time()*1000)}",
+                })
+            except Exception as exc:
+                from managers.echo_change_approvals import EchoChangeError
+                if isinstance(exc, EchoChangeError):
+                    return jsonify({'error': str(exc)}), 409
+                app.logger.exception('Echo app-change approval operation failed')
+                return jsonify({'error': 'Echo could not complete the app-change approval operation.'}), 500
+
+        bot = get_chat_bot()
+        if bot.should_handle_app_change_message(message_text, session_id):
+            if not _echo_operator_request_is_same_origin() or not _echo_operator_account_authorized():
+                return jsonify({
+                    'error': 'App-change orders require the authenticated RBAC admin account from the same-origin Echo Chat page.'
+                }), 403
+            try:
+                response = bot.chat(
+                    message_text,
+                    session_id=session_id,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    workspace_user_id=str(current_user.get_id()),
+                    change_manager=_echo_change_approval_manager(),
+                )
+                return jsonify(response)
+            except Exception:
+                app.logger.exception('Echo app-change request failed')
+                return jsonify({'error': 'Echo could not process the app-change request. No changes were applied.'}), 500
+
+        if bot.should_handle_script_message(message_text, session_id):
+            if not _echo_operator_request_is_same_origin():
+                return jsonify({'error': 'Local project script references are available only from the MasterChief Echo Chat page.'}), 403
+            try:
+                response = bot.chat(message_text, session_id=session_id, temperature=temperature, max_tokens=max_tokens)
+                return jsonify(response)
+            except Exception:
+                app.logger.exception('Echo local script request failed')
+                return jsonify({'error': 'Echo could not process the local script request.'}), 500
 
         storage = get_storage()
 
@@ -16312,7 +16510,7 @@ def api_echo_models():
         if models_dir.exists():
             for f in models_dir.glob('*.gguf'):
                 models.append(str(f.relative_to(app_root)))
-        return jsonify({'models': models})
+        return jsonify({'ok': True, 'models': models})
     except Exception as e:
         app.logger.exception('List models failed')
         return jsonify({'error': str(e)}), 500

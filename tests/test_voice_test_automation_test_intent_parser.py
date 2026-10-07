@@ -1,38 +1,8 @@
-"""Test intent parser."""
+"""Tests for the intent parser."""
 
-from pathlib import Path
+from tests.voice_automation_loader import load_voice_automation_modules
 
-import pytest
-
-_VOICE_AUTOMATION = (
-    Path(__file__).resolve().parents[1]
-    / "chatops"
-    / "irc"
-    / "bot-engine"
-    / "voice"
-    / "automation"
-)
-if not (_VOICE_AUTOMATION / "intent_parser.py").is_file():
-    pytest.skip(
-        "Legacy voice automation source is not included in this checkout.",
-        allow_module_level=True,
-    )
-
-import importlib.util
-import sys
-
-def load_module_from_path(module_name, file_path):
-    """Load a module from a file path."""
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-# Load intent_parser module
-intent_parser_module = load_module_from_path(
-    "intent_parser", str(_VOICE_AUTOMATION / "intent_parser.py")
-)
+intent_parser_module = load_voice_automation_modules()["intent_parser"]
 IntentParser = intent_parser_module.IntentParser
 Intent = intent_parser_module.Intent
 

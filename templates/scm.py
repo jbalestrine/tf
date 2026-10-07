@@ -30,6 +30,20 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg0);color:var
 .hbtn.primary:hover{opacity:.9}
 .hbtn.green{background:#238636;border-color:#2ea043;color:#fff}
 .hbtn.green:hover{background:#2ea043}
+#git-help-dialog{width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 32px);
+  margin:auto;padding:0;border:1px solid var(--border);border-radius:12px;
+  background:var(--bg1);color:var(--text);box-shadow:0 20px 60px #000a}
+#git-help-dialog::backdrop{background:#000b}
+#git-help-dialog .help-content{padding:20px;overflow:auto;max-height:calc(100vh - 96px);
+  font-size:13px;line-height:1.65}
+#git-help-dialog h2{font-size:20px;margin:0 0 8px}
+#git-help-dialog h3{font-size:14px;margin:18px 0 6px;color:var(--blue)}
+#git-help-dialog p{margin:8px 0}
+#git-help-dialog code{font-family:Consolas,monospace;background:var(--bg2);padding:1px 4px;border-radius:3px}
+#git-help-dialog pre{background:var(--bg2);border:1px solid var(--border);padding:10px 12px;
+  border-radius:6px;overflow:auto;white-space:pre}
+#git-help-dialog .help-actions{position:sticky;bottom:0;display:flex;justify-content:flex-end;
+  background:var(--bg1);padding:10px 20px;border-top:1px solid var(--border)}
 
 /* Body */
 #body{display:grid;grid-template-columns:320px 1fr;grid-template-rows:1fr auto;flex:1;overflow:hidden}
@@ -107,7 +121,50 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg0);color:var
   <button class="hbtn" onclick="loadStatus()" title="Refresh git status">↻ Refresh</button>
   <a class="hbtn" href="/sys/api/export-active" title="Download active app files as ZIP">📦 Export Source ZIP</a>
   <a class="hbtn" href="/sys/diagnostics">🔬 Diagnostics</a>
+  <button class="hbtn" type="button" onclick="document.getElementById('git-help-dialog').showModal()">Beginner guide</button>
 </div>
+
+<dialog id="git-help-dialog" aria-labelledby="git-help-title">
+  <div class="help-content">
+    <h2 id="git-help-title">Keep Source Control tidy</h2>
+    <p>Git lists files it sees as changed. A noisy list often includes generated builds, caches, logs, or local app data. You do not need to delete those files to hide future generated changes.</p>
+
+    <h3>1. Check what a file is before changing anything</h3>
+    <p>Look at its path and status in this page. Ask: “Is this source my app needs, or output that the app/build process recreates?” File age alone does not answer that.</p>
+    <pre><code>git status --short
+git check-ignore -v -- path/to/file</code></pre>
+
+    <h3>2. Tell Git to ignore generated or private files</h3>
+    <p>Open the repository's <code>.gitignore</code> file and add a specific pattern. Examples—only use paths you have confirmed are generated or local:</p>
+    <pre><code># Reproducible build output
+build/
+data/roku_builds/
+
+# Local logs and private settings
+*.log
+.env
+# Keep the shareable example configuration
+!.env.example</code></pre>
+    <p>Never use broad patterns such as <code>*.py</code>, <code>*.json</code>, or <code>data/</code>: they can hide real app source and useful project data.</p>
+
+    <h3>3. Verify the rule before committing</h3>
+    <pre><code>git check-ignore -v -- path/to/generated-file
+git status --short
+git add .gitignore
+git diff --cached -- .gitignore</code></pre>
+    <p>If <code>git check-ignore</code> names the rule you added, Git is ignoring that untracked path. If it does not, check the spelling and directory level of your pattern.</p>
+
+    <h3>4. Commit and push just the cleanup rule</h3>
+    <p>In Source Control, select only <code>.gitignore</code>, enter a message like “Ignore generated build files,” then commit. Push after reviewing the commit. This records the rule; it does not delete your local files.</p>
+
+    <h3>If the file is already tracked</h3>
+    <p><code>.gitignore</code> does not hide a file Git already tracks. Removing a tracked file from Git changes what is in the repository for everyone, even if a local-only command keeps a copy on your computer. Stop and review it with someone before changing tracking; databases, RBAC, sessions, and configuration may contain important local state.</p>
+    <p><strong>For this project:</strong> generated Roku builds and selected local runtime outputs are already ignored. Diagnostics can help find disconnected scripts; the Chaos Monkey Area is where you inspect and run useful CLI tools and sanity tests. “Orphaned” does not mean “safe to delete.”</p>
+  </div>
+  <div class="help-actions">
+    <button class="hbtn primary" type="button" onclick="document.getElementById('git-help-dialog').close()">Got it</button>
+  </div>
+</dialog>
 
 <div id="body">
 
@@ -155,40 +212,41 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg0);color:var
 
 </div>
 
-<details style="margin:12px 16px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);">
-  <summary style="cursor:pointer;font-weight:700;color:var(--blue);">Git command and recovery reference</summary>
+<details open style="margin:12px 16px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);">
+  <summary style="cursor:pointer;font-weight:700;color:var(--blue);">Keep Source Control focused: ignore generated files safely</summary>
   <div style="padding:10px 4px;max-width:1100px;font-size:12px;line-height:1.7;">
-    <p><strong>Inspect first</strong></p>
+    <p>
+      A long Changes list often comes from generated build output, caches, logs, or local runtime data.
+      Use <code>.gitignore</code> for files Git should leave out of future changes. Ignoring files does not delete them.
+    </p>
+    <p><strong>1. Identify the source before changing anything</strong></p>
     <pre><code>git status --short
-git diff
-git diff --staged
-git log --oneline --decorate -10
-git branch -vv</code></pre>
-    <p><strong>Everyday workflow</strong></p>
-    <pre><code>git switch -c feature/my-change
-git add -- path/to/file
-git restore --staged -- path/to/file
-git commit -m "Describe the change"
-git fetch origin
-git pull --ff-only
-git push -u origin feature/my-change</code></pre>
-    <p><strong>Recovery: preserve work before changing anything</strong></p>
-    <pre><code>git diff &gt; working-tree-backup.patch
-git diff --staged &gt; staged-backup.patch
-git stash push -u -m "backup before recovery"
-git stash list
-git stash apply "stash@{0}"</code></pre>
-    <p><strong>Undo choices</strong></p>
-    <pre><code>git restore --worktree -- path/to/file
-git restore --source=&lt;commit&gt; -- path/to/file
-git revert &lt;commit&gt;
-git reflog
-git branch rescue/keep-before-recovery &lt;commit&gt;</code></pre>
-    <p style="color:var(--muted);">
-      <code>git restore --worktree</code> discards uncommitted edits to the named file. Prefer <code>git revert</code>
-      for undoing a commit already shared with others. Before recovery, inspect status and make a backup/stash.
-      Avoid <code>git reset --hard</code> and <code>git clean</code> unless you have verified what will be lost.
-      Never share remote URLs if they contain embedded credentials.
+git status --short --untracked-files=all
+git check-ignore -v -- path/to/suspected-generated-file</code></pre>
+    <p><strong>2. Add narrow patterns to the repository's <code>.gitignore</code></strong></p>
+    <pre><code># Examples only — add paths that are generated in your project
+build/
+*.log
+.env
+data/generated-output/
+data/local-cache.sqlite3</code></pre>
+    <p>
+      Ignore generated bundles, caches, local databases, logs, and private environment files—not source code.
+      Keep example configuration such as <code>.env.example</code>. Avoid broad patterns like <code>*.py</code>,
+      <code>*.json</code>, or <code>data/</code>; they can hide real application files and data.
+    </p>
+    <p><strong>3. Verify, then commit only the ignore rules</strong></p>
+    <pre><code>git check-ignore -v -- path/to/generated-file
+git status --short
+git add .gitignore
+git diff --cached -- .gitignore
+git commit -m "Ignore generated files"
+git push</code></pre>
+    <p>
+      <strong>Important:</strong> <code>.gitignore</code> only affects untracked files. If a file is already tracked,
+      adding a pattern will not remove it from Changes or GitHub. Do not use <code>git rm --cached</code> or delete
+      files just to hide them; first confirm they are generated, not needed at runtime, and backed up if they contain
+      important local data. This repository's generated Roku bundles and runtime artifacts are already ignored.
     </p>
   </div>
 </details>

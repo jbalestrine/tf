@@ -39,6 +39,9 @@ gui/backups/
 *.log
 data/roku_builds/
 data/chatserv.sqlite3
+data/chaos_monkey_ideas.sqlite3
+data/echo_change_approvals.sqlite3
+data/echo_change_backups/
 data/echo_operator_audit.jsonl
 data/script_index_repo.json
 data/scripts/*.stdout

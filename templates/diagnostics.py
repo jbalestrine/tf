@@ -418,6 +418,7 @@ td.link:hover{text-decoration:underline}
           <input type="text" id="files-filter" placeholder="Filter files…" oninput="filterFiles(this.value)">
           <div class="spacer"></div>
           <span style="font-size:11px;color:var(--muted)" id="files-count"></span>
+          <a class="header-btn" href="/chaos-monkey" style="padding:4px 11px;font-size:11px;text-decoration:none">🐒 Open Chaos Monkey Script Library</a>
           <button class="header-btn" onclick="openSweepModal()" style="padding:4px 11px;font-size:11px">🧹 Orphan Sweep</button>
         </div>
         <div class="tbl-wrap">
@@ -1227,11 +1228,23 @@ async function inspectFile(relPath, focusLine) {
     ? relPath
     : ('c:/Users/Echo/masterchief/' + relPath).replace(/\//g,'\\')}${focusLine ? `:${focusLine}` : ''}`;
 
-  document.getElementById('insp-actions').innerHTML = `
+  const actions = document.getElementById('insp-actions');
+  actions.innerHTML = `
     <a class="insp-btn primary" href="${vscodeUri}">✏️ Open in VS Code</a>
     <button class="insp-btn" onclick="copyPath('${relPath}')">📋 Copy Path</button>
     <a class="insp-btn" href="/sys/api/file?path=${encodeURIComponent(relPath)}" target="_blank">⬇ Raw</a>
   `;
+
+  const inspectedFile = (_data && _data.files || []).find(file => file.rel_path === relPath);
+  const runnableExtensions = new Set(['.py', '.ps1', '.sh', '.bash', '.js', '.tf']);
+  if (inspectedFile && inspectedFile.status === 'orphan' && runnableExtensions.has((inspectedFile.ext || '').toLowerCase())) {
+    const ideaButton = document.createElement('button');
+    ideaButton.className = 'insp-btn';
+    ideaButton.type = 'button';
+    ideaButton.textContent = '🧺 Save as future idea';
+    ideaButton.addEventListener('click', () => saveOrphanIdea(relPath, ideaButton));
+    actions.appendChild(ideaButton);
+  }
 
   // Load content
   document.getElementById('insp-code').innerHTML =
@@ -1273,6 +1286,33 @@ async function inspectFile(relPath, focusLine) {
   } catch(e) {
     document.getElementById('insp-code').innerHTML =
       `<pre><code style="color:var(--red);padding:16px">Network error: ${e}</code></pre>`;
+  }
+}
+
+async function saveOrphanIdea(relPath, button) {
+  const note = window.prompt(
+    `Why might this script be useful later?\n\n${relPath}\n\nThe file will not be moved or changed.`,
+    'Review this disconnected script and decide how it could be used.'
+  );
+  if (note === null) return;
+
+  button.disabled = true;
+  button.textContent = 'Saving idea…';
+  try {
+    const response = await fetch('/api/core-scripts/ideas', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({path: relPath, note}),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || `Request failed (${response.status})`);
+    }
+    button.textContent = '✓ Saved to Ideas Basket';
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = '🧺 Save as future idea';
+    window.alert(`Could not save this idea: ${error.message}`);
   }
 }
 
