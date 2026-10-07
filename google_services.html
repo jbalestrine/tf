@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Services - MasterChief</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111827; color: #e5e7eb; font: 16px/1.5 Arial, sans-serif; }
+    main { max-width: 1100px; margin: auto; padding: 28px 20px 56px; }
+    a { color: #93c5fd; }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
+    .top a { text-decoration:none; background:#1f2937; padding:9px 14px; border-radius:8px; }
+    h1 { margin:0; color:#8ab4f8; }
+    .note { background:#1f2937; border-left:4px solid #8ab4f8; padding:14px 18px; border-radius:8px; margin:18px 0 24px; color:#cbd5e1; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+    .service { background:#1f2937; border:1px solid #374151; border-radius:10px; padding:18px; min-height:132px; display:flex; flex-direction:column; }
+    .service h2 { font-size:1.1rem; margin:0 0 7px; color:#f3f4f6; }
+    .service p { color:#9ca3af; font-size:.9rem; margin:0 0 14px; flex:1; }
+    .service a { display:inline-block; text-decoration:none; font-weight:700; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top">
+      <h1>Google Services</h1>
+      <a href="/">← Back to MasterChief</a>
+    </div>
+    <p>Open Google services in a new tab. Sign-in and account permissions are handled by Google.</p>
+    <div class="note">
+      These are Google app shortcuts, not API connections inside MasterChief. Reading meetings, email, or translating app content from this site requires a Google Cloud OAuth client and the appropriate API scopes. No Google credentials or OAuth client have been configured in this project.
+    </div>
+    <section class="grid" aria-label="Google service links">
+      <article class="service"><h2>Google Calendar</h2><p>Calendars, meetings, and event details.</p><a href="https://calendar.google.com/" target="_blank" rel="noopener noreferrer">Open Calendar ↗</a></article>
+      <article class="service"><h2>Gmail</h2><p>Email, inbox, and labels.</p><a href="https://mail.google.com/" target="_blank" rel="noopener noreferrer">Open Gmail ↗</a></article>
+      <article class="service"><h2>Google Voice</h2><p>Calls, voicemail, and messages where available for your account.</p><a href="https://voice.google.com/" target="_blank" rel="noopener noreferrer">Open Voice ↗</a></article>
+      <article class="service"><h2>Google Translate</h2><p>Translate text and web pages.</p><a href="https://translate.google.com/" target="_blank" rel="noopener noreferrer">Open Translate ↗</a></article>
+      <article class="service"><h2>Google Meet</h2><p>Video meetings and meeting links.</p><a href="https://meet.google.com/" target="_blank" rel="noopener noreferrer">Open Meet ↗</a></article>
+      <article class="service"><h2>Google Drive</h2><p>Cloud files and shared documents.</p><a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">Open Drive ↗</a></article>
+      <article class="service"><h2>Google Docs</h2><p>Documents and collaborative editing.</p><a href="https://docs.google.com/" target="_blank" rel="noopener noreferrer">Open Docs ↗</a></article>
+      <article class="service"><h2>Google Sheets</h2><p>Spreadsheets and data tables.</p><a href="https://sheets.google.com/" target="_blank" rel="noopener noreferrer">Open Sheets ↗</a></article>
+      <article class="service"><h2>Google Slides</h2><p>Presentations and slide decks.</p><a href="https://slides.google.com/" target="_blank" rel="noopener noreferrer">Open Slides ↗</a></article>
+      <article class="service"><h2>Google Forms</h2><p>Forms and surveys.</p><a href="https://forms.google.com/" target="_blank" rel="noopener noreferrer">Open Forms ↗</a></article>
+      <article class="service"><h2>Google Keep</h2><p>Notes and lists.</p><a href="https://keep.google.com/" target="_blank" rel="noopener noreferrer">Open Keep ↗</a></article>
+      <article class="service"><h2>Google Tasks</h2><p>Personal task lists.</p><a href="https://tasks.google.com/" target="_blank" rel="noopener noreferrer">Open Tasks ↗</a></article>
+      <article class="service"><h2>Google Contacts</h2><p>Contacts and address book.</p><a href="https://contacts.google.com/" target="_blank" rel="noopener noreferrer">Open Contacts ↗</a></article>
+      <article class="service"><h2>Google Photos</h2><p>Photo library and albums.</p><a href="https://photos.google.com/" target="_blank" rel="noopener noreferrer">Open Photos ↗</a></article>
+      <article class="service"><h2>Google Maps</h2><p>Maps, places, and directions.</p><a href="https://maps.google.com/" target="_blank" rel="noopener noreferrer">Open Maps ↗</a></article>
+      <article class="service"><h2>Google Cloud Console</h2><p>Projects, APIs, and OAuth configuration.</p><a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Open Cloud Console ↗</a></article>
+      <article class="service"><h2>Google Account</h2><p>Account settings and security.</p><a href="https://myaccount.google.com/" target="_blank" rel="noopener noreferrer">Open Account ↗</a></article>
+    </section>
+  </main>
+</body>
+</html>

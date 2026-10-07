@@ -3,7 +3,8 @@ param(
     [switch]$InstallOptional,
     [switch]$DownloadModel,
     [switch]$SetupOnly,
-    [int]$Port = 8084
+    [int]$Port = 8080,
+    [string]$BindAddress = '0.0.0.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -75,10 +76,11 @@ if ($SetupOnly) {
     exit 0
 }
 
-Write-Host "Starting MasterChief on port $Port..."
+$displayAddress = if ($BindAddress -eq '0.0.0.0') { 'localhost' } else { $BindAddress }
+Write-Host "Starting MasterChief at http://${displayAddress}:$Port (bind: $BindAddress)..."
 Push-Location $repoDir
 try {
-    & $venvPython (Join-Path $repoDir 'main.py') --port $Port
+    & $venvPython (Join-Path $repoDir 'main.py') --host $BindAddress --port $Port
     if ($LASTEXITCODE -ne 0) { throw "MasterChief exited with code $LASTEXITCODE." }
 } finally {
     Pop-Location

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About - MasterChief DevOps Platform</title>
+<title>About - MasterChief 4.0 MASTERCLASS</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:Arial,sans-serif;background:#1a1a1a;color:#e0e0e0;line-height:1.6;}
@@ -66,6 +66,24 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
     letter-spacing: 1px;
     margin-bottom: 25px;
 }
+.version-source {
+    color: #aaa;
+    font-size: 0.9em;
+    margin: -16px auto 10px;
+}
+.version-refresh {
+    background: #2d2d2d;
+    color: #b8e6c1;
+    border: 1px solid #4CAF50;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin: 0 0 18px;
+    cursor: pointer;
+}
+.version-refresh:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
 .hero-description {
     max-width: 900px;
     margin: 0 auto;
@@ -88,6 +106,31 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
 }
 .section-block {
     margin-bottom: 40px;
+}
+.updates-checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.updates-checklist li {
+    color: #ccc;
+    padding: 10px 12px 10px 34px;
+    margin: 7px 0;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.035);
+    position: relative;
+}
+.updates-checklist li::before {
+    content: '\2713';
+    color: #4CAF50;
+    font-weight: bold;
+    position: absolute;
+    left: 12px;
+}
+.updates-note {
+    color: #aaa;
+    font-size: 0.92em;
+    margin-top: 15px;
 }
 
 .feature-card {
@@ -155,6 +198,15 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
     font-size: 0.8em;
     font-weight: bold;
     border: 1px solid rgba(255,152,0,0.3);
+}
+.badge-live {
+    background: rgba(76,175,80,0.15);
+    color: #81c784;
+    padding: 4px 14px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: bold;
+    border: 1px solid rgba(76,175,80,0.35);
 }
 .badge-phase {
     background: rgba(76,175,80,0.12);
@@ -259,12 +311,14 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
     <nav>
         <a href="/">Dashboard</a>
         <a href="/echo-chat">Echo Chat</a>
+        <a href="/chatserv">Echo ChatServ</a>
         <a href="/scripts">Scripts</a>
         <a href="/processes">Processes</a>
         <a href="/services">Services</a>
         <a href="/addons">Addons</a>
         <a href="/echo-train">Training</a>
         <a href="/pipelines">Pipelines</a>
+        <a href="/observability">Observability</a>
         <a href="/cloud">Cloud</a>
         <a href="/secrets">Secrets</a>
         <a href="/echo-memory">Memory</a>
@@ -276,9 +330,12 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
 
     <!-- 1. Hero / Identity Section -->
     <div class="hero-section animate-in" style="animation-delay:0.1s;">
-        <div class="hero-title">MasterChief DevOps Platform</div>
-        <div class="hero-subtitle">Enterprise DevOps Automation &mdash; Built by Echo Starlite</div>
-        <div class="version-badge">v1.3.0</div>
+        <div class="hero-title">MasterChief 4.0 MASTERCLASS</div>
+        <div class="hero-subtitle">Enterprise DevOps Automation &mdash; Built by Joseph Balestrine (MasterChief | Echo Starlite Devops Suite)</div>
+        <p class="version-source">A milestone release of the current MasterChief app. Review the release notes for scope and integration requirements.</p>
+        <div class="version-badge" id="github-version">Checking GitHub version...</div>
+        <p class="version-source" id="github-version-status" aria-live="polite">Checking the current repository release...</p>
+        <button class="version-refresh" id="github-version-refresh" type="button">Check GitHub now</button>
         <p class="hero-description">
             A comprehensive enterprise DevOps automation platform featuring multi-cloud infrastructure,
             AI-powered automation, real-time ChatOps, voice control, and a complete CI/CD pipeline orchestrator.
@@ -290,13 +347,18 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
     <!-- 2. Current Features -->
     <div class="section-block">
         <h2 class="section-title">Current Features</h2>
-        <p class="section-subtitle">Everything shipped and running in the platform today</p>
+        <p class="section-subtitle">Implemented pages and capabilities; external provider features still require account access and local configuration.</p>
 
         <div class="dashboard-grid">
             <div class="feature-card animate-in" style="animation-delay:0.15s;">
                 <span class="feature-icon">&#129302;</span>
                 <h3>Echo AI Chat Bot</h3>
-                <p>Conversational AI assistant with training capabilities. Ask Echo anything about your infrastructure, automate tasks via chat, and fine-tune responses with your own datasets.</p>
+                <p>Conversational assistant using the model/runtime configured for this installation, with a local project-code library and explicit command handling. Drafts and training examples are not executed or trained automatically.</p>
+            </div>
+            <div class="feature-card animate-in" style="animation-delay:0.18s;">
+                <span class="feature-icon">&#128172;</span>
+                <h3>Echo ChatServ</h3>
+                <p>Browser-based rooms with hashed NickServ-style accounts, owner/OP moderation, room conversation roles, persona bots sharing Echo's configured model, a text-file MOTD, admin-only GGUF selection and allowlisted page transfers. ChatServ accounts do not grant platform admin access.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.2s;">
                 <span class="feature-icon">&#9881;&#65039;</span>
@@ -311,32 +373,37 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
             <div class="feature-card animate-in" style="animation-delay:0.3s;">
                 <span class="feature-icon">&#128640;</span>
                 <h3>Pipeline Orchestrator</h3>
-                <p>Visual drag-and-drop CI/CD pipeline builder. Design, configure, and execute multi-stage pipelines with parallel steps, approvals, and rollback strategies.</p>
+                <p>ADO-inspired local pipeline studio with starter templates, parallel stages, run history, logs, YAML/JSON import and export, and manual approval gates. Terraform Apply always pauses for approval; triggers and remote deployment providers require separate configuration.</p>
+            </div>
+            <div class="feature-card animate-in" style="animation-delay:0.32s;">
+                <span class="feature-icon">&#128202;</span>
+                <h3>Observability Center</h3>
+                <p>Connect existing Prometheus, Grafana, and Loki services; scrape MasterChief HTTP metrics, run read-only PromQL and LogQL queries, and browse configured dashboards. Service URLs and tokens are configured server-side.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.35s;">
                 <span class="feature-icon">&#9729;&#65039;</span>
                 <h3>Multi-Cloud Dashboard</h3>
-                <p>Unified Azure, AWS, and GCP resource management. View compute, storage, networking, and cost metrics across all your cloud providers in one pane of glass.</p>
+                <p>Cloud operations use the credentials each user supplies and are limited to resources those credentials can manage under provider IAM. MasterChief GOD access does not grant extra cloud permissions; provider APIs and configuration must also be available.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.4s;">
                 <span class="feature-icon">&#128272;</span>
                 <h3>Secrets Vault</h3>
-                <p>Encrypted secrets with version history and full audit trail. Store API keys, certificates, and credentials with role-based access and automatic rotation policies.</p>
+                <p>Secrets-management interface for locally configured credentials. Provider-specific storage, access policies, and rotation depend on the configured backend.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.45s;">
                 <span class="feature-icon">&#129504;</span>
                 <h3>Echo Memory</h3>
-                <p>Long-term conversation context with semantic search. Echo remembers past interactions, learns from corrections, and builds institutional knowledge over time.</p>
+                <p>Conversation memory and search interface. Stored history and retrieval depend on the configured storage and model services.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.5s;">
                 <span class="feature-icon">&#128722;</span>
                 <h3>Plugin Marketplace</h3>
-                <p>Browse, install, and configure add-ons from the community marketplace. Extend MasterChief with custom integrations, themes, and workflow modules.</p>
+                <p>Browse and manage available add-ons and modules. External marketplace availability depends on configured sources.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.55s;">
                 <span class="feature-icon">&#128276;</span>
                 <h3>Notification System</h3>
-                <p>Multi-channel alerts across Slack, Teams, Discord, and Email. Configure thresholds, escalation chains, and quiet hours for every alert type.</p>
+                <p>Notification settings and channel interfaces are available; delivery requires the selected provider's credentials and configuration.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.6s;">
                 <span class="feature-icon">&#128737;&#65039;</span>
@@ -346,23 +413,62 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
             <div class="feature-card animate-in" style="animation-delay:0.65s;">
                 <span class="feature-icon">&#127959;&#65039;</span>
                 <h3>Terraform Wizard</h3>
-                <p>Infrastructure as Code generation and deployment. Step-by-step wizard for building Terraform configurations with validation, previews, and one-click apply.</p>
+                <p>Guided infrastructure design, component selection, live Terraform previews, validation guidance, and downloadable modules. Generated code is review-first and never auto-applies infrastructure.</p>
+            </div>
+            <div class="feature-card animate-in" style="animation-delay:0.68s;">
+                <span class="feature-icon">&#128506;</span>
+                <h3>Architecture Blueprint Studio</h3>
+                <p>Readable hub-and-spoke layouts group VNets and subnets, label peering links, and export diagrams as SVG or Visio. The same design model drives the Terraform preview.</p>
+            </div>
+            <div class="feature-card animate-in" style="animation-delay:0.72s;">
+                <span class="feature-icon">&#129513;</span>
+                <h3>Code Archetypes</h3>
+                <p>Starter archetypes with component-flow diagrams, source previews, custom template creation, and explicit handoff to a developer editor.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.7s;">
                 <span class="feature-icon">&#128172;</span>
                 <h3>IRC ChatOps Engine</h3>
-                <p>Eggdrop-style bot with data ingestion. Run DevOps commands from IRC channels, ingest logs and metrics, and trigger automations via chat commands.</p>
+                <p>Optional TLS IRC bridge for Echo chat. It joins explicitly configured channels, relays <code>/ai</code> messages, and accepts private-message TOTP authentication for local app startup. Arbitrary shell commands are not enabled over IRC.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.75s;">
                 <span class="feature-icon">&#127908;</span>
                 <h3>Voice Automation</h3>
-                <p>Wake words, speech-to-text, text-to-speech, and voice cloning. Control your infrastructure hands-free with natural voice commands and custom wake phrases.</p>
+                <p>Voice automation components and interfaces for wake words, speech processing, and audio workflows; supported actions depend on locally installed models and devices.</p>
             </div>
             <div class="feature-card animate-in" style="animation-delay:0.8s;">
                 <span class="feature-icon">&#127891;</span>
                 <h3>Training System</h3>
-                <p>Dataset upload and model fine-tuning. Train Echo on your organization's documentation, runbooks, and domain knowledge to create a specialized DevOps assistant.</p>
+                <p>Training-data management plus an optional local LoRA adapter trainer for approved examples and compatible Hugging Face checkpoints. Training is explicit and does not overwrite base-model weights.</p>
             </div>
+        </div>
+    </div>
+
+    <div class="section-block">
+        <h2 class="section-title">Updates Made &mdash; October 6, 2026</h2>
+        <p class="section-subtitle">Local code and UI updates; service connections that require provider credentials have not been live-tested.</p>
+        <div class="card">
+            <ul class="updates-checklist">
+                <li>Added a searchable global navigation with Ctrl+K and / shortcuts, active-section highlighting, responsive dropdowns, and filtering for orphaned or unsafe pinned add-on links.</li>
+                <li>Added Azure CIDR overlap/containment, resource-name, duplicate RBAC assignment, and broad-role validation to the Terraform Wizard. Validation does not deploy cloud resources.</li>
+                <li>About now checks the latest GitHub release, or the default-branch commit if no release is published, and can be refreshed on demand.</li>
+                <li>Fixed Code UI browsing to use the project root consistently, added project-wide script search, and guarded project file paths.</li>
+                <li>Added a local source library for Echo, script drafting with <code>!write</code>, a function-oriented code wizard, and a clickable command catalog.</li>
+                <li>Added Echo ChatServ with persistent hashed-password accounts, room ownership and OP moderation, room prompts and persona bots, an editable <code>commands/MOTD.txt</code>, explicit <code>!ask</code>, safe page transfers, and RBAC-admin-only model selection.</li>
+                <li>Organized <code>!commands</code> into General, Code library, Model team, Operator controls, and add-on command groups.</li>
+                <li>Master-user deployment grants GOD access to authenticated users. Cloud operations remain limited to the provider permissions in each user's credentials; restrict network reachability to trusted clients.</li>
+                <li>Added an opt-in TLS IRC bridge. It supports Echo chat in configured channels and private messages; <code>!masterchief</code> requires a private-message, one-time authenticator code before starting the app.</li>
+                <li>The IRC-started web app binds to loopback only. The IRC listener itself must be started and kept running on your machine; no DALnet connection or IRC credentials have been configured.</li>
+                <li>Set the model team to Echo's existing local default model, with an option to add local Ollama models later. Model replies are queued for review rather than changing weights automatically.</li>
+                <li>Added an optional local Hugging Face/PEFT LoRA trainer that writes a separate adapter from approved examples; it does not overwrite the base model or install training packages automatically.</li>
+                <li>Kept SMS disabled by default and documented that GitHub stores source code but does not keep the Flask app running.</li>
+                <li>Added Google Calendar, Gmail, Voice, Translate, Meet, Drive, Docs, Sheets, Slides, Forms, Keep, Tasks, Contacts, Photos, Maps, Cloud Console, and account shortcuts. These open Google; Google API access inside MasterChief still needs OAuth configuration.</li>
+                <li>Updated Teams sign-in completion to return to Calendar and automatically load the selected date range using timezone-aware timestamps.</li>
+                <li>Fixed Okta app-link lookup to use the signed-in user identifier rather than the unsupported generic “me” path. A live Okta tenant/account is still needed to verify access.</li>
+                <li>Improved diagnostics by excluding named and versioned virtual environments, serializing cached scans, and removing duplicate diagnostics route registrations.</li>
+                <li>Added a Git SCM reference for inspection, everyday operations, backup/stash, and recovery commands.</li>
+                <li>Added the Code Archetypes page and launcher to the Web IDE, Terraform/ARM editors, and shared developer pages. Archetypes include diagrams and code previews; loading an existing editor's code requires confirmation.</li>
+            </ul>
+            <p class="updates-note">Verification: 40 focused tests passed and one platform-dependent symlink test was skipped; the latest IRC/model-team subset passed 10 tests. A live IRC connection and model fine-tuning run still require local configuration and were not performed.</p>
         </div>
     </div>
 
@@ -400,9 +506,9 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
             </div>
             <div class="roadmap-card animate-in" style="animation-delay:0.3s;">
                 <h3>CIDR &amp; Naming Validation</h3>
-                <p>Real-time CIDR overlap detection, naming conflict resolution, RBAC conflict checking, best-practice recommendations.</p>
+                <p>Available in the <a href="/tf_wizard">Terraform Wizard</a>: CIDR overlap and containment checks, Azure resource-name validation, duplicate RBAC assignment detection, and broad-role warnings.</p>
                 <div class="roadmap-badges">
-                    <span class="badge-coming-soon">Coming Soon</span>
+                    <span class="badge-live">Available now</span>
                     <span class="badge-phase">Phase 1</span>
                 </div>
             </div>
@@ -413,18 +519,18 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
         <div class="dashboard-grid">
             <div class="roadmap-card animate-in" style="animation-delay:0.35s;">
                 <h3>Dynamic Architecture Diagrams</h3>
-                <p>Auto-generated hub-and-spoke diagrams from Terraform outputs, SVG/PNG export, live preview in wizard UI.</p>
+                <p>Available in the <a href="/tf_wizard">Terraform Wizard</a>, CAF Generator, ARM editor, and archetype views: blueprint-style hub-and-spoke layouts, subnet grouping, labeled peering, and SVG/Visio export.</p>
                 <div class="roadmap-badges">
-                    <span class="badge-coming-soon">Coming Soon</span>
-                    <span class="badge-phase">Phase 2</span>
+                    <span class="badge-live">Available now</span>
+                    <span class="badge-phase">4.0 MASTERCLASS</span>
                 </div>
             </div>
             <div class="roadmap-card animate-in" style="animation-delay:0.4s;">
                 <h3>CI/CD Pipeline Templates</h3>
-                <p>Azure DevOps and GitHub Actions YAML generation, plan-on-PR / apply-on-merge workflows, automated template export.</p>
+                <p>Terraform Wizard can package GitHub Actions, Azure DevOps, or GitLab starter templates for validation and planning. Applying infrastructure remains a separate, deliberate operation.</p>
                 <div class="roadmap-badges">
-                    <span class="badge-coming-soon">Coming Soon</span>
-                    <span class="badge-phase">Phase 2</span>
+                    <span class="badge-live">Available now</span>
+                    <span class="badge-phase">4.0 MASTERCLASS</span>
                 </div>
             </div>
             <div class="roadmap-card animate-in" style="animation-delay:0.45s;">
@@ -509,13 +615,17 @@ nav a:hover,nav a.active{background:#4CAF50;color:#fff;}
     <!-- 5. Footer -->
     <div class="about-footer">
         <p class="footer-heart">Built with <span>&hearts;</span> by Echo Starlite & Joseph A. Balestrine | https://linkedin.com/in/x122 | https://github.com/jbalestrine/masterchief | Pypi.org/masterchief</p>
-        <p class="footer-version">MasterChief DevOps Platform &mdash; v1.3.0</p>
+        <p class="footer-version" id="github-footer-version">MasterChief DevOps Platform &mdash; Checking GitHub version...</p>
     </div>
 </div>
 
 <script>
 // Intersection Observer for scroll-triggered animations
 document.addEventListener('DOMContentLoaded', function() {
+    loadGithubVersion(false);
+    document.getElementById('github-version-refresh').addEventListener('click', function() {
+        loadGithubVersion(true);
+    });
     var animatedElements = document.querySelectorAll('.animate-in');
 
     if ('IntersectionObserver' in window) {
@@ -539,6 +649,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+async function loadGithubVersion(forceRefresh) {
+    var badge = document.getElementById('github-version');
+    var status = document.getElementById('github-version-status');
+    var footer = document.getElementById('github-footer-version');
+    var button = document.getElementById('github-version-refresh');
+    button.disabled = true;
+    status.textContent = 'Checking the current repository version...';
+    try {
+        var response = await fetch('/api/about/version' + (forceRefresh ? '?refresh=1' : ''), {
+            headers: { 'Accept': 'application/json' }
+        });
+        var data = await response.json();
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'GitHub version lookup failed.');
+        }
+        badge.textContent = data.version;
+        footer.textContent = 'MasterChief DevOps Platform — ' + data.version;
+        var source = data.kind === 'release' ? 'Latest GitHub release' : 'Current GitHub branch commit';
+        status.textContent = source + ' from ' + data.repository + (data.stale ? ' (cached; refresh failed)' : '');
+        if (data.url) {
+            var link = document.createElement('a');
+            link.href = data.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = ' View on GitHub';
+            status.appendChild(link);
+        }
+        if (data.warning) status.appendChild(document.createTextNode(' ' + data.warning));
+    } catch (error) {
+        badge.textContent = 'Version unavailable';
+        footer.textContent = 'MasterChief DevOps Platform — GitHub version unavailable';
+        status.textContent = 'Could not verify the current GitHub version: ' + error.message;
+    } finally {
+        button.disabled = false;
+    }
+}
 </script>
 </body>
 </html>

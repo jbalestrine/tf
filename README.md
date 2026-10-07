@@ -2,6 +2,12 @@
 
 MasterChief is a modular platform for DevOps, automation, dashboards, addon hosting, and AI-assisted operational workflows. This repository represents the recovered and stabilized state of the app after a major restoration pass, with route inventory corrected, dashboard navigation rebuilt, diagnostics repaired, additive feature wiring restored, and the app brought back to a working, navigable condition.
 
+## MasterChief 4.0 MASTERCLASS
+
+Version 4.0 consolidates the current application upgrades into a review-first release milestone. Highlights include the guided Terraform architecture workflow, readable hub-and-spoke blueprint diagrams with SVG/Visio export, code archetypes and editor handoff, expanded Echo/ChatOps and Roku workflows, and safer project navigation and diagnostics.
+
+Generated Terraform, sandbox instructions, and CI/CD starter files are previews or validation/plan scaffolding. They do not automatically apply infrastructure. See the [4.0 MASTERCLASS release notes](docs/releases/4.0.0-masterclass.md) for the scope and limitations.
+
 This README is meant to be both a working developer guide and a fail-safe operational document. It specifically emphasizes how to protect the current working state, create safe release branches, and roll back quickly if a deployment or code change causes issues.
 
 ## Current Recovery Status
@@ -137,23 +143,99 @@ This creates a clean, recordable version marker for the recovered build.
 
 ## Fresh Setup
 
-Install Python 3.10 or newer and Git first. From the parent folder, paste the one-line command for your shell; it clones the repository, installs the base app and bundled modules into a virtual environment, registers the CLI, and starts the web app.
+Install Python 3.10 or newer and Git first. The Windows setup below matches the local source workflow: create an isolated `.venv`, install `requirements.txt` and the editable app, then serve on `0.0.0.0:8080`. Python 3.14.2 was used for the current local verification; the project supports Python 3.10+.
 
-### Windows PowerShell
+### Windows PowerShell: line-by-line source setup
+
+1. Open PowerShell and go to the parent folder where you keep projects:
+
+   ```powershell
+   Set-Location C:\Users\Echo
+   ```
+
+2. Clone the repository. GitHub access is required if the repository is private:
+
+   ```powershell
+   git clone https://github.com/jbalestrine/masterchief.git
+   ```
+
+3. Enter the project:
+
+   ```powershell
+   Set-Location .\masterchief
+   ```
+
+4. Allow this PowerShell process to run the setup script (this does not change the machine-wide policy):
+
+   ```powershell
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   ```
+
+5. Install the base application into `.venv` without starting it yet:
+
+   ```powershell
+   .\MasterchiefRun.ps1 -SetupOnly -Port 8080
+   ```
+
+   This upgrades pip, installs `requirements.txt`, and installs the source checkout in editable mode. It does not download a model or configure cloud credentials.
+
+6. Start the app bound to this computer only:
+
+   ```powershell
+   .\.venv\Scripts\python.exe .\main.py --host 0.0.0.0 --port 8080
+   ```
+
+7. On the MasterChief machine, open [http://localhost:8080/](http://localhost:8080/) in a browser. From another device on the trusted network, use `http://<masterchief-machine-ip>:8080/`. The Terraform Wizard is at `/tf_wizard`; Echo Chat is at `/echo-chat`.
+
+   `0.0.0.0` listens on all IPv4 interfaces; it is a bind address, not the browser URL. This deployment is intended for a trusted network. All authenticated users receive GOD access, so restrict network reachability and configure authentication accordingly.
+
+8. Stop the foreground server with `Ctrl+C`. For later starts, repeat step 6. To have the setup script install and start in one step instead, run `.\MasterchiefRun.ps1 -Port 8080` after cloning.
+
+### One-command Windows setup
+
+From the parent directory, the following clones, installs, and starts the app:
 
 ```powershell
-git clone https://github.com/jbalestrine/masterchief.git; if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }; Set-Location masterchief; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned; .\MasterchiefRun.ps1
+git clone https://github.com/jbalestrine/masterchief.git; if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }; Set-Location .\masterchief; Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; .\MasterchiefRun.ps1 -Port 8080
 ```
+
+For a prompted setup menu, use [MASTER_SETUP.ps1](MASTER_SETUP.ps1). Its default port is also 8080.
 
 ### Linux or macOS
 
+Install Python 3.10+, Git, and a POSIX shell, then run:
+
 ```bash
-git clone https://github.com/jbalestrine/masterchief.git && cd masterchief && bash scripts/start.sh
+git clone https://github.com/jbalestrine/masterchief.git
+cd masterchief
+bash scripts/start.sh
 ```
 
-If the repository is already cloned, run `.\MasterchiefRun.ps1` in PowerShell or `bash scripts/start.sh` on Linux/macOS. For prompted profiles and advanced options, use [MASTER_SETUP.ps1](MASTER_SETUP.ps1). Optional AI, audio, and cloud dependencies are available through `requirements-optional.txt` or the package extras.
+The POSIX starter creates or reuses `.venv` and installs `requirements.txt` on first run. It starts `run.py`; consult its startup output for the actual local URL.
 
-For a prebuilt Python package install, use `python -m pip install masterchief` and then `masterchief --help`. See [QUICKSTART.md](QUICKSTART.md) for additional setup options.
+### Optional capabilities and requirements files
+
+- `requirements.txt` installs the source app's base and bundled integration dependencies.
+- `requirements-optional.txt` adds heavy AI/ML, audio, asynchronous messaging, and database dependencies; it can require gigabytes of downloads and native system libraries. Do not install it unless those capabilities are needed.
+- `requirements-training.txt` is for the optional local LoRA training workflow and compatible hardware/checkpoints.
+- Cloud integrations use the credentials each user supplies and can operate only on resources those credentials are authorized to manage. MasterChief admin/GOD access does not expand the cloud provider's IAM permissions. Provider services also need configuration. The Terraform Wizard's generated code and CI templates do not automatically deploy resources.
+- To install optional groups from the source checkout, use extras such as `python -m pip install -e ".[ai]"` or `python -m pip install -e ".[cloud]"`. See [QUICKSTART.md](QUICKSTART.md) for CLI examples.
+
+### Observability integrations
+
+Open the Observability Center at `/observability`. Set `PROMETHEUS_URL`, `GRAFANA_URL`, and `LOKI_URL` in the MasterChief server environment to connect existing services. Optional read-only bearer tokens are `PROMETHEUS_TOKEN`, `GRAFANA_API_TOKEN`, and `LOKI_TOKEN`. These credentials remain server-side.
+
+MasterChief exposes request counters and latency histograms at `/metrics`. By default this endpoint is loopback-only; set `METRICS_TOKEN` to allow a Prometheus scraper on another host and configure its scrape job using [observability/prometheus-scrape-example.yml](observability/prometheus-scrape-example.yml). The sample Grafana dashboard and alert rules are in `observability/dashboards/` and `observability/alerts/`. Loki queries require a log shipper to send MasterChief logs to the configured Loki service.
+
+### From PyPI
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install masterchief
+```
+
+The source checkout is the recommended way to run the complete web UI. The PyPI package and CLI provide a package-based installation path; optional provider services still need configuration.
 
 ## Release PyPI and Chocolatey Together
 

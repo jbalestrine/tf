@@ -5,6 +5,9 @@
         <field id="error"        type="string"  value="" />
         <field id="groupsJson"   type="string"  value="" />
         <field id="channelsJson" type="string"  value="" />
+        <field id="batchIndex"   type="integer" value="0" />
+        <field id="batchAck"     type="integer" value="0" />
+        <field id="complete"     type="boolean" value="false" />
     </interface>
     <script type="text/brightscript"><![CDATA[
 
@@ -16,129 +19,158 @@
             m.top.control = "run"
         end sub
 
-                sub fetch()
-            url = m.top.url
-            if url = "" then return
-            http = CreateObject("roUrlTransfer")
-            http.SetUrl(url)
-            http.SetCertificatesFile("common:/certs/ca-bundle.crt")
-            http.InitClientCertificates()
-            http.AddHeader("User-Agent", "Roku/1.0")
-            port = CreateObject("roMessagePort")
-            http.SetMessagePort(port)
-            
-            tmpFile = "cachefs:/mc_playlist.m3u"
-            http.AsyncGetToFile(tmpFile)
-            
-            msg = Wait(120000, port)
-            if msg = invalid
-                m.top.error = "Download timeout"
-                return
-            end if
-            code = msg.GetResponseCode()
-            if code < 200 or code >= 300
-                m.top.error = "HTTP " + stri(code).trim()
+        sub fetch()
+            path = m.top.url
+            if path = "" then
+                m.top.error = "Playlist data path is not configured."
                 return
             end if
 
-            content = ReadAsciiFile(tmpFile)
-            if content = ""
-                m.top.error = "Empty file"
+            m.top.batchIndex = 0
+            m.top.batchAck = 0
+            m.top.complete = false
+            indexText = ReadAsciiFile("pkg:/data/channels_index.json")
+            if indexText <> ""
+                loadPlaylistShards(indexText)
                 return
             end if
 
-            ' --- C++ LEVERAGED ULTRA-FAST REGEX PARSER ---
-            ' Instead of looping line-by-line, we extract the #EXTINF and URL lines 
-            ' simultaneously via optimized global regex patterns.
-            regex = CreateObject("roRegex", "(#EXTINF:[^\r\n]*group-title=""([^""]*)"")[^\r\n]*tvg-logo=""([^""]*)"")[^\r\n]*,([^\r\n]*)\s*(https?://[^\s]*)", "i")
-            matches = regex.MatchAll(content)
-
-            channels   = []
-            groupsSeen = {}
-            groups     = []
-            maxCh      = 3000 ' Cap at 3k lines to ensure memory buffer safety
-
-            for each match in matches
-                if channels.count() >= maxCh then exit for
-
-                name  = Trim(match[4])
-                url   = Trim(match[5])
-                grp   = Trim(match[2])
-                logo  = Trim(match[3])
-
-                if name = "" then name = "Channel " + stri(channels.count() + 1).trim()
-                if grp = "" then grp = "Uncategorized"
-
-                if url <> ""
-                    channels.push({
-                        name: name,
-                        url: url,
-                        group: grp,
-                        logo: logo
-                    })
-
-                    if not groupsSeen.doesExist(grp)
-                        groupsSeen[grp] = true
-                        groups.push(grp)
-                    end if
-                end if
-            end for
-
-            ' Free heavy global string allocations immediately 
-            content = ""
-            matches = invalid
-
+            legacyText = ReadAsciiFile(path)
+            if legacyText = ""
+                m.top.error = "Playlist data is missing or too large in this package. Rebuild it in the MasterChief Roku Builder and install the new ZIP."
+                return
+            end if
+            legacyChannels = ParseJson(legacyText)
+            if legacyChannels = invalid or type(legacyChannels) <> "roArray"
+                m.top.error = "Playlist data is not a valid channel list. Rebuild the Roku package in MasterChief."
+                return
+            end if
+            channels = normalizeChannels(legacyChannels)
             if channels.count() = 0
-                m.top.error = "Zero channels parsed. Verify M3U structure format."
+                m.top.error = "No playable channels were found in the packaged playlist."
                 return
             end if
-
-            m.top.channelsJson = FormatJson(channels)
-            m.top.groupsJson   = FormatJson(groups)
+            if not sendChannelsBatch(channels) then return
+            m.top.complete = true
         end sub
 
-
-        function buildChannel(extinf as String, url as String) as Object
-            ch = {}
-            ch.url   = url
-            grp = attrVal(extinf, "group-title")
-            ch.logo  = attrVal(extinf, "tvg-logo")
-            name = lastCommaVal(extinf)
-            if name = "" then name = "Unknown"
-            ch.name  = name
-            if grp = ""
-                first = UCase(Left(name, 1))
-                if first >= "A" and first <= "Z"
-                    grp = first
-                else
-                    grp = "#"
-                end if
+        sub loadPlaylistShards(indexText as String)
+            playlistIndex = ParseJson(indexText)
+            if playlistIndex = invalid
+                m.top.error = "The packaged playlist index is invalid. Rebuild the Roku package in MasterChief."
+                return
             end if
-            ch.group = grp
-            return ch
+            if type(playlistIndex.shards) <> "roArray"
+                m.top.error = "The packaged playlist index is invalid. Rebuild the Roku package in MasterChief."
+                return
+            end if
+            shardNamePattern = CreateObject("roRegex", "^channels_[0-9]+\.json$", "i")
+            totalChannels = 0
+            for each shardName in playlistIndex.shards
+                if type(shardName) <> "roString" and type(shardName) <> "String"
+                    m.top.error = "The packaged playlist index contains an invalid shard name."
+                    return
+                end if
+                if not shardNamePattern.IsMatch(shardName)
+                    m.top.error = "The packaged playlist index contains an unsafe shard name."
+                    return
+                end if
+                shardPath = "pkg:/data/" + shardName
+                shardText = ReadAsciiFile(shardPath)
+                if shardText = ""
+                    m.top.error = "A playlist data shard is empty or missing (" + shardName + "). Rebuild the Roku package in MasterChief."
+                    return
+                end if
+                parsed = ParseJson(shardText)
+                if parsed = invalid or type(parsed) <> "roArray"
+                    m.top.error = "A playlist data shard is not valid JSON (" + shardName + "). Rebuild the Roku package in MasterChief."
+                    return
+                end if
+                channels = normalizeChannels(parsed)
+                if channels.count() > 0
+                    if not sendChannelsBatch(channels) then return
+                    totalChannels = totalChannels + channels.count()
+                end if
+            end for
+            if totalChannels = 0
+                m.top.error = "No playable channels were found in the packaged playlist."
+                return
+            end if
+            m.top.complete = true
+        end sub
+
+        function normalizeChannels(parsed as Object) as Object
+            channels = []
+            for each item in parsed
+                if type(item) <> "roAssociativeArray" then continue for
+                url = item.url
+                if url = invalid or url = "" then continue for
+                name = item.title
+                if name = invalid or name = "" then name = "Channel " + stri(channels.count() + 1).trim()
+                grp = item.group
+                if grp = invalid or grp = "" then grp = "Uncategorized"
+                logo = item.logo
+                if logo = invalid then logo = ""
+                streamFormat = item.stream_format
+                if streamFormat = invalid or streamFormat = "" then
+                    streamFormat = inferStreamFormat(url)
+                end if
+                channel = {name: name, url: url, group: grp, logo: logo, stream_format: streamFormat}
+                if item.http_headers <> invalid and type(item.http_headers) = "roAssociativeArray"
+                    channel.http_headers = item.http_headers
+                end if
+                if item.category <> invalid then
+                    channel.category = item.category
+                else
+                    channel.category = grp
+                end if
+                if item.tvg_id <> invalid then channel.tvg_id = item.tvg_id
+                if item.duration <> invalid then channel.duration = item.duration
+                if item.metadata <> invalid and type(item.metadata) = "roAssociativeArray"
+                    channel.metadata = item.metadata
+                end if
+                channels.push(channel)
+            end for
+            return channels
         end function
 
-        function lastCommaVal(line as String) as String
-            lastPos = 0
-            cur = Instr(1, line, ",")
-            while cur > 0
-                lastPos = cur
-                cur = Instr(cur + 1, line, ",")
-            end while
-            if lastPos = 0 then return ""
-            val = Trim(Mid(line, lastPos + 1, Len(line) - lastPos))
-            if Left(val, 7) = "#EXTINF" then return ""
-            return val
+        function sendChannelsBatch(channels as Object) as Boolean
+            nextBatch = m.top.batchIndex + 1
+            m.top.channelsJson = FormatJson(channels)
+            m.top.batchIndex = nextBatch
+            for attempt = 1 to 300
+                if m.top.batchAck >= nextBatch then return true
+                sleep(10)
+            end for
+            m.top.error = "Roku did not finish indexing playlist data. Try rebuilding with fewer entries."
+            return false
         end function
 
-        function attrVal(line as String, attr as String) as String
-            needle = attr + "=" + chr(34)
-            startPos = Instr(1, line, needle)
-            if startPos = 0 then return ""
-            valStart = startPos + Len(needle)
-            valEnd   = Instr(valStart, line, chr(34))
-            if valEnd = 0 then return ""
-            return Mid(line, valStart, valEnd - valStart)
+        function inferStreamFormat(url as String) as String
+            normalized = LCase(url)
+            if Instr(1, normalized, "output=ts") > 0 or Instr(1, normalized, "format=ts") > 0 or
+                Instr(1, normalized, "output=mp2ts") > 0 or Instr(1, normalized, "format=mp2ts") > 0 or
+                Instr(1, normalized, "container=mp2ts") > 0 or Instr(1, normalized, "stream_format=mp2ts") > 0
+                return "mp2ts"
+            end if
+            if Instr(1, normalized, "output=m3u8") > 0 or Instr(1, normalized, "format=hls") > 0 or
+                Instr(1, normalized, "output=hls") > 0 or Instr(1, normalized, "container=m3u8") > 0 or
+                Instr(1, normalized, "stream_format=hls") > 0
+                return "hls"
+            end if
+            queryStart = Instr(1, normalized, "?")
+            if queryStart > 0 then normalized = Left(normalized, queryStart - 1)
+            fragmentStart = Instr(1, normalized, "#")
+            if fragmentStart > 0 then normalized = Left(normalized, fragmentStart - 1)
+            if Right(normalized, 5) = ".m3u8" then return "hls"
+            if Right(normalized, 3) = ".ts" then return "mp2ts"
+            if Right(normalized, 4) = ".mp4" or Right(normalized, 4) = ".m4v" then return "mp4"
+            if Right(normalized, 4) = ".mkv" then return "mkv"
+            if Right(normalized, 4) = ".mov" then return "mov"
+            if Right(normalized, 4) = ".mp3" then return "mp3"
+            if Right(normalized, 4) = ".mpd" then return "dash"
+            if Right(normalized, 4) = ".avi" or Right(normalized, 4) = ".m3u" then return "unsupported"
+            return "hls"
         end function
 
     ]]></script>

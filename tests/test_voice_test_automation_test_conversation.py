@@ -1,11 +1,26 @@
 """Test conversation manager."""
 
-import sys
-import os
 import time
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
+from pathlib import Path
+
+import pytest
+
+_VOICE_AUTOMATION = (
+    Path(__file__).resolve().parents[1]
+    / "chatops"
+    / "irc"
+    / "bot-engine"
+    / "voice"
+    / "automation"
+)
+if not (_VOICE_AUTOMATION / "conversation.py").is_file():
+    pytest.skip(
+        "Legacy voice automation source is not included in this checkout.",
+        allow_module_level=True,
+    )
 
 import importlib.util
+import sys
 
 def load_module_from_path(module_name, file_path):
     """Load a module from a file path."""
@@ -16,9 +31,9 @@ def load_module_from_path(module_name, file_path):
     return module
 
 # Load conversation module
-base_path = os.path.join(os.path.dirname(__file__), '../../../chatops/irc/bot-engine/voice/automation')
-conversation_path = os.path.join(base_path, 'conversation.py')
-conversation_module = load_module_from_path('conversation', conversation_path)
+conversation_module = load_module_from_path(
+    "conversation", str(_VOICE_AUTOMATION / "conversation.py")
+)
 ConversationManager = conversation_module.ConversationManager
 ConversationTurn = conversation_module.ConversationTurn
 

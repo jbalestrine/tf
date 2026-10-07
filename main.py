@@ -7,6 +7,7 @@ print("DEBUG: main.py is starting", file=sys.stderr)
 
 import sys
 import os
+import secrets
 import random
 
 # Pre-import stdlib 'platform' before our local platform/ directory enters sys.path,
@@ -63,16 +64,15 @@ from pathlib import Path
 import psutil
 
 import subprocess
-
 import textwrap
-
 import zipfile
-
 import shutil
-
+import shlex
+import smtplib
+import ssl
 import html
-
 from datetime import datetime
+from email.message import EmailMessage
 
 from werkzeug.utils import secure_filename
 
@@ -81,6 +81,15 @@ import base64
 import hashlib
 
 import requests
+from core.roku_playlist import (
+    MAX_PLAYLIST_ENTRIES,
+    classify_entry as _classify_roku_entry,
+    group_entries as _group_roku_entries,
+    normalize_group_key as _normalize_group_key,
+    parse_json_playlist as _parse_roku_json_playlist,
+    parse_m3u_playlist as _parse_roku_m3u_playlist,
+)
+from core.roku_settings import get_roku_settings
 
 try:
     from cryptography.fernet import Fernet
@@ -98,6 +107,10 @@ from utils import (
     _safe_script_path,
     load_enabled_modules
 )
+from utils.ide_files import resolve_project_file
+from utils.code_archetypes import with_archetype_client as _with_archetype_client
+from core.remote_text import is_allowed_sender, is_twilio_enabled, verify_twilio_signature
+from core.site_branding import add_global_site_brand
 from utils.terraform import EnterpriseTerraformGenerator
 from templates.base import HTML_TEMPLATE
 from templates.pages import (
@@ -137,22 +150,33 @@ from echo.identity import Echo
 
 sys.path.remove(_script_dir)
 
-# Import authentication modules
+# Core authentication must not depend on optional cloud-provider SDKs.
 try:
     from auth_config import auth_config
     from auth_module import init_auth, requires_permission
-    from azure_integration import azure_integration
-    from github_integration import github_integration
-    from app_management import app_management
     AUTH_MODULES_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Authentication modules not available: {e}")
     AUTH_MODULES_AVAILABLE = False
-    # Define dummy decorator when auth modules are not available
+
+    from functools import wraps
+    from flask import abort
+
     def requires_permission(permission):
         def decorator(f):
-            return f
+            @wraps(f)
+            def authentication_unavailable(*args, **kwargs):
+                abort(503, description='Authentication is unavailable; protected access is disabled.')
+            return authentication_unavailable
         return decorator
+
+# Cloud integrations are optional and must not disable RBAC login.
+try:
+    from azure_integration import azure_integration
+    from github_integration import github_integration
+    from app_management import app_management
+except ImportError as e:
+    print(f"Warning: Optional cloud integrations not available: {e}")
 
 # Import setup wizard (works with or without auth modules)
 try:
@@ -172,11 +196,11 @@ except ImportError as e:
     print(f"⚠️  Warning: Failed to initialize feature manager: {e}")
     FEATURE_MANAGER_AVAILABLE = False
 
-from flask import Flask, render_template_string, request, jsonify, redirect, url_for, flash, get_flashed_messages, send_file
+from flask import Flask, render_template_string, request, jsonify, redirect, url_for, flash, get_flashed_messages, send_file, session
 
 from flask_cors import CORS
 
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 # Import TF Wizard modules
 try:
@@ -197,7 +221,11 @@ except ImportError as e:
 
 app=Flask(__name__)
 
-app.config['SECRET_KEY']='masterchief-secret-key-change-in-production'
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY') or secrets.token_urlsafe(48)
+if not os.environ.get('FLASK_SECRET_KEY'):
+    app.logger.warning('FLASK_SECRET_KEY is unset; using an ephemeral key and expiring sessions at restart')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 CORS(app, resources={r"/*": {
     "origins": "*",
@@ -214,41 +242,106 @@ def _add_cors_headers(response):
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, Origin, X-Requested-With'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Expose-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response = add_global_site_brand(response)
+    if response.mimetype == 'text/html' and response.status_code != 304 and not response.is_streamed:
+        body = response.get_data()
+        modified = False
+        if request.args.get('chatserv_notice') and b'id="chatserv-transfer-notice"' not in body:
+            notice_text = html.escape(request.args.get('chatserv_notice', '')[:300], quote=True).encode('utf-8')
+            notice = (
+                b'<aside id="chatserv-transfer-notice" role="status" '
+                b'style="position:fixed;z-index:99999;top:16px;right:16px;max-width:min(420px,90vw);'
+                b'padding:12px 16px;border:1px solid #6d5aa6;border-radius:8px;'
+                b'background:#211c32;color:#f2edff;font:14px/1.5 Segoe UI,Arial,sans-serif;'
+                b'box-shadow:0 8px 24px #0008;">' + notice_text + b'</aside>'
+            )
+            body_start = body.lower().find(b'<body')
+            insert_at = body.find(b'>', body_start) + 1 if body_start >= 0 else -1
+            if insert_at > 0:
+                body = body[:insert_at] + notice + body[insert_at:]
+            else:
+                body = notice + body
+            modified = True
+        if session.get('chatserv_user_id') and b'id="chatserv-transfer-monitor"' not in body:
+            transfer_monitor = (
+                b'<script id="chatserv-transfer-monitor">'
+                b'(function(){let busy=false;async function poll(){if(busy)return;busy=true;try{'
+                b'const r=await fetch("/api/chatserv/transfers/consume",{method:"POST",'
+                b'credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"});'
+                b'if(!r.ok)return;const d=await r.json();const t=(d.transfers||[])[0];if(t&&t.page){'
+                b'const u=new URL(t.page,location.origin);u.searchParams.set("chatserv_notice",t.message||"Page transfer");'
+                b'location.assign(u.pathname+u.search)}}catch(e){console.warn("ChatServ transfer check failed",e)}finally{busy=false}}'
+                b'poll();setInterval(poll,2500)})();'
+                b'</script>'
+            )
+            lower_body = body.lower()
+            closing_body = lower_body.find(b'</body')
+            if closing_body >= 0:
+                body = body[:closing_body] + transfer_monitor + body[closing_body:]
+            else:
+                body += transfer_monitor
+            modified = True
+        if b'id="masterchief-site-footer"' not in body:
+            footer = (
+                b'<footer id="masterchief-site-footer" role="contentinfo" '
+                b'style="margin-top:24px;padding:10px 16px;text-align:center;'
+                b'font:12px/1.5 Segoe UI,Arial,sans-serif;color:#9ca3af;'
+                b'background:#171717;border-top:1px solid #374151;">'
+                b'MASTERCHIEF - ECHO STARLITE - DevOps Suite | JOSEPH BALESTRINE - 2026. | '
+                b'<a href="https://linkedin.com/in/x122" target="_blank" '
+                b'rel="noopener noreferrer" style="color:#8ae2a0;">'
+                b'https://linkedin.com/in/x122</a></footer>'
+            )
+            lower_body = body.lower()
+            closing_body = lower_body.find(b'</body')
+            closing_html = lower_body.find(b'</html')
+            insert_at = closing_body if closing_body >= 0 else closing_html
+            if insert_at >= 0:
+                body = body[:insert_at] + footer + body[insert_at:]
+            else:
+                body += footer
+            modified = True
+        if modified:
+            response.set_data(body)
+            response.headers.pop('ETag', None)
     return response
 
 
 def _fetch_remote_playlist_text(url, timeout=30):
-    """Fetch remote M3U/M3U8 playlists with permissive IPTV-friendly behavior."""
+    """Fetch one HTTP(S) playlist without silently changing protocols or disabling TLS checks."""
     if not url:
         raise ValueError('Playlist URL is required')
+    from urllib.parse import urlsplit
 
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': 'MasterChief-Roku/1.0 (+https://masterchief.local)',
-        'Accept': '*/*, application/vnd.apple.mpegurl, application/octet-stream, text/plain',
-        'Referer': url,
-    })
-
-    candidates = []
-    seen = set()
-    for candidate in [url, url.replace('https://', 'http://', 1), url.replace('http://', 'https://', 1)]:
-        if candidate and candidate not in seen:
-            candidates.append(candidate)
-            seen.add(candidate)
-
-    last_error = None
-    for candidate in candidates:
-        try:
-            response = session.get(candidate, timeout=timeout, allow_redirects=True, verify=False)
-            response.raise_for_status()
-            if response.status_code in (200, 206):
-                return response.text
-        except Exception as exc:  # pragma: no cover - network-dependent fallback
-            last_error = exc
-
-    if last_error is not None:
-        raise last_error
-    raise RuntimeError(f'Unable to fetch playlist from {url}')
+    parsed = urlsplit(url)
+    if parsed.scheme.lower() not in ('http', 'https') or not parsed.hostname:
+        raise ValueError('Playlist URL must use HTTP or HTTPS.')
+    with requests.get(
+        url,
+        headers={
+            'User-Agent': 'MasterChief-Roku/1.0',
+            'Accept': 'application/vnd.apple.mpegurl, application/octet-stream, text/plain, */*',
+        },
+        timeout=(5, timeout),
+        allow_redirects=True,
+        stream=True,
+        verify=True,
+    ) as response:
+        response.raise_for_status()
+        content_length = response.headers.get('Content-Length')
+        if content_length and int(content_length) > 50 * 1024 * 1024:
+            raise ValueError('Playlist exceeds the 50 MiB download limit.')
+        chunks = []
+        total = 0
+        for chunk in response.iter_content(chunk_size=64 * 1024):
+            if not chunk:
+                continue
+            total += len(chunk)
+            if total > 50 * 1024 * 1024:
+                raise ValueError('Playlist exceeds the 50 MiB download limit.')
+            chunks.append(chunk)
+        encoding = response.encoding or 'utf-8'
+        return b''.join(chunks).decode(encoding, errors='replace'), response.url
 
 # Mount TF Wizard static files if available
 if TF_WIZARD_AVAILABLE:
@@ -308,13 +401,22 @@ ENABLED_MODULES = load_enabled_modules()
 def inject_ui_modules():
     """Inject pinned addon modules into every template so they appear in the nav."""
     try:
+        from utils.navigation import visible_pinned_modules
+
         ui_modules_file = app.config['UPLOAD_FOLDER'] / 'ui_modules.json'
         if ui_modules_file.exists():
             with open(ui_modules_file, 'r') as _f:
-                return {'ui_modules': json.load(_f)}
-    except Exception:
-        pass
-    return {'ui_modules': {}}
+                configured_modules = json.load(_f)
+        else:
+            configured_modules = {}
+        return {
+            'ui_modules': visible_pinned_modules(
+                configured_modules, app.config['UPLOAD_FOLDER']
+            )
+        }
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        app.logger.exception('Failed to load pinned add-on navigation entries')
+        return {'ui_modules': {}}
 
 for folder in [app.config['UPLOAD_FOLDER'],app.config['SCRIPTS_FOLDER'],_data_dir]:
 
@@ -1189,6 +1291,7 @@ def api_ado_hooks():
 
 
 @app.route('/api/ide/load', methods=['POST'])
+@requires_permission('web_ide')
 
 def api_ide_load():
 
@@ -1200,10 +1303,11 @@ def api_ide_load():
 
         return jsonify({'ok': False, 'error': 'filename required'}), 400
 
-    path = _safe_script_path(filename)
-
-    if not path or not path.exists():
-
+    try:
+        path = resolve_project_file(Path(__file__).resolve().parent, filename)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not path.is_file():
         return jsonify({'ok': False, 'error': 'file not found'}), 404
 
     try:
@@ -1221,6 +1325,7 @@ def api_ide_load():
 
 
 @app.route('/api/ide/save', methods=['POST'])
+@requires_permission('web_ide')
 
 def api_ide_save():
 
@@ -1236,40 +1341,13 @@ def api_ide_save():
 
     try:
 
-        # Check if this is a direct file path (web IDE) or script name (legacy)
-
-        if '/' in filename or '\\' in filename:
-
-            # Web IDE: save directly to project
-
-            base_path = Path(__file__).parent
-
-            file_path = (base_path / filename).resolve()
-
-            # Security check
-
-            if not file_path.is_relative_to(base_path):
-
-                return jsonify({'ok': False, 'error': 'Access denied'}), 403
-
-            # Create directory if needed
-
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Write file
-
-            file_path.write_text(content, encoding='utf-8')
-
-        else:
-
-            # Legacy: use script manager
-
-            script_mgr.add_script(filename, content)
-
+        file_path = resolve_project_file(Path(__file__).resolve().parent, filename)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(content, encoding='utf-8')
         return jsonify({'ok': True, 'filename': filename})
-
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
     except Exception as e:
-
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
@@ -1277,6 +1355,7 @@ def api_ide_save():
 
 
 @app.route('/api/ide/execute', methods=['POST'])
+@requires_permission('web_ide')
 
 def api_ide_execute():
 
@@ -1298,35 +1377,20 @@ def api_ide_execute():
 
         if filename:
 
-            path = _safe_script_path(filename)
-
-            if not path or not path.exists():
+            path = resolve_project_file(Path(__file__).resolve().parent, filename)
+            if not path.is_file():
 
                 if content:
 
-                    # Write content to the scripts folder so path will exist
-
-                    try:
-
-                        path.write_text(content, encoding='utf-8')
-
-                    except Exception:
-
-                        pass
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(content, encoding='utf-8')
 
                 else:
 
                     return jsonify({'ok': False, 'error': 'file not found'}), 404
 
-            if content and path and path.exists():
-
-                try:
-
-                    path.write_text(content, encoding='utf-8')
-
-                except Exception:
-
-                    pass
+            elif content is not None:
+                path.write_text(content, encoding='utf-8')
 
             cmd = _interpreter_cmd_for_path(path, requested_shell=shell)
 
@@ -1334,7 +1398,13 @@ def api_ide_execute():
 
                 return jsonify({'ok': False, 'error': 'no suitable interpreter found; specify shell explicitly (python,powershell,bash)'}), 500
 
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=str(Path(__file__).resolve().parent),
+            )
 
             return jsonify({'ok': True, 'stdout': proc.stdout, 'stderr': proc.stderr, 'returncode': proc.returncode})
 
@@ -1572,46 +1642,42 @@ def api_ide_log():
 
 
 @app.route('/api/ide/tree')
+@requires_permission('web_ide')
 
 def api_ide_tree():
-
-    # return directory tree; use project root for web IDE (paths with slashes) or scripts folder for legacy compatibility
 
     rel = request.args.get('path','')
 
     try:
 
-        # Check if this is a web IDE request (path contains slashes) or legacy script manager
-
-        if '/' in rel or '\\' in rel:
-
-            # Web IDE: use project root
-
-            base = Path(__file__).parent.resolve()
-
-        else:
-
-            # Legacy: use scripts folder (empty path or simple filename)
-
-            base = Path(app.config['SCRIPTS_FOLDER']).resolve()
-
-        target = (base / rel).resolve()
-
-        if not str(target).startswith(str(base)):
-
-            return jsonify({'ok': False, 'error':'invalid path'}), 400
+        base = Path(__file__).resolve().parent
+        target = resolve_project_file(base, rel)
+        if not target.exists():
+            return jsonify({'ok': False, 'error': f'directory not found: {rel or "."}'}), 404
+        if not target.is_dir():
+            return jsonify({'ok': False, 'error': 'path is not a directory'}), 400
 
         nodes = []
 
         try:
             paths = list(target.iterdir())
-        except (OSError, PermissionError) as e:
-            return jsonify({'ok': False, 'error': f'Cannot read directory: {e}'}), 500
+        except PermissionError:
+            return jsonify({'ok': False, 'error': f'permission denied reading directory: {rel or "."}'}), 403
+        except OSError as e:
+            app.logger.exception('Failed to read IDE directory %s', target)
+            return jsonify({'ok': False, 'error': f'cannot read directory {rel or "."}: {e}'}), 500
 
         for p in sorted(paths, key=lambda x: x.name):
 
             try:
-                if p.name.startswith('.') and p.name not in ['.env', '.env.example']:  # Allow some dotfiles
+                if p.name in {
+                    '.git', '.venv', 'venv', 'venv310', 'env', 'node_modules',
+                    'build', 'dist', '__pycache__', '.pytest_cache',
+                }:
+                    continue
+                if target == base / 'data' / 'uploads' and (
+                    p.name == 'extracted' or p.name.startswith('_extracted_disabled')
+                ):
                     continue
 
                 if p.is_dir():
@@ -1625,57 +1691,128 @@ def api_ide_tree():
 
         return jsonify({'ok':True,'path':str(target.relative_to(base)) if rel else '','nodes':nodes})
 
+    except ValueError as e:
+
+        return jsonify({'ok':False,'error':str(e)}),400
+
     except Exception as e:
 
+        app.logger.exception('Failed to list IDE directory')
         return jsonify({'ok':False,'error':str(e)}),500
 
 
+@app.route('/api/ide/search')
+@requires_permission('web_ide')
+def api_ide_search():
+    query = (request.args.get('q') or '').strip().casefold()
+    if not query:
+        return jsonify({'ok': False, 'error': 'search query required'}), 400
 
+    root = Path(__file__).resolve().parent
+    ignored_dirs = {
+        '.git', '.venv', 'venv', 'venv310', 'env', 'node_modules', 'build',
+        'dist', '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache',
+        'site-packages', '.tox', 'htmlcov',
+    }
+    code_extensions = {
+        '.py', '.pyw', '.ps1', '.psm1', '.sh', '.bash', '.bat', '.cmd',
+        '.js', '.jsx', '.ts', '.tsx', '.html', '.css', '.scss', '.java',
+        '.go', '.rs', '.rb', '.php', '.sql', '.tf', '.hcl', '.json',
+        '.yaml', '.yml', '.toml', '.ini', '.cfg', '.c', '.h', '.cpp',
+        '.hpp', '.cs', '.fs', '.r', '.lua', '.pl', '.ex', '.exs',
+    }
+    matches = []
+    total = 0
+
+    try:
+        for directory, child_dirs, filenames in os.walk(root, onerror=lambda error: app.logger.warning(
+            'Skipping unreadable IDE search directory %s: %s', error.filename, error
+        )):
+            relative_dir = Path(directory).relative_to(root)
+            child_dirs[:] = sorted(
+                d for d in child_dirs
+                if d not in ignored_dirs and not d.startswith('_extracted_disabled')
+                and not (relative_dir == Path('data/uploads') and d == 'extracted')
+            )
+            current = Path(directory)
+            for filename in filenames:
+                path = current / filename
+                if path.suffix.lower() not in code_extensions:
+                    continue
+                relative = path.relative_to(root).as_posix()
+                if query not in relative.casefold():
+                    continue
+                total += 1
+                if len(matches) < 200:
+                    try:
+                        stat = path.stat()
+                        matches.append({
+                            'type': 'file',
+                            'name': filename,
+                            'path': relative,
+                            'size': stat.st_size,
+                            'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        })
+                    except OSError:
+                        app.logger.warning('Skipping IDE search result that became inaccessible: %s', path)
+
+        return jsonify({'ok': True, 'query': query, 'total': total, 'truncated': total > len(matches), 'nodes': matches})
+    except OSError as e:
+        app.logger.exception('IDE project search failed')
+        return jsonify({'ok': False, 'error': f'project search failed: {e}'}), 500
 
 
 @app.route('/api/ide/exec_async', methods=['POST'])
+@requires_permission('web_ide')
 
 def api_ide_exec_async():
 
     data = request.get_json(silent=True) or {}
 
-    cmd = data.get('command') or data.get('content') or data.get('filename')
-
-    cwd = data.get('cwd')
-
-    if not cmd:
-
-        return jsonify({'ok':False,'error':'command required'}),400
-
-    exec_id = uuid.uuid4().hex
-
-    EXEC_JOBS[exec_id] = {'id':exec_id,'status':'queued','cmd':cmd,'pid':None,'returncode':None,'started_at':None,'finished_at':None,'cwd':cwd}
-
-    # determine actual command form: if user passed filename within scripts folder, run script
-
-    # if cmd looks like a filename under scripts, run it
-
-    base = Path(app.config['SCRIPTS_FOLDER']).resolve()
-
     try:
+        filename = data.get('filename')
+        content = data.get('content')
+        shell = data.get('shell')
+        if not filename:
+            return jsonify({'ok': False, 'error': 'filename required'}), 400
 
-        maybe = base / cmd
+        path = resolve_project_file(Path(__file__).resolve().parent, filename)
+        if content is not None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding='utf-8')
+        if not path.is_file():
+            return jsonify({'ok': False, 'error': 'file not found'}), 404
 
-        if maybe.exists():
+        command = _interpreter_cmd_for_path(path, requested_shell=shell)
+        if not command:
+            return jsonify({'ok': False, 'error': 'no suitable interpreter for this file'}), 400
 
-            # run file
-
-            command = str(maybe)
-
+        requested_cwd = data.get('cwd')
+        if requested_cwd:
+            cwd = resolve_project_file(Path(__file__).resolve().parent, requested_cwd)
+            if not cwd.is_dir():
+                return jsonify({'ok': False, 'error': 'working directory not found'}), 404
         else:
+            cwd = Path(__file__).resolve().parent
 
-            command = cmd
+        exec_id = uuid.uuid4().hex
+        EXEC_JOBS[exec_id] = {
+            'id': exec_id,
+            'status': 'queued',
+            'cmd': command,
+            'pid': None,
+            'returncode': None,
+            'started_at': None,
+            'finished_at': None,
+            'cwd': str(cwd),
+        }
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    except OSError as e:
+        app.logger.exception('Unable to prepare IDE script for asynchronous execution')
+        return jsonify({'ok': False, 'error': f'unable to prepare script: {e}'}), 500
 
-    except Exception:
-
-        command = cmd
-
-    _start_job_thread(exec_id, command, cwd=cwd)
+    _start_job_thread(exec_id, command, cwd=str(cwd))
 
     return jsonify({'ok':True,'exec_id':exec_id})
 
@@ -1684,6 +1821,7 @@ def api_ide_exec_async():
 
 
 @app.route('/api/ide/exec_status')
+@requires_permission('web_ide')
 
 def api_ide_exec_status():
 
@@ -2038,21 +2176,30 @@ app.config['_rbac_mgr'] = rbac_mgr
 # Register blueprints
 from blueprints import (
     azure,
+    chatserv_routes,
     diagnostics_routes,
     feature_routes,
+    iac_routes,
     ide,
     manager,
     mock,
+    observability_routes,
     ops_routes,
+    roku_routes,
     scm_routes,
     terraform,
     ui_pages,
     wizard,
 )
 from renderers import render_resources_page, render_addons_modules_page, render_module_manager_page, render_addons_module_config_page, render_echo_training_page
+from blueprints import deploy_routes
+app.register_blueprint(deploy_routes.deploy_bp)
 app.register_blueprint(ide.ide_bp)
 app.register_blueprint(terraform.terraform_bp)
+app.register_blueprint(iac_routes.iac_bp)
+app.register_blueprint(roku_routes.roku_bp)
 app.register_blueprint(mock.mock_bp)
+app.register_blueprint(observability_routes.observability_bp)
 app.register_blueprint(azure.azure_bp)
 app.register_blueprint(manager.manager_bp)
 app.register_blueprint(ui_pages.ui_pages_bp)
@@ -2061,6 +2208,7 @@ app.register_blueprint(ops_routes.ops_bp)
 app.register_blueprint(diagnostics_routes.diagnostics_bp)
 app.register_blueprint(scm_routes.scm_bp)
 app.register_blueprint(wizard.wizard_bp)
+chatserv_routes.init_chatserv(app, Path(__file__).resolve().parent)
 
 
 
@@ -2390,27 +2538,35 @@ h1{color:#4CAF50;font-size:2.5em;margin-bottom:10px;}
 
 .subtitle{color:#888;font-size:1.1em;}
 
-nav{background:rgba(18,22,31,0.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:12px 18px;margin-bottom:30px;border-radius:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;border:1px solid rgba(148,163,184,0.18);box-shadow:0 8px 24px rgba(15,23,42,0.38);}
+nav{position:sticky;top:8px;z-index:500;background:rgba(18,22,31,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:10px 14px;margin-bottom:24px;border-radius:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid rgba(148,163,184,0.18);box-shadow:0 8px 24px rgba(15,23,42,0.38);}
 
 .nav-group{position:relative;display:inline-block;}
 
-.nav-group > summary.dropbtn{list-style:none;cursor:pointer;background:linear-gradient(135deg,rgba(22,27,39,0.9),rgba(15,118,110,0.2));color:#8ae2a0;border:1px solid rgba(122,217,167,0.32);border-radius:12px;padding:10px 14px;font-weight:700;text-decoration:none;display:inline-block;transition:all 0.25s ease;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 6px 18px rgba(16,185,129,0.08);}
+.nav-group > summary.dropbtn{list-style:none;cursor:pointer;background:linear-gradient(135deg,rgba(22,27,39,0.9),rgba(15,118,110,0.2));color:#8ae2a0;border:1px solid rgba(122,217,167,0.32);border-radius:12px;padding:9px 12px;font-weight:700;text-decoration:none;display:inline-block;transition:background-color 0.15s ease,color 0.15s ease;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 4px 12px rgba(16,185,129,0.08);}
 
 .nav-group > summary.dropbtn::-webkit-details-marker{display:none;}
 
-.nav-group[open] > summary.dropbtn,.nav-group > summary.dropbtn:hover{background:linear-gradient(135deg,#4CAF50,#2b6b43);color:#fff;transform:translateY(-1px);box-shadow:0 10px 22px rgba(76,175,80,0.22);}
-
-.nav-group-content{display:none;position:absolute;left:0;top:calc(100% + 8px);min-width:240px;background:rgba(15,23,42,0.96);border:1px solid rgba(148,163,184,0.18);border-radius:14px;box-shadow:0 18px 38px rgba(2,6,23,0.6);z-index:50;padding:8px 0;margin-top:0;backdrop-filter:blur(10px);}
+.nav-group[open] > summary.dropbtn,.nav-group > summary.dropbtn:hover,.nav-group > summary.dropbtn:focus-visible{background:linear-gradient(135deg,#4CAF50,#2b6b43);color:#fff;box-shadow:0 8px 18px rgba(76,175,80,0.22);}
+.nav-group-content{display:none;position:absolute;left:0;top:calc(100% + 6px);min-width:240px;max-height:min(70vh,540px);overflow-y:auto;background:rgba(15,23,42,0.98);border:1px solid rgba(148,163,184,0.18);border-radius:12px;box-shadow:0 14px 30px rgba(2,6,23,0.5);z-index:501;padding:6px 0;margin-top:0;}
 
 .nav-group[open] .nav-group-content{display:block;}
 
-.nav-group-content a{display:block;color:#dbeafe;text-decoration:none;padding:9px 12px;border-left:3px solid transparent;white-space:nowrap;font-size:0.96rem;transition:all 0.2s ease;}
+.nav-group-content a{display:block;color:#dbeafe;text-decoration:none;padding:8px 12px;border-left:3px solid transparent;white-space:normal;font-size:0.94rem;transition:background-color 0.12s ease,color 0.12s ease;}
 
 .nav-group-content a:hover,.nav-group-content a.active{background:linear-gradient(90deg,rgba(76,175,80,0.15),rgba(59,130,246,0.08));border-left-color:#4CAF50;color:#9ae6b4;}
 
 nav a{color:#9ae6b4;text-decoration:none;margin-right:0;padding:9px 12px;border-radius:10px;display:inline-block;transition:all 0.25s ease;border:1px solid transparent;}
 
 nav a:hover,nav a.active{background:linear-gradient(135deg,#4CAF50,#2e7d32);color:#fff;border-color:rgba(255,255,255,0.08);box-shadow:0 10px 20px rgba(76,175,80,0.18);}
+.nav-search{order:-1;display:flex;align-items:center;gap:8px;margin-right:auto;min-width:min(100%,260px);}
+.nav-search input{width:100%;max-width:300px;padding:9px 12px;background:#111827;border:1px solid rgba(148,163,184,0.3);border-radius:10px;color:#f8fafc;font-size:0.94rem;}
+.nav-search input:focus{border-color:#4CAF50;box-shadow:0 0 0 3px rgba(76,175,80,0.15);outline:none;}
+.nav-search-status{font-size:0.78rem;color:#94a3b8;white-space:nowrap;}
+.nav-group-content a[hidden],nav > a[hidden],.nav-group[hidden]{display:none!important;}
+.nav-group-content .nav-subgroup-label{padding:9px 14px 4px;color:#94a3b8;text-transform:uppercase;font-size:0.72rem;font-weight:700;letter-spacing:.08em;}
+.nav-group-content a:focus-visible,nav > a:focus-visible{outline:2px solid #86efac;outline-offset:2px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+@media(max-width:720px){nav{position:relative;top:auto;padding:8px;gap:6px}.nav-search{flex:1 0 100%;margin:0 0 4px}.nav-search input{max-width:none}.nav-group{flex:1 1 auto}.nav-group>summary.dropbtn{width:100%;text-align:center}.nav-group[open] .nav-group-content{position:relative;left:auto;top:auto;min-width:100%;max-height:50vh;box-shadow:none;margin-top:4px}}
 
 .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-bottom:30px;}
 
@@ -2497,13 +2653,8 @@ code{color:#4CAF50;}
 <body>
 
 <div class="container">
-
-<header>
-
-<h1>⚡ MasterChief</h1>
-
-<p class="subtitle">DevOps Automation Platform</p>
-
+<header id="masterchief-site-brand" role="banner" style="position:relative;display:flex;align-items:center;min-height:92px;">
+<a href="/" aria-label="MasterChief home" style="display:inline-flex;align-items:center;"><img src="/static/masterchief-logo.svg" alt="MasterChief - Echo Starlite DevOps Suite" style="display:block;width:min(360px,75vw);height:auto;"></a>
 <div style="position:absolute;right:20px;top:24px;">
 
     <label style="color:#ccc;font-size:0.9em;">Language: <select id="langSelect" style="background:#1a1a1a;color:#eee;border:1px solid #333;padding:6px;border-radius:6px;"><option value="en">English</option><option value="es">Español</option></select></label>
@@ -2512,8 +2663,9 @@ code{color:#4CAF50;}
 
 </header>
 
-<nav>
+<nav aria-label="Main navigation">
   <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
+  <label class="nav-search"><span class="sr-only">Search pages</span><input id="nav-search" type="search" placeholder="Find a page…  Ctrl+K" autocomplete="off" aria-label="Find a page"><span id="nav-search-status" class="nav-search-status" aria-live="polite"></span></label>
 
   <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') else '' }}">
     <summary class="dropbtn">Operate</summary>
@@ -2533,17 +2685,26 @@ code{color:#4CAF50;}
     </div>
   </details>
 
-  <details class="nav-group {{ 'active' if request.path.startswith('/pipelines') or request.path.startswith('/modules') or request.path.startswith('/addons') or request.path.startswith('/arm_creator') or request.path.startswith('/iac_manager') or request.path.startswith('/blueprint-wizard') or request.path.startswith('/features') else '' }}">
+  <details class="nav-group {{ 'active' if request.path.startswith('/pipelines') or request.path.startswith('/modules') or request.path.startswith('/addons') or request.path.startswith('/arm_creator') or request.path.startswith('/iac_manager') or request.path.startswith('/blueprint-wizard') or request.path.startswith('/tf_wizard') or request.path.startswith('/archetypes') or request.path.startswith('/features') else '' }}">
     <summary class="dropbtn">Build</summary>
     <div class="nav-group-content">
       <a href="/pipelines" class="{{ 'active' if '/pipelines' in request.path else '' }}">🚀 Pipelines</a>
+      <a href="/observability" class="{{ 'active' if '/observability' in request.path else '' }}">📈 Observability</a>
       <a href="/modules" class="{{ 'active' if request.path=='/modules' else '' }}">🧱 Modules</a>
       <a href="/addons" class="{{ 'active' if '/addons' in request.path and '/modules' not in request.path else '' }}">📦 Addons</a>
       <a href="/addons/modules" class="{{ 'active' if '/addons/modules' in request.path else '' }}">🧩 Addon Modules</a>
       <a href="/blueprint-wizard" class="{{ 'active' if '/blueprint-wizard' in request.path else '' }}">🧩 Blueprint Wizard</a>
+      <a href="/tf_wizard" class="{{ 'active' if request.path.startswith('/tf_wizard') else '' }}">🏗 Terraform Wizard</a>
       <a href="/arm_creator" class="{{ 'active' if '/arm_creator' in request.path else '' }}">🧱 ARM Creator</a>
       <a href="/iac_manager" class="{{ 'active' if '/iac_manager' in request.path else '' }}">🏗 IaC Manager</a>
+      <a href="/archetypes?return={{ request.path|urlencode }}" class="{{ 'active' if '/archetypes' in request.path else '' }}">🧭 Code Archetypes</a>
       <a href="/features" class="{{ 'active' if '/features' in request.path else '' }}">⚡ Features</a>
+      {% if ui_modules is defined and ui_modules %}
+      <div class="nav-subgroup-label">Pinned Add-ons</div>
+      {% for _mod_name, _mod in ui_modules.items() %}
+      <a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Add-on module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
+      {% endfor %}
+      {% endif %}
     </div>
   </details>
 
@@ -2552,7 +2713,9 @@ code{color:#4CAF50;}
     <div class="nav-group-content">
       <a href="/gallery" class="{{ 'active' if '/gallery' in request.path else '' }}">🖼 Gallery</a>
       <a href="/marketplace" class="{{ 'active' if '/marketplace' in request.path else '' }}">🛍 Marketplace</a>
+      {% if current_user.is_authenticated and ('*' in current_user.permissions or 'rbac' in current_user.permissions) %}
       <a href="/media/roku" class="{{ 'active' if '/media/roku' in request.path or '/roku-builder' in request.path else '' }}">📺 Roku Builder</a>
+      {% endif %}
     </div>
   </details>
 
@@ -2560,6 +2723,7 @@ code{color:#4CAF50;}
     <summary class="dropbtn">AI &amp; Tools</summary>
     <div class="nav-group-content">
       <a href="/echo-chat" class="{{ 'active' if '/echo-chat' in request.path else '' }}">🌙 Echo Chat</a>
+      <a href="/echo-commands" class="{{ 'active' if '/echo-commands' in request.path else '' }}">⌨ Echo Commands</a>
       <a href="/echo-train" class="{{ 'active' if '/echo-train' in request.path else '' }}">🎓 Training</a>
       <a href="/echo-memory" class="{{ 'active' if '/echo-memory' in request.path else '' }}">🧠 Echo Memory</a>
       <a href="/web_ide" class="{{ 'active' if '/web_ide' in request.path else '' }}">💻 Web IDE</a>
@@ -2567,18 +2731,17 @@ code{color:#4CAF50;}
     </div>
   </details>
 
-  <details class="nav-group {{ 'active' if request.path.startswith('/rbac') or request.path.startswith('/secrets') or request.path.startswith('/teams') or request.path.startswith('/okta') else '' }}">
-    <summary class="dropbtn">Secure</summary>
+  <details class="nav-group {{ 'active' if request.path.startswith('/rbac') or request.path.startswith('/secrets') or request.path.startswith('/teams') or request.path.startswith('/okta') or request.path.startswith('/google-services') else '' }}">
+    <summary class="dropbtn">Secure &amp; Connect</summary>
     <div class="nav-group-content">
       <a href="/rbac" class="{{ 'active' if '/rbac' in request.path else '' }}">🛡 RBAC</a>
       <a href="/secrets" class="{{ 'active' if '/secrets' in request.path else '' }}">🔐 Secrets</a>
       <a href="/teams" class="{{ 'active' if request.path=='/teams' else '' }}">📅 Teams</a>
       <a href="/okta" class="{{ 'active' if request.path=='/okta' else '' }}">🔒 Okta</a>
+      <a href="/google-services" class="{{ 'active' if '/google-services' in request.path else '' }}">🌐 Google Services</a>
     </div>
   </details>
 
-  {% for _mod_name, _mod in ui_modules.items() %}<a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Addon Module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
-  {% endfor %}
 </nav>
 
 {% with messages=get_flashed_messages(with_categories=true) %}
@@ -2607,23 +2770,20 @@ function openModal(modalId){document.getElementById(modalId).style.display='bloc
 
 function closeModal(modalId){document.getElementById(modalId).style.display='none';}
 
-function refreshStats(){fetch('/api/stats').then(r=>r.json()).then(data=>{
-
+function refreshStats(){
+const ids=['cpu-value','cpu-progress','mem-value','mem-progress','disk-value','disk-progress'];
+if(!ids.every(id=>document.getElementById(id))) return;
+fetch('/api/stats').then(r=>{if(!r.ok)throw new Error('Stats request failed: '+r.status);return r.json();}).then(data=>{
+if(!data.cpu||!data.memory||!data.disk)throw new Error('Stats response is incomplete');
 document.getElementById('cpu-value').textContent=data.cpu.percent.toFixed(1)+'%';
-
 document.getElementById('cpu-progress').style.width=data.cpu.percent+'%';
-
 document.getElementById('mem-value').textContent=data.memory.percent.toFixed(1)+'%';
-
 document.getElementById('mem-progress').style.width=data.memory.percent+'%';
-
 document.getElementById('disk-value').textContent=data.disk.percent.toFixed(1)+'%';
-
 document.getElementById('disk-progress').style.width=data.disk.percent+'%';
-
 }).catch(err=>console.error('Failed to refresh stats:',err));}
 
-setInterval(refreshStats,5000);
+if(document.getElementById('cpu-value')) setInterval(refreshStats,5000);
 
 function refreshIndex(){
 
@@ -2734,12 +2894,11 @@ function refreshIndex(){
         }
 
     }).catch(e=>{ alert('Refresh error: '+e); });
-
 }
-
 </script>
-
-</body>
+    <script src="/static/code_archetypes.js" defer></script>
+    <script src="/static/navigation.js" defer></script>
+    </body>
 
 </html>"""
 
@@ -3706,7 +3865,7 @@ ECHO_CHAT_TEMPLATE="""{% extends "base.html" %}
 
 <div class="echo-main">
 
-<div class="chat-header">🌙 Echo Starlite - Chat <button class="btn btn-sm" style="margin-left:8px;" onclick="openImagePrompt()">Generate Image</button></div>
+<div class="chat-header">🌙 Echo Starlite - Chat <a href="/echo-commands" class="btn btn-sm" style="margin-left:8px;color:#fff;">⌨ Command Center</a><button class="btn btn-sm" style="margin-left:8px;" onclick="openImagePrompt()">Generate Image</button></div>
 
 <div class="chat-messages" id="chatMessages">
 
@@ -3786,7 +3945,8 @@ ECHO_CHAT_TEMPLATE="""{% extends "base.html" %}
     <button type="submit" class="send-btn">Send 💜</button>
     <button type="button" id="voiceMicBtn" title="Voice input" onclick="toggleVoiceListening()" style="background:none;border:1px solid #6b46c1;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background 0.2s;">🎤</button>
     <button type="button" id="voiceTtsBtn" title="Speak Echo's replies" onclick="toggleTTS()" style="background:none;border:1px solid #444;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background 0.2s;">🔇</button>
-    <button type="button" title="Voice commands" onclick="toggleVoicePanel()" style="background:none;border:1px solid #444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:13px;color:#ccc;">⚡ Commands</button>
+    <button type="button" title="Echo and voice commands" onclick="toggleVoicePanel()" style="background:none;border:1px solid #444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:13px;color:#ccc;">⚡ Commands</button>
+    <button type="button" title="Interactive function-by-function script wizard" onclick="openEchoScriptWizard()" style="background:#6b46c1;border:1px solid #9370db;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:13px;color:#fff;">🧙 Code Wizard</button>
 
     </div>
 
@@ -3809,12 +3969,63 @@ ECHO_CHAT_TEMPLATE="""{% extends "base.html" %}
     </div>
   </div>
   <div style="margin-top:10px;font-size:0.78em;color:#666;">💡 Tip: click the 🎤 mic button then speak a phrase to execute it, or just chat naturally.</div>
+  <div style="border-top:1px solid #333;padding-top:12px;margin-top:12px;">
+    <strong style="color:#c9b0ff;">Echo Code &amp; Admin Commands</strong>
+    <div style="font-size:0.78em;color:#aaa;margin:6px 0 10px;">Click a command to put it in chat; review it and press Send to execute. `!run` runs with the MasterChief server account's operating-system permissions.</div>
+    <div id="echoCommandCatalog" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px;">
+      <button type="button" onclick="insertEchoCommand('!help')" class="btn btn-sm">!help — script-writing help</button>
+      <button type="button" onclick="insertEchoCommand('!commands')" class="btn btn-sm">!commands — full command list</button>
+      <button type="button" onclick="insertEchoCommand('!OP')" class="btn btn-sm">!OP — request admin operator mode</button>
+      <button type="button" onclick="insertEchoCommand('!masterchief')" class="btn btn-sm">!masterchief — operator alias</button>
+      <button type="button" onclick="insertEchoCommand('!deop')" class="btn btn-sm">!deop — leave operator mode</button>
+      <button type="button" onclick="insertEchoCommand('!status')" class="btn btn-sm">!status — auth and operator status</button>
+      <button type="button" onclick="insertEchoCommand('!library find ')" class="btn btn-sm">!library find — locate source</button>
+      <button type="button" onclick="openEchoScriptWizard()" class="btn btn-sm">!write — open function-by-function wizard</button>
+      <button type="button" onclick="insertEchoCommand('!run data/scripts/')" class="btn btn-sm">!run — run a named project script</button>
+    </div>
+  </div>
 </div>
 
 </div>
 
 </div>
 
+</div>
+
+<div id="echoScriptWizard" role="dialog" aria-modal="true" aria-labelledby="echoWizardTitle" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:10000;align-items:center;justify-content:center;padding:18px;">
+  <div style="width:min(760px,100%);max-height:90vh;overflow:auto;background:#20202b;color:#eee;border:1px solid #9370db;border-radius:12px;padding:20px;box-shadow:0 18px 60px #000;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 id="echoWizardTitle" style="margin:0;color:#c9b0ff;">Interactive Script Wizard</h2>
+      <button type="button" class="btn btn-sm" onclick="closeEchoScriptWizard()">Close</button>
+    </div>
+    <div id="echoWizardStep1">
+      <label for="echoWizardLanguage">1. Choose a language</label>
+      <select id="echoWizardLanguage" style="display:block;width:100%;margin:8px 0 16px;padding:10px;">
+        <option value="python">Python</option><option value="powershell">PowerShell</option><option value="bash">Bash</option><option value="terraform">Terraform</option>
+      </select>
+      <label for="echoWizardFilename">Script filename</label>
+      <input id="echoWizardFilename" value="new_echo_script.py" maxlength="80" style="display:block;width:100%;margin:8px 0 16px;">
+      <label for="echoWizardGoal">2. What should the script do?</label>
+      <textarea id="echoWizardGoal" rows="3" maxlength="1200" placeholder="Describe the outcome, inputs and environment..." style="display:block;width:100%;margin:8px 0 16px;"></textarea>
+    </div>
+    <div id="echoWizardStep2" style="display:none;">
+      <h3 style="color:#c9b0ff;">3. Define the functions</h3>
+      <p style="color:#aaa;font-size:.9em;">Enter one function per line as <code>function_name: responsibility</code>. Echo will include these in the script-generation request.</p>
+      <textarea id="echoWizardFunctions" rows="7" maxlength="2500" placeholder="load_config: read and validate settings&#10;build_worker: create a second worker instance&#10;main: coordinate startup and graceful shutdown" style="display:block;width:100%;margin:8px 0 16px;"></textarea>
+      <label for="echoWizardConstraints">4. Requirements and safety checks</label>
+      <textarea id="echoWizardConstraints" rows="3" maxlength="1200" placeholder="Tests, logging, dry-run behavior, permissions, rollback..."></textarea>
+    </div>
+    <div id="echoWizardStep3" style="display:none;">
+      <h3 style="color:#c9b0ff;">Review your request</h3>
+      <pre id="echoWizardPreview" style="white-space:pre-wrap;background:#111;padding:12px;border-radius:6px;max-height:320px;overflow:auto;"></pre>
+      <p style="color:#ffca80;">Echo will draft the code only. It will not save or run it unless you explicitly choose a separate action.</p>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;">
+      <button id="echoWizardBack" type="button" class="btn btn-sm" onclick="echoWizardBack()" style="display:none;">Back</button>
+      <span style="flex:1;"></span>
+      <button id="echoWizardNext" type="button" class="btn btn-primary" onclick="echoWizardNext()">Next</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -3822,6 +4033,8 @@ ECHO_CHAT_TEMPLATE="""{% extends "base.html" %}
 let sessionId='web_'+Date.now();
 
 let messageCount=0;
+let pendingScriptDraftFilename=null;
+let echoWizardStep=1;
 
 // Simple client-side translations (expandable)
 
@@ -3867,6 +4080,109 @@ const TRANSLATIONS = {
 
 let CURRENT_LANG = 'en';
 
+function insertEchoCommand(command){
+    const input=document.getElementById('chatInput');
+    if(!input)return;
+    input.value=command;
+    input.focus();
+    if(command.endsWith(' ')) input.setSelectionRange(command.length,command.length);
+}
+
+function echoWizardSetStep(step){
+    echoWizardStep=Math.max(1,Math.min(3,step));
+    for(let i=1;i<=3;i++){
+        const section=document.getElementById('echoWizardStep'+i);
+        if(section) section.style.display=i===echoWizardStep?'':'none';
+    }
+    document.getElementById('echoWizardBack').style.display=echoWizardStep===1?'none':'';
+    document.getElementById('echoWizardNext').textContent=echoWizardStep===3?'Draft with Echo':'Next';
+}
+
+function openEchoScriptWizard(){
+    const modal=document.getElementById('echoScriptWizard');
+    if(modal) modal.style.display='flex';
+    echoWizardSetStep(1);
+}
+
+function closeEchoScriptWizard(){
+    const modal=document.getElementById('echoScriptWizard');
+    if(modal) modal.style.display='none';
+}
+
+function echoWizardBack(){
+    echoWizardSetStep(echoWizardStep-1);
+}
+
+function echoWizardRequest(){
+    const language=document.getElementById('echoWizardLanguage').value;
+    const goal=document.getElementById('echoWizardGoal').value.trim();
+    const functions=document.getElementById('echoWizardFunctions').value.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+    const requirements=document.getElementById('echoWizardConstraints').value.trim();
+    const filename=document.getElementById('echoWizardFilename').value.trim();
+    const extension={python:'.py',powershell:'.ps1',bash:'.sh',terraform:'.tf'}[language];
+    const safeName=filename.split(/[\\\\/]/).pop().replace(/[^\\w.-]/g,'_').replace(/^\\.+/,'');
+    if(!safeName)return {language,scriptName:'',task:goal};
+    const scriptName=safeName.toLowerCase().endsWith(extension)?safeName:safeName.replace(/\\.[^.]+$/,'')+extension;
+    const sections=['Create a script named '+scriptName+'. Goal: '+goal];
+    if(functions.length) sections.push('Implement these functions, each with a clear responsibility: '+functions.join('; '));
+    if(requirements) sections.push('Requirements and safety checks: '+requirements.replace(/\\s+/g,' '));
+    return {language,scriptName,task:sections.join('. ')};
+}
+
+function echoWizardNext(){
+    if(echoWizardStep===1){
+        const goal=document.getElementById('echoWizardGoal').value.trim();
+        if(!goal){alert('Describe what the script should do first.');return;}
+        echoWizardSetStep(2);
+        return;
+    }
+    if(echoWizardStep===2){
+        const request=echoWizardRequest();
+        if(!request.scriptName){alert('Enter a valid script filename.');return;}
+        const lineBreak=String.fromCharCode(10);
+        document.getElementById('echoWizardPreview').textContent=
+            'Language: '+request.language+lineBreak+'Filename: data/scripts/'+request.scriptName+lineBreak+lineBreak+request.task;
+        echoWizardSetStep(3);
+        return;
+    }
+    const request=echoWizardRequest();
+    pendingScriptDraftFilename=request.scriptName;
+    closeEchoScriptWizard();
+    insertEchoCommand('!write '+request.language+' '+request.task);
+    const form=document.getElementById('chatInput').closest('form');
+    form.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
+}
+
+function offerSaveGeneratedScript(messageElement,responseText,filename){
+    const match=String(responseText||'').match(/```(?:[\\w+#.-]+)?[ \\t]*\\r?\\n([\\s\\S]*?)```/);
+    if(!match)return;
+    const saveButton=document.createElement('button');
+    saveButton.type='button';
+    saveButton.className='btn btn-sm btn-success';
+    saveButton.style.marginTop='8px';
+    saveButton.textContent='Save draft to data/scripts/'+filename;
+    saveButton.addEventListener('click',async()=>{
+        const path='data/scripts/'+filename;
+        if(!window.confirm('Save this generated draft to '+path+'? An existing file with this name will be overwritten.'))return;
+        saveButton.disabled=true;
+        try{
+            const response=await fetch('/api/ide/save',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({filename:path,content:match[1]})
+            });
+            const result=await response.json();
+            if(!result.ok)throw new Error(result.error||'Save failed');
+            saveButton.textContent='Saved '+path+' — open Code UI';
+            saveButton.onclick=()=>window.open('/masterchief_code_ui','_blank');
+        }catch(error){
+            saveButton.disabled=false;
+            alert('Could not save the script. Sign in with Code UI permission and try again. '+error.message);
+        }
+    });
+    messageElement.appendChild(saveButton);
+}
+
 document.getElementById('chatInput').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}));}});
 
 function sendMessage(e){
@@ -3878,6 +4194,8 @@ const input=document.getElementById('chatInput');
 const message=input.value.trim();
 
 if(!message)return;
+const draftFilename=pendingScriptDraftFilename;
+pendingScriptDraftFilename=null;
 
 // Run client-side action manager first (for actions like 'clear chat' that don't need the server)
 if(echoActionManager.dispatch(message, 'text')){ input.value=''; return; }
@@ -3906,7 +4224,8 @@ body:JSON.stringify({message:message,session_id:sessionId,auto_continue:autoCont
 
 hideTyping();
 
-addEchoMessage(data.response,data.message_id);
+const echoMessage=addEchoMessage(data.response,data.message_id);
+if(draftFilename) offerSaveGeneratedScript(echoMessage,data.response,draftFilename);
 
 updateStats();
 
@@ -4408,7 +4727,7 @@ function voiceTTSSpeak(text){
     if(!_voiceTTSEnabled || !_voiceSynth) return;
     _voiceSynth.cancel();
     // strip markdown-ish syntax for cleaner speech
-    const clean = text.replace(/```[\s\S]*?```/g,' code block ').replace(/`[^`]+`/g,'').replace(/[*_#]/g,'').replace(/https?:\/\/\S+/g,'link').slice(0,600);
+    const clean = text.replace(/```[\\s\\S]*?```/g,' code block ').replace(/`[^`]+`/g,'').replace(/[*_#]/g,'').replace(/https?:\\/\\/\\S+/g,'link').slice(0,600);
     const utt = new SpeechSynthesisUtterance(clean);
     utt.rate   = 1.0;
     utt.pitch  = 1.1;
@@ -4795,6 +5114,7 @@ msgDiv.innerHTML=html;
 container.appendChild(msgDiv);
 
 container.scrollTop=container.scrollHeight;
+return msgDiv;
 
 }
 
@@ -5202,7 +5522,7 @@ function fetchModels(){
 
             opt.value = m;
 
-            opt.textContent = m.split('/').slice(-1)[0];
+            opt.textContent = String(m).split(String.fromCharCode(92)).pop().split('/').pop();
 
             sel.appendChild(opt);
 
@@ -5214,7 +5534,12 @@ function fetchModels(){
 
             if(jm && jm.model){
 
-                const idx = Array.from(sel.options).findIndex(o=>o.value===jm.model || o.value===jm.model.replace(window.location.origin+'\\/',''));
+                const normalizeModelPath = value => String(value||'').split(String.fromCharCode(92)).join('/').toLowerCase();
+                const currentPath = normalizeModelPath(jm.model);
+                const idx = Array.from(sel.options).findIndex(o=>{
+                    const optionPath = normalizeModelPath(o.value);
+                    return currentPath === optionPath || currentPath.endsWith('/'+optionPath);
+                });
 
                 if(idx>=0) sel.selectedIndex = idx;
 
@@ -6765,8 +7090,9 @@ var _devicePollClientId = '';
   const y = now.getFullYear(), m = now.getMonth();
   const s = new Date(y, m, 1);
   const e = new Date(y, m+1, 0);
-  document.getElementById('tm-range-start').value = s.toISOString().slice(0,10);
-  document.getElementById('tm-range-end').value   = e.toISOString().slice(0,10);
+  const localDate = d => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  document.getElementById('tm-range-start').value = localDate(s);
+  document.getElementById('tm-range-end').value   = localDate(e);
   calRender();
   // Restore saved creds
   const saved = JSON.parse(localStorage.getItem('tm_creds')||'{}');
@@ -6829,7 +7155,7 @@ function tmQuickLogin(){
       st.innerHTML='<span style="color:#7ec8e3;">Code ready ↑</span>';
       _tmQuickPollInterval = setInterval(function(){ tmQuickPoll(true); }, 5000);
     } else {
-      st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||JSON.stringify(j))+'</span>';
+      st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||('Request failed ('+result.ok+')'))+'</span>';
     }
   }).catch(function(e){ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
 }
@@ -6913,7 +7239,8 @@ function tmQuickPoll(auto){
         localStorage.setItem('tm_creds',JSON.stringify(s));
       }catch(e){}
       // Switch to chat tab and load
-      tcMainTab('chat');
+      tcMainTab('cal');
+      teamsLoadRange();
     } else if(j.pending){
       if(!auto && st) st.textContent='Still waiting for sign-in\u2026';
     } else if(j.expired){
@@ -7084,7 +7411,8 @@ function teamsDevicePoll(auto){
       var save={mode:'mfa',tenant:_devicePollTenant};
       if(_teamsUpn) save.username=_teamsUpn;
       localStorage.setItem('tm_creds',JSON.stringify(save));
-      tcMainTab('chat');
+      tcMainTab('cal');
+      teamsLoadRange();
     } else if(j.pending){
       if(!auto) st.textContent='Still waiting for sign-in…';
     } else if(j.expired){
@@ -7267,10 +7595,15 @@ function teamsLoadRange(){
   const end   = document.getElementById('tm-range-end').value;
   const upn   = _teamsUpn || (_tmMode==='app' ? document.getElementById('tm-upn').value.trim() : '');
   if(!start||!end){ st.textContent='\u26A0 Set start and end date.'; return; }
+  const startDate = new Date(start+'T00:00:00');
+  const endDate = new Date(end+'T23:59:59.999');
+  if(Number.isNaN(startDate.getTime())||Number.isNaN(endDate.getTime())||endDate<startDate){
+    st.textContent='\u26A0 Choose a valid date range.'; return;
+  }
   st.textContent='Loading events…';
   fetch('/api/teams/calendar',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:_teamsToken,start_date:start,end_date:end,upn,use_me:_tmMode==='upw'})})
-  .then(r=>r.json()).then(j=>{
+    body:JSON.stringify({token:_teamsToken,start_date:startDate.toISOString(),end_date:endDate.toISOString(),upn,use_me:_tmMode==='upw'})})
+  .then(r=>r.json().then(j=>({status:r.status,data:j}))).then(({status,data:j})=>{
     if(j.events){
       _teamsEvents = j.events;
       teamsApplyFilter();
@@ -7278,7 +7611,7 @@ function teamsLoadRange(){
       document.getElementById('cal-empty').style.display='none';
       calRender();
     } else {
-      st.innerHTML='<span style="color:#f55;">\u274C '+(j.error||JSON.stringify(j))+'</span>';
+      st.innerHTML='<span style="color:#f55;">\u274C '+(j.error||('Request failed ('+status+')'))+'</span>';
     }
   }).catch(e=>{ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
 }
@@ -7606,6 +7939,39 @@ def modules_page():
 def teams_page():
     return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', TEAMS_TEMPLATE), request=request, get_flashed_messages=get_flashed_messages)
 
+@app.route('/google-services')
+@requires_permission('dashboard')
+def google_services_page():
+    page = Path(__file__).resolve().parent / 'google_services.html'
+    return send_file(page)
+
+@app.route('/archetypes')
+def code_archetypes_page():
+    page = Path(__file__).resolve().parent / 'archetypes.html'
+    return send_file(page)
+
+@app.route('/api/code-archetypes', methods=['GET', 'POST'])
+def api_code_archetypes():
+    from core.code_archetypes import list_archetypes, save_custom_archetype
+    if request.method == 'GET':
+        try:
+            return jsonify({'archetypes': list_archetypes()})
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            app.logger.exception('Failed to load code archetypes')
+            return jsonify({'error': f'Could not load archetypes: {exc}'}), 500
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({'error': 'A JSON archetype object is required.'}), 400
+    try:
+        archetype = save_custom_archetype(payload)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    except OSError as exc:
+        app.logger.exception('Failed to save custom code archetype')
+        return jsonify({'error': f'Could not save archetype: {exc}'}), 500
+    return jsonify({'archetype': archetype}), 201
+
 @app.route('/api/teams/connect', methods=['POST'])
 def api_teams_connect():
     """Acquire an Azure AD token for Microsoft Graph.
@@ -7694,6 +8060,10 @@ def api_teams_calendar():
         # Normalize ISO dates
         start_iso = start_date + 'T00:00:00' if 'T' not in start_date else start_date
         end_iso   = end_date   + 'T23:59:59' if 'T' not in end_date   else end_date
+        if start_iso.endswith('T00:00:00'):
+            start_iso += 'Z'
+        if end_iso.endswith('T23:59:59'):
+            end_iso += 'Z'
         import urllib.request as _ur, urllib.parse as _up
         # Endpoint: user calendar or app-level calendar
         use_me = data.get('use_me', False)
@@ -8081,10 +8451,21 @@ OKTA_TEMPLATE = r'''
         <button class="ok-btn ok-btn-danger ok-btn-sm" onclick="oktaSignOut()" style="margin:0 0 0 auto;">Sign out</button>
       </div>
 
+      <div class="okta-panel" style="margin-bottom:12px;background:#171725;">
+        <strong style="color:#00b4d8;">Single sign-on</strong>
+        {% if okta_oidc_configured %}
+          <p style="color:#aaa;font-size:.78rem;margin:7px 0;">Use the configured Okta OIDC application.</p>
+          <a class="ok-btn" href="/auth/okta/login" style="display:inline-block;text-decoration:none;">Continue with Okta</a>
+          {% if okta_oidc_authenticated %}<div class="ok-status" style="color:#4caf50;">Signed into MasterChief with Okta as {{ okta_oidc_username }}.</div>{% endif %}
+        {% else %}
+          <p style="color:#aaa;font-size:.78rem;margin:7px 0;">OIDC is not configured. Set OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, and OKTA_ISSUER in the local environment to enable it.</p>
+        {% endif %}
+      </div>
+
       <div id="ok-login-form">
         <div class="ok-field">
           <label>Okta Domain</label>
-          <input id="ok-domain" class="ok-input" placeholder="yourorg.okta.com" value="tegna.okta.com">
+          <input id="ok-domain" class="ok-input" placeholder="yourorg.okta.com" value="">
         </div>
         <div class="ok-field">
           <label>Username (email)</label>
@@ -8137,6 +8518,7 @@ OKTA_TEMPLATE = r'''
 <script>
 // ── Okta state ────────────────────────────────────────────────────────────────
 var _oktaSession   = null;  // session id from Okta
+var _oktaUserId    = null;
 var _oktaStateToken = null; // for MFA flows
 var _oktaFactorId   = null;
 var _oktaAllApps    = [];
@@ -8214,12 +8596,14 @@ function showConnected(j){
   document.getElementById('ok-app-search').style.display='';
   // Share identity with Teams SSO — persist to localStorage so Teams page can read it
   _oktaLoginEmail = j.login || document.getElementById('ok-username').value.trim();
+  _oktaUserId = j.user_id || '';
   _oktaDomainHost = document.getElementById('ok-domain').value.trim().replace(/^https?:\/\//,'').replace(/\/+$/,'');
   try{
     localStorage.setItem('okta_sso', JSON.stringify({
       session_id: _oktaSession,
       login: _oktaLoginEmail,
-      domain: _oktaDomainHost
+      domain: _oktaDomainHost,
+      user_id: _oktaUserId
     }));
   }catch(e){}
   if(typeof tmCheckOktaSSO === 'function') tmCheckOktaSSO();
@@ -8227,6 +8611,7 @@ function showConnected(j){
 
 function oktaSignOut(){
   _oktaSession = null;
+  _oktaUserId = null;
   _oktaAllApps = [];
   _oktaLoginEmail = null;
   _oktaDomainHost = null;
@@ -8250,8 +8635,9 @@ function oktaLoadApps(){
   st.textContent='Loading apps\u2026';
   document.getElementById('ok-apps-empty').style.display='none';
   fetch('/api/okta/apps',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({domain,session_id:_oktaSession})})
-  .then(function(r){ return r.json(); }).then(function(j){
+    body:JSON.stringify({domain,session_id:_oktaSession,user_id:_oktaUserId})})
+  .then(function(r){ return r.json().then(function(j){return {ok:r.ok,data:j};}); }).then(function(result){
+    var j=result.data;
     st.textContent='';
     if(j.apps && j.apps.length > 0){
       _oktaAllApps = j.apps;
@@ -8311,7 +8697,19 @@ function escHtmlOk(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 @app.route('/okta')
 @requires_permission('dashboard')
 def okta_page():
-    return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', OKTA_TEMPLATE), request=request, get_flashed_messages=get_flashed_messages)
+    authenticated_okta_user = bool(
+        AUTH_MODULES_AVAILABLE
+        and current_user.is_authenticated
+        and getattr(current_user, 'provider', None) == 'okta'
+    )
+    return render_template_string(
+        HTML_TEMPLATE.replace('{% block content %}{% endblock %}', OKTA_TEMPLATE),
+        request=request,
+        get_flashed_messages=get_flashed_messages,
+        okta_oidc_configured=bool(AUTH_MODULES_AVAILABLE and auth_config.is_configured('okta')),
+        okta_oidc_authenticated=authenticated_okta_user,
+        okta_oidc_username=getattr(current_user, 'username', '') if authenticated_okta_user else '',
+    )
 
 
 @app.route('/api/okta/signin', methods=['POST'])
@@ -8374,6 +8772,7 @@ def api_okta_signin():
         return jsonify({
             'session_id': session.get('id'),
             'login': session.get('login', username),
+            'user_id': (authn.get('_embedded', {}).get('user') or {}).get('id', ''),
             'display_name': (authn.get('_embedded', {}).get('user', {}).get('profile') or {}).get('displayName', ''),
         })
     except Exception as e:
@@ -8424,6 +8823,7 @@ def api_okta_mfa():
         return jsonify({
             'session_id': session.get('id'),
             'login': session.get('login', ''),
+            'user_id': (authn.get('_embedded', {}).get('user') or {}).get('id', ''),
         })
     except Exception as e:
         app.logger.exception('Okta MFA failed')
@@ -8445,48 +8845,27 @@ def api_okta_apps():
         data = request.get_json() or {}
         domain     = _re.sub(r'^https?://', '', data.get('domain', '').strip()).rstrip('/')
         session_id = data.get('session_id', '').strip()
-        if not domain or not session_id:
-            return jsonify({'error': 'domain and session_id required'}), 400
+        user_id    = data.get('user_id', '').strip()
+        if not domain or not session_id or not user_id:
+            return jsonify({'error': 'domain, session_id and user_id required; sign in again if user identity is missing'}), 400
 
-        url = f'https://{domain}/api/v1/users/me/appLinks'
-        apps = None
-        last_err = ''
-
-        # Try 1: Cookie-based session (standard browser session)
+        from urllib.parse import quote as _quote
+        url = f'https://{domain}/api/v1/users/{_quote(user_id, safe="")}/appLinks'
+        req = _ur.Request(url)
+        req.add_header('Accept', 'application/json')
+        req.add_header('Cookie', f'sid={session_id}')
         try:
-            req = _ur.Request(url)
-            req.add_header('Accept', 'application/json')
-            req.add_header('Cookie', f'sid={session_id}')
             with _ur.urlopen(req, timeout=20) as resp:
                 apps = json.loads(resp.read().decode())
-        except Exception as e1:
-            last_err = str(e1)
+        except Exception as apps_error:
+            error_message = str(apps_error)
             try:
-                if hasattr(e1, 'read'):
-                    body = json.loads(e1.read().decode())
-                    last_err = body.get('errorSummary') or last_err
-            except Exception:
+                if hasattr(apps_error, 'read'):
+                    body = json.loads(apps_error.read().decode())
+                    error_message = body.get('errorSummary') or body.get('message') or error_message
+            except (ValueError, AttributeError):
                 pass
-
-        # Try 2: SSWS token auth (fallback — works when session_id is also an API token)
-        if apps is None:
-            try:
-                req2 = _ur.Request(url)
-                req2.add_header('Accept', 'application/json')
-                req2.add_header('Authorization', f'SSWS {session_id}')
-                with _ur.urlopen(req2, timeout=20) as resp2:
-                    apps = json.loads(resp2.read().decode())
-                last_err = ''
-            except Exception as e2:
-                try:
-                    if hasattr(e2, 'read'):
-                        body2 = json.loads(e2.read().decode())
-                        last_err = body2.get('errorSummary') or str(e2)
-                except Exception:
-                    last_err = str(e2)
-
-        if apps is None:
-            return jsonify({'error': last_err or 'Could not retrieve apps from Okta'}), 500
+            return jsonify({'error': f'Okta app links request failed: {error_message}'}), 502
 
         # apps may be a list or a dict with embedded list
         if isinstance(apps, dict):
@@ -13316,7 +13695,7 @@ def masterchief_code_ui():
     try:
         ide_path = Path(__file__).parent / 'web_ide.html'
         if ide_path.exists():
-            return ide_path.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8'}
+            return _with_archetype_client(ide_path.read_text(encoding='utf-8')), 200, {'Content-Type': 'text/html; charset=utf-8'}
         else:
             return f'<h1>MasterChief Code UI</h1><p>Web IDE file not found at {ide_path}</p>', 404
     except Exception as e:
@@ -13327,7 +13706,13 @@ def masterchief_code_ui():
 @app.route('/echo-chat')
 def echo_chat():
     echo_art = Echo.get_compact_greeting()
-    return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', ECHO_CHAT_TEMPLATE.replace('{% extends "base.html" %}', '').replace('{% block content %}', '').replace('{% endblock %}', '')), echo_art=echo_art, request=request, get_flashed_messages=get_flashed_messages)
+    html = render_template_string(
+        HTML_TEMPLATE.replace('{% block content %}{% endblock %}', ECHO_CHAT_TEMPLATE.replace('{% extends "base.html" %}', '').replace('{% block content %}', '').replace('{% endblock %}', '')),
+        echo_art=echo_art,
+        request=request,
+        get_flashed_messages=get_flashed_messages,
+    )
+    return _with_archetype_client(html)
 
 # ==============================================================
 # ECHO CHAT ACTION REGISTRY
@@ -13451,6 +13836,611 @@ _echo_action_registry.register('youtube_play', _ach_detect_youtube, _ach_handle_
 # END ECHO CHAT ACTION REGISTRY
 # ==============================================================
 
+_ECHO_OPERATOR_SESSION_KEY = 'echo_operator_user_id'
+_ECHO_OPERATOR_AUDIT_FILE = Path(__file__).resolve().parent / 'data' / 'echo_operator_audit.jsonl'
+_ECHO_COMMAND_CONFIG_FILE = Path(__file__).resolve().parent / 'data' / 'echo_command_config.json'
+_REMOTE_OPERATOR_SESSIONS = {}
+_REMOTE_OPERATOR_LOCK = threading.Lock()
+_ECHO_BUILTIN_COMMANDS = [
+    {'name': 'help', 'description': 'Show Echo code-library help', 'operator_required': False},
+    {'name': 'commands', 'description': 'List built-in and configured commands', 'operator_required': False},
+    {'name': 'library', 'description': 'Find source files: !library find <words>', 'operator_required': False},
+    {'name': 'write', 'description': 'Draft a script from local examples', 'operator_required': False},
+    {'name': 'team', 'description': 'Ask the configured local model team to collaborate', 'operator_required': True},
+    {'name': 'op', 'description': 'Enable authenticated operator mode for 15 minutes', 'operator_required': True},
+    {'name': 'masterchief', 'description': 'Alias for !OP', 'operator_required': True},
+    {'name': 'deop', 'description': 'Disable operator mode', 'operator_required': False},
+    {'name': 'status', 'description': 'Show authentication/operator status', 'operator_required': False},
+    {'name': 'run', 'description': 'Run a project-relative script', 'operator_required': True},
+    {'name': 'deploy', 'description': 'Push committed changes to the configured Git upstream', 'operator_required': True},
+    {'name': 'github_deploy', 'description': 'Alias for !deploy; push committed changes to GitHub upstream', 'operator_required': True},
+]
+_ECHO_RESERVED_COMMAND_NAMES = {item['name'] for item in _ECHO_BUILTIN_COMMANDS}
+
+
+def _echo_operator_account_authorized():
+    """Require an authenticated RBAC admin with wildcard permissions."""
+    try:
+        return bool(
+            current_user.is_authenticated
+            and current_user.provider == 'rbac'
+            and str(current_user.role or '').casefold() == 'admin'
+            and '*' in (current_user.permissions or [])
+        )
+    except (AttributeError, RuntimeError):
+        return False
+
+
+def _echo_operator_is_active(remote_sender=None):
+    if remote_sender:
+        now = time.time()
+        with _REMOTE_OPERATOR_LOCK:
+            enabled_at = _REMOTE_OPERATOR_SESSIONS.get(remote_sender)
+            if enabled_at is None or now - enabled_at > 900:
+                _REMOTE_OPERATOR_SESSIONS.pop(remote_sender, None)
+                return False
+            return True
+
+    enabled_at = session.get('echo_operator_enabled_at')
+    if not enabled_at or time.time() - float(enabled_at) > 900:
+        session.pop(_ECHO_OPERATOR_SESSION_KEY, None)
+        session.pop('echo_operator_enabled_at', None)
+        return False
+    return bool(
+        _echo_operator_account_authorized()
+        and session.get(_ECHO_OPERATOR_SESSION_KEY) == str(current_user.get_id())
+    )
+
+
+def _echo_operator_request_is_same_origin():
+    from urllib.parse import urlparse
+
+    source = request.headers.get('Origin') or request.headers.get('Referer')
+    if not source:
+        return False
+    parsed = urlparse(source)
+    return bool(parsed.netloc and parsed.netloc.casefold() == request.host.casefold())
+
+
+def _echo_operator_audit(action, remote_sender=None, **details):
+    if remote_sender:
+        actor_id = 'sms:' + hashlib.sha256(remote_sender.encode('utf-8')).hexdigest()[:16]
+        actor_name = 'Twilio SMS'
+    else:
+        actor_id = str(current_user.get_id())
+        actor_name = current_user.username
+    entry = {
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'user_id': actor_id,
+        'username': actor_name,
+        'action': action,
+        **details,
+    }
+    _ECHO_OPERATOR_AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with _ECHO_OPERATOR_AUDIT_FILE.open('a', encoding='utf-8') as audit_file:
+        audit_file.write(json.dumps(entry, ensure_ascii=False) + '\n')
+
+
+def _echo_send_email_update(subject, body):
+    sender = os.environ.get('ECHO_GMAIL_ADDRESS', '').strip()
+    app_password = os.environ.get('ECHO_GMAIL_APP_PASSWORD', '').strip()
+    recipient = os.environ.get('ECHO_EMAIL_TO', '').strip()
+    if not sender or not app_password or not recipient:
+        return False, 'email not configured'
+
+    message = EmailMessage()
+    message['From'] = sender
+    message['To'] = recipient
+    message['Subject'] = '[MasterChief Echo] ' + subject[:180]
+    message.set_content(body[:8000])
+    try:
+        with smtplib.SMTP_SSL(
+            os.environ.get('ECHO_GMAIL_SMTP_HOST', 'smtp.gmail.com'),
+            int(os.environ.get('ECHO_GMAIL_SMTP_PORT', '465')),
+            context=ssl.create_default_context(),
+            timeout=15,
+        ) as smtp:
+            smtp.login(sender, app_password)
+            smtp.send_message(message)
+        return True, 'email update sent'
+    except (OSError, smtplib.SMTPException, ValueError):
+        app.logger.exception('Failed to send Echo email update')
+        return False, 'email update failed; see server log'
+
+
+def _load_echo_command_config():
+    if not _ECHO_COMMAND_CONFIG_FILE.exists():
+        return []
+    data = json.loads(_ECHO_COMMAND_CONFIG_FILE.read_text(encoding='utf-8'))
+    commands = data.get('commands', []) if isinstance(data, dict) else None
+    if not isinstance(commands, list):
+        raise ValueError('command configuration must contain a commands list')
+    return commands
+
+
+def _save_echo_command_config(commands):
+    _ECHO_COMMAND_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _ECHO_COMMAND_CONFIG_FILE.write_text(
+        json.dumps({'commands': commands}, indent=2, ensure_ascii=False),
+        encoding='utf-8',
+    )
+
+
+def _echo_execute_script(relative_path, args=(), remote_sender=None):
+    project_root = Path(__file__).resolve().parent
+    try:
+        script_path = resolve_project_file(project_root, relative_path)
+    except ValueError as exc:
+        return f'Script execution denied: {exc}'
+
+    if script_path.suffix.lower() not in {'.py', '.ps1', '.sh', '.bash'}:
+        return 'Only Python, PowerShell, and Bash script files can be run.'
+    if not script_path.is_file():
+        return f'Script not found: {relative_path}'
+
+    script_command = _interpreter_cmd_for_path(script_path)
+    if script_path.suffix.lower() in {'.sh', '.bash'} and not script_command:
+        bash_path = shutil.which('bash')
+        if bash_path:
+            script_command = [bash_path, str(script_path)]
+    if not script_command:
+        return 'No suitable interpreter is available for this script on the server.'
+    script_command.extend(args)
+
+    normalized_path = script_path.relative_to(project_root).as_posix()
+    try:
+        _echo_operator_audit('script_execution_started', remote_sender, path=normalized_path)
+    except OSError:
+        app.logger.exception('Unable to audit requested Echo script execution')
+        return 'Script was not run because the operator audit log could not be written.'
+
+    try:
+        result = subprocess.run(
+            script_command,
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        try:
+            _echo_operator_audit('script_execution_timed_out', remote_sender, path=normalized_path)
+        except OSError:
+            app.logger.exception('Unable to audit Echo script timeout')
+        return f'Script timed out after 120 seconds: `{normalized_path}`.'
+    except OSError as exc:
+        app.logger.exception('Echo operator script execution failed for %s', normalized_path)
+        try:
+            _echo_operator_audit('script_execution_failed', remote_sender, path=normalized_path, error=str(exc))
+        except OSError:
+            app.logger.exception('Unable to audit Echo script execution failure')
+        return f'Unable to start `{normalized_path}`: {exc}'
+
+    try:
+        _echo_operator_audit(
+            'script_execution_finished',
+            remote_sender,
+            path=normalized_path,
+            returncode=result.returncode,
+        )
+    except OSError:
+        app.logger.exception('Unable to audit Echo script completion')
+
+    output = []
+    if result.stdout:
+        output.append('stdout:\n' + result.stdout[-6000:])
+    if result.stderr:
+        output.append('stderr:\n' + result.stderr[-6000:])
+    output_text = '\n\n'.join(output) if output else '(no output)'
+    if remote_sender:
+        output_text = output_text[-1200:]
+    _, email_result = _echo_send_email_update(
+        f'Script completed: {normalized_path}',
+        f'Script: {normalized_path}\nExit code: {result.returncode}\nActor: {"allowlisted SMS sender" if remote_sender else current_user.username}\n\n{output_text}',
+    )
+    return f'`{normalized_path}` exited with code {result.returncode}. ({email_result})\n\n{output_text}'
+
+
+def _echo_deploy(remote_sender=None):
+    if not _echo_operator_is_active(remote_sender):
+        return 'Deploy denied. Enable authenticated operator mode with `!OP` first.'
+    if not remote_sender and not _echo_operator_request_is_same_origin():
+        return 'Deploy denied: send the command from the MasterChief Echo chat page.'
+
+    try:
+        _echo_operator_audit('git_push_started', remote_sender)
+    except OSError:
+        app.logger.exception('Unable to audit Echo Git push')
+        return 'Deploy was not started because the operator audit log could not be written.'
+
+    try:
+        result = subprocess.run(
+            ['git', 'push'],
+            cwd=str(Path(__file__).resolve().parent),
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        try:
+            _echo_operator_audit('git_push_timed_out', remote_sender)
+        except OSError:
+            app.logger.exception('Unable to audit Git push timeout')
+        return 'Git push timed out. No force-push was attempted.'
+    except OSError as exc:
+        app.logger.exception('Unable to start Echo Git push')
+        try:
+            _echo_operator_audit('git_push_failed', remote_sender, error=str(exc))
+        except OSError:
+            app.logger.exception('Unable to audit Git push failure')
+        return f'Unable to start Git push: {exc}'
+
+    try:
+        _echo_operator_audit('git_push_finished', remote_sender, returncode=result.returncode)
+    except OSError:
+        app.logger.exception('Unable to audit Git push completion')
+    output = (result.stdout + '\n' + result.stderr).strip()[-1200:] or '(no Git output)'
+    _, email_result = _echo_send_email_update(
+        f'Git push finished (exit {result.returncode})',
+        f'git push exit code: {result.returncode}\nActor: {"allowlisted SMS sender" if remote_sender else current_user.username}\n\n{output}',
+    )
+    return (
+        f'`git push` exited with code {result.returncode}. '
+        f'Only already-committed changes were pushed; uncommitted work was left untouched. ({email_result})\n' + output
+    )
+
+
+def _echo_operator_command(message, remote_sender=None):
+    """Dispatch built-in and user-configured commands from chat or authenticated SMS."""
+    command = (message or '').strip()
+    command_lower = command.casefold()
+
+    if command_lower in {'!op', '!masterchief'}:
+        if not remote_sender and not _echo_operator_request_is_same_origin():
+            return 'Operator mode denied: send the command from the MasterChief Echo chat page.'
+        if not remote_sender and not _echo_operator_account_authorized():
+            return "Operator mode denied. Sign in with an RBAC admin account that has wildcard (`*`) permission."
+        try:
+            _echo_operator_audit('operator_enabled', remote_sender)
+        except OSError:
+            app.logger.exception('Unable to audit Echo operator-mode enable')
+            return 'Operator mode was not enabled because the audit log could not be written.'
+        if remote_sender:
+            with _REMOTE_OPERATOR_LOCK:
+                _REMOTE_OPERATOR_SESSIONS[remote_sender] = time.time()
+            _, email_result = _echo_send_email_update(
+                'SMS operator mode enabled',
+                'An allowlisted SMS sender enabled operator mode for 15 minutes.',
+            )
+            return f'SMS operator mode enabled for 15 minutes. Use !run <project-relative-script>, !deploy, or a configured command; send !deop to leave operator mode. ({email_result})'
+        session[_ECHO_OPERATOR_SESSION_KEY] = str(current_user.get_id())
+        session['echo_operator_enabled_at'] = time.time()
+        _, email_result = _echo_send_email_update(
+            'Operator mode enabled',
+            f'Authenticated admin {current_user.username} enabled operator mode for 15 minutes.',
+        )
+        return f'Operator mode enabled for 15 minutes in this authenticated browser session. Use `!run <project-relative-script>` to explicitly run a project script, `!deploy` to push committed changes, or `!deop` to leave operator mode. ({email_result})'
+
+    if command_lower in {'!deop', '!op off', '!masterchief off'}:
+        if remote_sender:
+            with _REMOTE_OPERATOR_LOCK:
+                _REMOTE_OPERATOR_SESSIONS.pop(remote_sender, None)
+            try:
+                _echo_operator_audit('operator_disabled', remote_sender)
+            except OSError:
+                app.logger.exception('Unable to audit remote operator-mode disable')
+                return 'Operator mode was disabled, but the audit log could not be written.'
+            _, email_result = _echo_send_email_update(
+                'SMS operator mode disabled',
+                'An allowlisted SMS sender disabled operator mode.',
+            )
+            return f'SMS operator mode is off. ({email_result})'
+        operator_was_active = _echo_operator_is_active()
+        if operator_was_active:
+            try:
+                _echo_operator_audit('operator_disabled')
+            except OSError:
+                app.logger.exception('Unable to audit Echo operator-mode disable')
+                return 'Operator mode remains unchanged because the audit log could not be written.'
+        session.pop(_ECHO_OPERATOR_SESSION_KEY, None)
+        session.pop('echo_operator_enabled_at', None)
+        if not operator_was_active:
+            return 'Operator mode is off.'
+        _, email_result = _echo_send_email_update(
+            'Operator mode disabled',
+            f'Authenticated admin {current_user.username} disabled operator mode.',
+        )
+        return f'Operator mode is off. ({email_result})'
+
+    if command_lower == '!status':
+        if remote_sender:
+            return f'Twilio sender authenticated. SMS operator mode: {"on" if _echo_operator_is_active(remote_sender) else "off"}.'
+        if not current_user.is_authenticated:
+            return 'Signed out. Sign in with an RBAC admin account to request operator mode.'
+        role = getattr(current_user, 'role', None) or 'non-admin'
+        mode = 'on' if _echo_operator_is_active() else 'off'
+        return f'Authenticated as {current_user.username} ({role}). Operator mode: {mode}.'
+
+    if command_lower == '!commands':
+        try:
+            configured = _load_echo_command_config()
+        except (OSError, ValueError, json.JSONDecodeError):
+            app.logger.exception('Unable to read Echo command configuration')
+            configured = []
+        user_commands = [
+            f"- `!{item.get('name')}` — {item.get('description', 'user script command')}"
+            for item in configured if item.get('enabled', True)
+        ]
+        return (
+            "Echo commands, grouped by purpose:\n\n"
+            "General:\n"
+            "- `!help` / `!commands` — show this command directory.\n"
+            "- `!status` — show signed-in identity and operator-mode state.\n\n"
+            "Code library:\n"
+            "- `!library find <words>` — find project source/script paths.\n"
+            "- `!write [python|powershell|bash|terraform] <task>` — draft using local examples.\n\n"
+            "Model team (RBAC admin operator mode required):\n"
+            "- `!team <prompt>` — run a bounded discussion with configured local Ollama models; result is queued for explicit training approval.\n"
+            "- `!team approve <candidate-id>` — approve one queued example for offline adapter training.\n\n"
+            "Operator controls:\n"
+            "- `!OP` / `!masterchief` — request 15-minute operator mode (RBAC admin required).\n"
+            "- `!deop` — turn operator mode off.\n"
+            "- `!run <project-relative-script>` — explicitly run a project script while operator mode is on.\n"
+            "- `!deploy` / `!github_deploy` — push committed changes to the configured Git upstream; never force-pushes.\n"
+            + ('\nAdd-on commands:\n' + '\n'.join(user_commands) + '\n' if user_commands else '')
+            + "\nGenerated drafts and model-team conversations are not run or trained automatically."
+        )
+
+    if command_lower in {'!deploy', '!github_deploy'}:
+        return _echo_deploy(remote_sender)
+
+    if command_lower == '!run' or command_lower.startswith('!run '):
+        if not remote_sender and not _echo_operator_request_is_same_origin():
+            return 'Script execution denied: send the command from the MasterChief Echo chat page.'
+        if not _echo_operator_is_active(remote_sender):
+            return 'Script execution denied. Authenticate as an RBAC admin, send `!OP`, then explicitly send `!run <project-relative-script>`.'
+        try:
+            parts = shlex.split(command[4:].strip(), posix=True)
+        except ValueError as exc:
+            return f'Invalid !run arguments: {exc}'
+        if not parts:
+            return 'Usage: `!run <project-relative-script> [script arguments...]`'
+        return _echo_execute_script(parts[0], parts[1:], remote_sender)
+
+    if command.startswith('!'):
+        try:
+            name_and_args = command[1:].split(maxsplit=1)
+            name = name_and_args[0].casefold()
+            args = name_and_args[1] if len(name_and_args) > 1 else ''
+            for configured in _load_echo_command_config():
+                if configured.get('name', '').casefold() != name or not configured.get('enabled', True):
+                    continue
+                if not remote_sender and not _echo_operator_request_is_same_origin():
+                    return 'Command denied: send it from the MasterChief Echo chat page.'
+                if not _echo_operator_is_active(remote_sender):
+                    return f'Command `!{name}` denied. Authenticate and enable operator mode with `!OP` first.'
+                try:
+                    script_args = shlex.split(args, posix=True)
+                except ValueError as exc:
+                    return f'Invalid command arguments: {exc}'
+                return _echo_execute_script(configured['script'], script_args, remote_sender)
+        except (OSError, ValueError, json.JSONDecodeError):
+            app.logger.exception('Unable to dispatch configured Echo command')
+            return 'Command configuration could not be loaded.'
+        if command_lower in {'!help', '!write'} or command_lower.startswith(('!write ', '!library ')):
+            return None
+        return f'Unknown Echo command: `{name}`. Send `!commands` to see available commands.'
+
+    return None
+
+
+app.config['CHAT_SERV_COMMAND_HANDLER'] = _echo_operator_command
+
+
+def _chatserv_llm_handler(prompt, session_id):
+    return get_chat_bot().chat(prompt, session_id=session_id, max_tokens=1024)
+
+
+app.config['CHAT_SERV_LLM_HANDLER'] = _chatserv_llm_handler
+
+
+@app.route('/echo-commands')
+def echo_commands_page():
+    page = Path(__file__).resolve().parent / 'echo_commands.html'
+    if not page.is_file():
+        return 'Echo command center page not found.', 404
+    return page.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+
+@app.route('/api/echo/commands', methods=['GET', 'POST'])
+def api_echo_commands():
+    if request.method == 'GET':
+        try:
+            commands = _load_echo_command_config()
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            app.logger.exception('Unable to load Echo command configuration')
+            return jsonify({'ok': False, 'error': str(exc)}), 500
+        return jsonify({
+            'ok': True,
+            'builtins': _ECHO_BUILTIN_COMMANDS,
+            'commands': commands,
+            'admin_authorized': _echo_operator_account_authorized(),
+            'operator_mode': _echo_operator_is_active(),
+            'running_at': request.url_root.rstrip('/'),
+            'email_ready': bool(
+                os.environ.get('ECHO_GMAIL_ADDRESS')
+                and os.environ.get('ECHO_GMAIL_APP_PASSWORD')
+                and os.environ.get('ECHO_EMAIL_TO')
+            ),
+            'twilio_ready': bool(
+                is_twilio_enabled(
+                    os.environ.get('ECHO_ENABLE_TWILIO_COMMANDS', ''),
+                    os.environ.get('ECHO_TWILIO_AUTH_TOKEN', ''),
+                    os.environ.get('ECHO_TWILIO_WEBHOOK_URL', ''),
+                    os.environ.get('ECHO_TWILIO_ALLOWED_NUMBERS', ''),
+                )
+            ),
+            'twilio_cost_notice': 'Twilio may charge for numbers and messages; disabled unless explicitly enabled.',
+        })
+
+    if not _echo_operator_account_authorized():
+        return jsonify({'ok': False, 'error': 'RBAC admin permission required'}), 403
+    if not _echo_operator_request_is_same_origin():
+        return jsonify({'ok': False, 'error': 'same-origin request required'}), 403
+
+    data = request.get_json(silent=True) or {}
+    name = str(data.get('name') or '').strip().lower()
+    description = str(data.get('description') or '').strip()
+    script = str(data.get('script') or '').strip()
+    if not re.fullmatch(r'[a-z][a-z0-9_-]{1,31}', name):
+        return jsonify({'ok': False, 'error': 'command names must be 2-32 lowercase letters, numbers, underscores, or hyphens'}), 400
+    if name in _ECHO_RESERVED_COMMAND_NAMES:
+        return jsonify({'ok': False, 'error': 'that command name is reserved'}), 400
+    if not description or len(description) > 160:
+        return jsonify({'ok': False, 'error': 'description is required and must be at most 160 characters'}), 400
+
+    try:
+        root = Path(__file__).resolve().parent
+        script_path = resolve_project_file(root, script)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    if script_path.suffix.lower() not in {'.py', '.ps1', '.sh', '.bash'}:
+        return jsonify({'ok': False, 'error': 'command add-ons must point to .py, .ps1, .sh, or .bash scripts'}), 400
+    if not script_path.is_file():
+        return jsonify({'ok': False, 'error': 'script file not found'}), 404
+
+    command_entry = {
+        'name': name,
+        'description': description,
+        'script': script_path.relative_to(root).as_posix(),
+        'enabled': bool(data.get('enabled', True)),
+        'operator_required': True,
+    }
+    try:
+        commands = _load_echo_command_config()
+        commands = [item for item in commands if item.get('name') != name]
+        commands.append(command_entry)
+        commands.sort(key=lambda item: item.get('name', ''))
+        _save_echo_command_config(commands)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        app.logger.exception('Unable to save Echo command configuration')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    return jsonify({'ok': True, 'command': command_entry})
+
+
+@app.route('/api/echo/commands/<name>', methods=['PUT', 'DELETE'])
+@requires_permission('web_ide')
+def api_echo_command_item(name):
+    if not _echo_operator_account_authorized():
+        return jsonify({'ok': False, 'error': 'RBAC admin permission required'}), 403
+    if not _echo_operator_request_is_same_origin():
+        return jsonify({'ok': False, 'error': 'same-origin request required'}), 403
+    try:
+        commands = _load_echo_command_config()
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        app.logger.exception('Unable to load Echo command configuration')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    existing = next((item for item in commands if item.get('name') == name), None)
+    if existing is None:
+        return jsonify({'ok': False, 'error': 'command not found'}), 404
+    if request.method == 'DELETE':
+        commands = [item for item in commands if item.get('name') != name]
+    else:
+        data = request.get_json(silent=True) or {}
+        updated_name = str(data.get('name') or name).strip().lower()
+        description = str(data.get('description') or '').strip()
+        script = str(data.get('script') or '').strip()
+        if not re.fullmatch(r'[a-z][a-z0-9_-]{1,31}', updated_name):
+            return jsonify({'ok': False, 'error': 'invalid command name'}), 400
+        if updated_name != name and (
+            updated_name in _ECHO_RESERVED_COMMAND_NAMES
+            or any(item.get('name') == updated_name for item in commands)
+        ):
+            return jsonify({'ok': False, 'error': 'command name is already in use'}), 409
+        if not description or len(description) > 160:
+            return jsonify({'ok': False, 'error': 'description is required and must be at most 160 characters'}), 400
+        try:
+            root = Path(__file__).resolve().parent
+            script_path = resolve_project_file(root, script)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'error': str(exc)}), 400
+        if script_path.suffix.lower() not in {'.py', '.ps1', '.sh', '.bash'} or not script_path.is_file():
+            return jsonify({'ok': False, 'error': 'script must be an existing supported script inside the project'}), 400
+        existing.update({
+            'name': updated_name,
+            'description': description,
+            'script': script_path.relative_to(root).as_posix(),
+            'enabled': bool(data.get('enabled', existing.get('enabled', True))),
+            'operator_required': True,
+        })
+        commands.sort(key=lambda item: item.get('name', ''))
+
+    try:
+        _save_echo_command_config(commands)
+    except OSError as exc:
+        app.logger.exception('Unable to update Echo command configuration')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    return jsonify({'ok': True})
+
+
+@app.route('/api/echo/remote/twilio', methods=['POST'])
+def api_echo_remote_twilio():
+    if not is_twilio_enabled(
+        os.environ.get('ECHO_ENABLE_TWILIO_COMMANDS', ''),
+        os.environ.get('ECHO_TWILIO_AUTH_TOKEN', ''),
+        os.environ.get('ECHO_TWILIO_WEBHOOK_URL', ''),
+        os.environ.get('ECHO_TWILIO_ALLOWED_NUMBERS', ''),
+    ):
+        return 'Remote SMS commands are disabled.', 404
+
+    auth_token = os.environ.get('ECHO_TWILIO_AUTH_TOKEN')
+    webhook_url = os.environ.get('ECHO_TWILIO_WEBHOOK_URL')
+    allowed_senders = [
+        number.strip()
+        for number in os.environ.get('ECHO_TWILIO_ALLOWED_NUMBERS', '').split(',')
+        if number.strip()
+    ]
+    if not auth_token or not webhook_url or not allowed_senders:
+        app.logger.error('Twilio command webhook is missing required configuration')
+        return 'Remote command webhook is not configured.', 503
+
+    signature = request.headers.get('X-Twilio-Signature', '')
+    if not verify_twilio_signature(
+        webhook_url,
+        request.form.items(multi=True),
+        auth_token,
+        signature,
+    ):
+        app.logger.warning('Rejected Twilio command webhook with invalid signature')
+        return 'Forbidden', 403
+
+    sender = request.form.get('From', '').strip()
+    if not is_allowed_sender(sender, allowed_senders):
+        app.logger.warning('Rejected Twilio command from a non-allowlisted sender')
+        return 'Forbidden', 403
+
+    message = request.form.get('Body', '').strip()
+    if not message:
+        reply = 'Send !commands to list Echo remote commands.'
+    elif message.startswith('!'):
+        reply = _echo_operator_command(message, remote_sender=sender)
+        if reply is None:
+            bot = get_chat_bot()
+            bot_reply = bot.chat(message, session_id='sms_' + hashlib.sha256(sender.encode()).hexdigest()[:16])
+            reply = bot_reply.get('response', 'Echo could not process that command.')
+    else:
+        bot = get_chat_bot()
+        bot_reply = bot.chat(message, session_id='sms_' + hashlib.sha256(sender.encode()).hexdigest()[:16])
+        reply = bot_reply.get('response', 'Echo could not process that message.')
+
+    from xml.sax.saxutils import escape as xml_escape
+    twiml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{xml_escape(str(reply)[:1400])}</Message></Response>'
+    return twiml, 200, {'Content-Type': 'application/xml; charset=utf-8'}
+
+
 @app.route('/api/echo/chat',methods=['POST'])
 
 def api_echo_chat():
@@ -13470,6 +14460,55 @@ def api_echo_chat():
         if not message:
 
             return jsonify({'error':'Message is required'}), 400
+
+        message_text = str(message).strip()
+        if message_text.casefold().startswith('!team'):
+            if not _echo_operator_request_is_same_origin() or not _echo_operator_is_active():
+                return jsonify({'error': 'Model-team commands require same-origin Echo chat and authenticated RBAC admin operator mode.'}), 403
+            parts = message_text.split(maxsplit=2)
+            if len(parts) == 3 and parts[1].casefold() == 'approve':
+                from addons.echo_model_team.addon import approve_candidate
+                if approve_candidate(parts[2]):
+                    response_text = f"Candidate {parts[2]} approved for offline fine-tuning."
+                else:
+                    response_text = "Candidate was not found or has already been approved."
+                return jsonify({
+                    'response': response_text,
+                    'session_id': session_id,
+                    'timestamp': time.time(),
+                    'message_id': f"bot_{int(time.time()*1000)}",
+                })
+            if len(parts) < 2 or parts[1].casefold() == 'approve':
+                return jsonify({'error': 'Usage: !team <prompt> or !team approve <candidate-id>'}), 400
+            prompt = message_text[len(parts[0]):].strip()
+            try:
+                from addons.echo_model_team.addon import run_team_chat
+                team_result = run_team_chat(prompt)
+            except Exception as exc:
+                app.logger.exception('Echo local model-team turn failed')
+                return jsonify({'error': f'Model-team request failed: {exc}'}), 503
+            return jsonify({
+                'response': (
+                    f"{team_result['response']}\n\n"
+                    f"Review candidate: `{team_result['candidate_id']}`. "
+                    f"Approve it for offline training with `!team approve {team_result['candidate_id']}`."
+                ),
+                'candidate_id': team_result['candidate_id'],
+                'models': team_result['models'],
+                'session_id': session_id,
+                'timestamp': time.time(),
+                'message_id': f"bot_{int(time.time()*1000)}",
+            })
+
+        if str(message).strip().startswith('!'):
+            operator_response = _echo_operator_command(str(message))
+            if operator_response is not None:
+                return jsonify({
+                    'response': operator_response,
+                    'session_id': session_id,
+                    'timestamp': time.time(),
+                    'message_id': f"bot_{int(time.time()*1000)}",
+                })
 
         storage = get_storage()
 
@@ -15267,12 +16306,12 @@ def api_echo_train_cancel():
 @app.route('/api/echo/models', methods=['GET'])
 def api_echo_models():
     try:
-        import glob
-        models_dir = Path.cwd() / 'models'
+        app_root = Path(__file__).resolve().parent
+        models_dir = app_root / 'models'
         models = []
         if models_dir.exists():
             for f in models_dir.glob('*.gguf'):
-                models.append(str(f.relative_to(Path.cwd())))
+                models.append(str(f.relative_to(app_root)))
         return jsonify({'models': models})
     except Exception as e:
         app.logger.exception('List models failed')
@@ -15296,70 +16335,63 @@ def echo_train_page():
 @app.route('/api/echo/select_model', methods=['POST'])
 
 def api_echo_select_model():
+    data = request.get_json(silent=True) or {}
+    result, status = _select_echo_model_path(data.get('model'))
+    return jsonify(result), status
+
+
+def _select_echo_model_path(model):
+    if not _echo_operator_account_authorized():
+        return {'ok': False, 'error': 'Signed-in RBAC platform admin required.'}, 403
+    if not _echo_operator_request_is_same_origin():
+        return {'ok': False, 'error': 'same-origin request required'}, 403
+    if not isinstance(model, str) or not model.strip():
+        return {'ok': False, 'error': 'model required'}, 400
+
+    base = Path(__file__).resolve().parent
+    models_dir = (base / 'models').resolve()
+    candidate = Path(model.strip())
+    if candidate.is_absolute():
+        return {'ok': False, 'error': 'model must be a GGUF file in the models directory'}, 400
+    if len(candidate.parts) == 1:
+        candidate = models_dir / candidate
+    elif len(candidate.parts) == 2 and candidate.parts[0].casefold() == 'models':
+        candidate = base / candidate
+    else:
+        return {'ok': False, 'error': 'model must be a GGUF file in the models directory'}, 400
 
     try:
+        p = candidate.resolve(strict=True)
+        p.relative_to(models_dir)
+    except FileNotFoundError:
+        return {'ok': False, 'error': 'model not found'}, 404
+    except ValueError:
+        return {'ok': False, 'error': 'model must resolve inside the models directory'}, 400
+    if not p.is_file() or p.suffix.casefold() != '.gguf':
+        return {'ok': False, 'error': 'only .gguf model files can be selected'}, 400
 
-        data = request.get_json() or {}
-
-        model = data.get('model')
-
-        if not model:
-
-            return jsonify({'error': 'model required'}), 400
-
-        base = Path.cwd()
-
-        p = Path(model)
-
-        if not p.is_absolute():
-
-            p = base / model
-
-        if not p.exists():
-
-            return jsonify({'error': 'model not found'}), 404
-
+    try:
         bot = get_chat_bot()
-
-        # allow bot to accept new model path
-
-        if hasattr(bot, 'set_local_model'):
-
-            try:
-
-                bot.set_local_model(str(p))
-
-            except Exception:
-
-                app.logger.exception('Failed to set model on bot')
-
-        # unload any cached in-process model so it reloads with new path
-
-        try:
-
-            from echo.runtime import model_runtime
-
-            model_runtime.unload_model()
-
-        except Exception:
-
-            pass
-
-        # persist selection
-
-        cfg = Path(__file__).parent / 'data' / 'echo_model.json'
-
+        if not bot.set_local_model(str(p)):
+            return {'ok': False, 'error': 'Echo rejected the selected local model path.'}, 500
+        from echo.runtime import model_runtime
+        model_runtime.unload_model()
+        cfg = base / 'data' / 'echo_model.json'
         cfg.parent.mkdir(parents=True, exist_ok=True)
+        relative_model = p.relative_to(base).as_posix()
+        cfg.write_text(json.dumps({'model': relative_model}), encoding='utf-8')
+        return {'ok': True, 'model': relative_model}, 200
+    except Exception as exc:
+        app.logger.exception('Failed to select local Echo GGUF model')
+        return {'ok': False, 'error': f'Model selection failed: {exc}'}, 500
 
-        cfg.write_text(json.dumps({'model': str(p)}), encoding='utf-8')
 
-        return jsonify({'ok': True, 'model': str(p)})
+def _chatserv_select_model(model):
+    result, _ = _select_echo_model_path(model)
+    return result
 
-    except Exception as e:
 
-        app.logger.exception('Select model failed')
-
-        return jsonify({'error': str(e)}), 500
+app.config['CHAT_SERV_MODEL_HANDLER'] = _chatserv_select_model
 
 
 
@@ -15829,10 +16861,19 @@ def personality_save():
 
 def about_page():
 
-    return send_file('about.html')
+    return send_file(Path(__file__).resolve().parent / 'about.html')
 
 
+@app.route('/api/about/version')
+def about_github_version():
+    from core.github_version import get_github_current_version
 
+    repository = os.environ.get('GITHUB_REPO', 'jbalestrine/masterchief').strip()
+    version = get_github_current_version(
+        repository,
+        force_refresh=request.args.get('refresh') == '1',
+    )
+    return jsonify(version), 200 if version.get('ok') else 502
 
 
 @app.route('/pipelines')
@@ -17291,7 +18332,7 @@ if TF_WIZARD_AVAILABLE:
         templates_dir = os.path.join(tf_wizard_dir, 'templates')
         env = Environment(loader=FileSystemLoader(templates_dir), autoescape=tf_wizard_app.templates.autoescape)
         tmpl = env.get_template("index.html")
-        return tmpl.render()
+        return _with_archetype_client(tmpl.render())
 
     @app.route('/tf_wizard/generate', methods=['POST'])
     def tf_wizard_generate():
@@ -17367,6 +18408,7 @@ def art_gallery():
 
 
 @app.route('/media/roku')
+@requires_permission('rbac')
 def roku_builder_page():
     """Serve the Roku IPTV builder wizard."""
     try:
@@ -17378,386 +18420,250 @@ def roku_builder_page():
     return ('Roku Builder not available', 404)
 
 
-MAX_PLAYLIST_ENTRIES = 50000
 MAX_PREVIEW_ITEMS = 25
-MAX_CATEGORY_ITEMS = 50
 
 
-def _normalize_group_key(value):
-    """Normalize IPTV group names so actual playlist categories are preserved."""
-    text = (value or '').strip().lower()
-    if not text:
-        return 'live'
-    text = text.replace('&', ' and ')
-    text = re.sub(r'[^a-z0-9]+', '-', text)
-    return text.strip('-') or 'live'
-
-
-def _classify_roku_entry(title, group_title=None):
-    """Infer a content category for a Roku playlist entry."""
-    haystack = ' '.join(filter(None, [title or '', group_title or ''])).lower()
-    if any(token in haystack for token in ['news', 'breaking', 'cnn', 'bbc', 'fox', 'sky news', 'live news']):
-        return 'news'
-    if any(token in haystack for token in ['sport', 'sports', 'football', 'soccer', 'nba', 'nfl', 'mma', 'boxing', 'premier league']):
-        return 'sports'
-    if any(token in haystack for token in ['movie', 'movies', 'film', 'cinema', 'premiere', 'theater']):
-        return 'movies'
-    if any(token in haystack for token in ['series', 'episode', 'show', 'drama', 'tv show', 'reality', 'documentary series']):
-        return 'series'
-    if any(token in haystack for token in ['kids', 'cartoon', 'animation', 'family']):
-        return 'kids'
-    if any(token in haystack for token in ['music', 'radio', 'concert']):
-        return 'music'
-    return 'live'
-
-
-def _parse_roku_m3u_attributes(line):
-    attrs = {}
-    for key, value in re.findall(r'(?:^|\s)([A-Za-z0-9_-]+)="([^"]*)"', line):
-        attrs[key.lower().replace('-', '_')] = value.strip()
-    return attrs
-
-
-def _parse_m3u_playlist(text):
-    """Parse an m3u/m3u8 playlist into rich Roku-friendly entries."""
-    items = []
-    current = {}
-    current_group = None
-    for raw_line in str(text or '').splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith('#EXTGRP:'):
-            current_group = line.split(':', 1)[1].strip()
-            continue
-        if line.startswith('#EXTINF'):
-            current = {'group_title': current_group}
-            attrs = _parse_roku_m3u_attributes(line)
-            current.update(attrs)
-            title_match = re.search(r',\s*(.*)$', line)
-            current['title'] = title_match.group(1).strip() if title_match else (attrs.get('tvg_name') or attrs.get('title') or 'Channel')
-            raw_group = attrs.get('group_title') or attrs.get('tvg_group') or attrs.get('group') or current_group or current.get('group_title')
-            current['group_title'] = raw_group
-            current['category'] = _normalize_group_key(raw_group) if raw_group else _classify_roku_entry(current['title'], current.get('group_title'))
-            continue
-        if line.startswith('#'):
-            continue
-        if line.startswith(('http://', 'https://', 'rtsp://', 'udp://', 'rtmp://', 'mms://')):
-            if len(items) >= MAX_PLAYLIST_ENTRIES:
-                break
-            current['url'] = line
-            title = current.get('title') or current.get('tvg_name') or f'Channel {len(items) + 1}'
-            group = current.get('group_title') or current.get('tvg_group') or current.get('group') or current.get('category') or 'live'
-            category = current.get('category') or _normalize_group_key(group) or _classify_roku_entry(title, group)
-            items.append({
-                'title': title,
-                'url': line,
-                'group': group,
-                'category': category,
-                'logo': current.get('tvg_logo') or current.get('logo') or '',
-                'raw_group': current.get('group_title') or current.get('tvg_group') or ''
-            })
-            current = {}
-    return items
-
-
-def _generate_roku_manifest(channel_name, bundle_id, developer_ip='', theme='dark'):
-    manifest = f"""title={channel_name}
-subtitle={channel_name} IPTV
-major_version=1
-minor_version=0
-build_version=00001
-mm_icon_focus_hd=pkg:/images/icon_focus_hd.png
-mm_icon_focus_sd=pkg:/images/icon_focus_sd.png
-splash_screen_fhd=pkg:/images/splash_fhd.png
-splash_screen_hd=pkg:/images/splash_hd.png
-splash_screen_sd=pkg:/images/splash_sd.png
-supports_input_launch=true
-ui_resolutions=fhd,hd,sd
-developer_ip={developer_ip}
-theme={theme}
-channel_id={bundle_id}
-"""
-    return manifest
-
-
-def _roku_project_template(channel_name, bundle_id, categories):
-    rows = []
-    for category_name, items in categories.items():
-        row_items = items[:6]
-        item_names = ', '.join(f'"{item["title"]}"' for item in row_items)
-        rows.append(f'        {{ title: "{category_name.title()}", items: [{item_names}] }}')
-    rows_text = '\n'.join(rows)
-    return f"""sub init()
-    m.top.backgroundColor = "0x111827"
-    m.top.title = "{channel_name}"
-    m.top.categoryRows = [
-{rows_text}
-    ]
-end sub
-"""
+def _parse_m3u_playlist(text, base_url=None):
+    return _parse_roku_m3u_playlist(text, base_url)
 
 
 def _build_roku_preview(entries):
-    grouped = {}
-    for entry in entries:
-        raw_group = entry.get('group') or entry.get('raw_group') or entry.get('category') or 'live'
-        category = _normalize_group_key(raw_group)
-        grouped.setdefault(category, []).append(entry)
-    return {category: values[:MAX_CATEGORY_ITEMS] for category, values in sorted(grouped.items())}
+    return _group_roku_entries(entries)
+
+
+def _parse_roku_playlist_sources(payload, uploaded_files):
+    additional_urls = request.form.getlist('additional_playlist_url')
+    additional_urls.extend(
+        line.strip()
+        for value in request.form.getlist('additional_playlist_urls')
+        for line in value.splitlines()
+        if line.strip()
+    )
+    playlist_sources = [
+        str(value).strip()
+        for value in (
+            request.form.getlist('playlist_url')
+            + additional_urls
+            + request.form.getlist('playlist_url[]')
+        )
+        if str(value).strip()
+    ]
+    if not playlist_sources:
+        for key in ('playlist_url', 'additional_playlist_url', 'source_url'):
+            value = str(payload.get(key) or '').strip()
+            if value:
+                playlist_sources.append(value)
+    parsed_sources = []
+    for uploaded in uploaded_files:
+        if not uploaded or not uploaded.filename:
+            continue
+        content = uploaded.read(50 * 1024 * 1024 + 1)
+        if len(content) > 50 * 1024 * 1024:
+            raise ValueError('Playlist files must be 50 MiB or smaller.')
+        decoded = content.decode('utf-8-sig', 'replace')
+        parsed_sources.extend(
+            _parse_roku_json_playlist(decoded)
+            if uploaded.filename.lower().endswith('.json')
+            else _parse_m3u_playlist(decoded)
+        )
+    playlist_json = str(payload.get('playlist_json') or '').strip()
+    if playlist_json:
+        parsed_sources.extend(_parse_roku_json_playlist(playlist_json))
+    playlist_text = str(payload.get('playlist_text') or '').strip()
+    if playlist_text:
+        parsed_sources.extend(_parse_m3u_playlist(playlist_text))
+    for playlist_url in playlist_sources:
+        remote_text, final_url = _fetch_remote_playlist_text(playlist_url)
+        parsed_sources.extend(_parse_roku_m3u_playlist(remote_text, final_url))
+
+    entries = []
+    seen_urls = set()
+    for entry in parsed_sources:
+        url = entry.get('url')
+        if not isinstance(url, str) or not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        entries.append(entry)
+        if len(entries) >= MAX_PLAYLIST_ENTRIES:
+            break
+    return entries
+
+
+def _read_roku_xmltv(payload):
+    from core.roku_epg import MAX_XMLTV_BYTES, parse_xmltv_listings
+
+    uploaded = request.files.get('epg_file') if request.files else None
+    epg_url = str(payload.get('epg_url') or '').strip()
+    if uploaded is not None and uploaded.filename:
+        content = uploaded.read(MAX_XMLTV_BYTES + 1)
+        if len(content) > MAX_XMLTV_BYTES:
+            raise ValueError('XMLTV guide files must be 50 MiB or smaller.')
+        return parse_xmltv_listings(content), ''
+    if epg_url:
+        content, final_url = _fetch_remote_playlist_text(epg_url)
+        return parse_xmltv_listings(content), final_url
+    return {}, ''
 
 
 @app.route('/api/roku/validate', methods=['POST'])
+@requires_permission('rbac')
 def api_roku_validate():
     """Validate and normalize an m3u/m3u8 source before building a Roku app."""
+    try:
+        if not get_roku_settings()['enabled']:
+            return jsonify({'ok': False, 'error': 'The private Roku feature is switched off.'}), 409
+    except (OSError, ValueError) as exc:
+        app.logger.exception('Could not read Roku feature settings')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
     payload = request.get_json(silent=True) or request.form.to_dict() or {}
-    playlist_url = (payload.get('playlist_url') or '').strip()
-    playlist_text = (payload.get('playlist_text') or '').strip()
-    playlist_json = (payload.get('playlist_json') or '').strip()
-    uploaded = request.files.get('file') if request.files else None
-
-    if not playlist_text and not playlist_url and not playlist_json and not uploaded:
-        return jsonify({'ok': False, 'error': 'playlist url, text, json, or file upload required'}), 400
+    uploaded_files = request.files.getlist('file') if request.files else []
+    has_source = any(upload.filename for upload in uploaded_files if upload) or any(
+        str(payload.get(key) or '').strip()
+        for key in (
+            'playlist_url',
+            'additional_playlist_url',
+            'additional_playlist_urls',
+            'source_url',
+            'playlist_text',
+            'playlist_json',
+        )
+    )
+    if not has_source:
+        return jsonify({'ok': False, 'error': 'Choose a playlist URL, upload a file, or paste M3U/JSON content.'}), 400
 
     try:
-        if uploaded is not None and uploaded.filename:
-            content = uploaded.read().decode('utf-8', 'replace')
-            if uploaded.filename.lower().endswith('.json'):
-                parsed = json.loads(content)
-                entries = []
-                for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
-                    if not isinstance(item, dict):
-                        continue
-                    title = str(item.get('title') or item.get('name') or 'Channel').strip()
-                    url = str(item.get('url') or item.get('stream_url') or '').strip()
-                    if not url:
-                        continue
-                    category = str(item.get('category') or item.get('group') or 'live').strip().lower()
-                    entries.append({
-                        'title': title,
-                        'url': url,
-                        'group': str(item.get('group') or item.get('category') or 'live').strip(),
-                        'category': category,
-                        'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
-                        'raw_group': str(item.get('group') or item.get('category') or '').strip(),
-                    })
-            else:
-                entries = _parse_m3u_playlist(content)
-        elif playlist_json:
-            parsed = json.loads(playlist_json)
-            entries = []
-            for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
-                if not isinstance(item, dict):
-                    continue
-                title = str(item.get('title') or item.get('name') or 'Channel').strip()
-                url = str(item.get('url') or item.get('stream_url') or '').strip()
-                if not url:
-                    continue
-                category = str(item.get('category') or item.get('group') or 'live').strip().lower()
-                entries.append({
-                    'title': title,
-                    'url': url,
-                    'group': str(item.get('group') or item.get('category') or 'live').strip(),
-                    'category': category,
-                    'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
-                    'raw_group': str(item.get('group') or item.get('category') or '').strip(),
-                })
-        elif playlist_text:
-            entries = _parse_m3u_playlist(playlist_text)
-        else:
-            content = _fetch_remote_playlist_text(playlist_url)
-            entries = _parse_m3u_playlist(content)
-    except Exception as exc:
-        return jsonify({'ok': False, 'error': f'Unable to validate playlist: {exc}'}), 400
+        entries = _parse_roku_playlist_sources(payload, uploaded_files)
+        guide, _ = _read_roku_xmltv(payload)
+        from core.roku_epg import apply_xmltv_listings
+        epg_matches = apply_xmltv_listings(entries, guide)
+    except (ValueError, json.JSONDecodeError) as exc:
+        return jsonify({'ok': False, 'error': f'Unable to parse playlist: {exc}'}), 400
+    except requests.RequestException:
+        return jsonify({'ok': False, 'error': 'Could not download a playlist or XMLTV guide. Check its URL and server response.'}), 400
 
     grouped = _build_roku_preview(entries)
     preview = entries[0] if entries else None
-    preview_text = f"{preview['title']} -> {preview['url']}" if preview else None
-    preview_entries = entries[:MAX_PREVIEW_ITEMS]
+    preview_text = preview['title'] if preview else None
     return jsonify({
         'ok': True,
         'count': len(entries),
         'preview': preview_text,
-        'entries': preview_entries,
+        'entries': entries,
         'grouped': grouped,
         'categories': sorted(grouped.keys()),
+        'truncated': len(entries) >= MAX_PLAYLIST_ENTRIES,
+        'epg_matches': epg_matches,
         'message': 'Playlist validated for Roku development use.'
     })
 
 
 @app.route('/api/roku/build', methods=['POST'])
+@requires_permission('rbac')
 def api_roku_build():
-    """Generate a Roku app scaffold, manifest, preview model, and zip archive from an m3u/m3u8 source."""
-    data = request.get_json(silent=True) or request.form.to_dict() or {}
-    name = (data.get('channel_name') or data.get('name') or 'MasterChief Roku').strip()
-    bundle_id = (data.get('bundle_id') or 'com.masterchief.roku').strip()
-    playlist_url = (data.get('playlist_url') or '').strip()
-    playlist_text = (data.get('playlist_text') or '').strip()
-    playlist_json = (data.get('playlist_json') or '').strip()
-    source_url = (data.get('source_url') or '').strip()
-    developer_ip = (data.get('developer_ip') or '').strip()
-    theme = (data.get('theme') or 'dark').strip().lower()
+    """Build a downloadable native Roku project using the complete supplied playlist."""
+    try:
+        if not get_roku_settings()['enabled']:
+            return jsonify({'ok': False, 'error': 'The private Roku feature is switched off.'}), 409
+    except (OSError, ValueError) as exc:
+        app.logger.exception('Could not read Roku feature settings')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
 
-    uploaded = request.files.get('file') if request.files else None
-    if uploaded is not None and uploaded.filename:
-        playlist_text = uploaded.read().decode('utf-8', 'replace')
-        if not playlist_text.strip():
-            return jsonify({'ok': False, 'error': 'Uploaded playlist file is empty'}), 400
+    payload = request.form.to_dict()
+    uploaded_files = request.files.getlist('file') if request.files else []
+    use_saved_playlist = payload.get('use_saved_playlist') == 'true'
+    entries = []
+    build_root = Path(__file__).resolve().parent / 'data' / 'roku_builds'
 
-    if not name or not bundle_id:
-        return jsonify({'ok': False, 'error': 'channel name and bundle id are required'}), 400
+    try:
+        if use_saved_playlist:
+            from core.roku_app import load_latest_saved_playlist
+            entries = load_latest_saved_playlist(build_root)
+        else:
+            entries = _parse_roku_playlist_sources(payload, uploaded_files)
+        guide, dynamic_guide_url = _read_roku_xmltv(payload)
+        from core.roku_epg import apply_xmltv_listings
+        epg_matches = apply_xmltv_listings(entries, guide)
+    except (ValueError, json.JSONDecodeError) as exc:
+        return jsonify({'ok': False, 'error': f'Unable to parse playlist: {exc}'}), 400
+    except FileNotFoundError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 404
+    except OSError as exc:
+        app.logger.exception('Could not load the latest saved Roku playlist')
+        return jsonify({'ok': False, 'error': 'Could not read the saved Roku playlist.'}), 500
+    except requests.RequestException:
+        return jsonify({'ok': False, 'error': 'Could not download a playlist or XMLTV guide. Check its URL and server response.'}), 400
 
-    playlist = []
-    if uploaded is not None and uploaded.filename and uploaded.filename.lower().endswith('.json'):
-        try:
-            parsed = json.loads(playlist_text)
-            for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
-                if not isinstance(item, dict):
-                    continue
-                title = str(item.get('title') or item.get('name') or 'Channel').strip()
-                url = str(item.get('url') or item.get('stream_url') or '').strip()
-                if not url:
-                    continue
-                category = str(item.get('category') or item.get('group') or 'live').strip().lower()
-                playlist.append({
-                    'title': title,
-                    'url': url,
-                    'group': str(item.get('group') or item.get('category') or 'live').strip(),
-                    'category': category,
-                    'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
-                    'raw_group': str(item.get('group') or item.get('category') or '').strip(),
-                })
-        except Exception as exc:
-            return jsonify({'ok': False, 'error': f'Unable to parse JSON playlist: {exc}'}), 400
-    elif playlist_json:
-        try:
-            parsed = json.loads(playlist_json)
-            for item in parsed if isinstance(parsed, list) else parsed.get('channels', []):
-                if not isinstance(item, dict):
-                    continue
-                title = str(item.get('title') or item.get('name') or 'Channel').strip()
-                url = str(item.get('url') or item.get('stream_url') or '').strip()
-                if not url:
-                    continue
-                category = str(item.get('category') or item.get('group') or 'live').strip().lower()
-                playlist.append({
-                    'title': title,
-                    'url': url,
-                    'group': str(item.get('group') or item.get('category') or 'live').strip(),
-                    'category': category,
-                    'logo': str(item.get('logo') or item.get('tvg_logo') or '').strip(),
-                    'raw_group': str(item.get('group') or item.get('category') or '').strip(),
-                })
-        except Exception as exc:
-            return jsonify({'ok': False, 'error': f'Unable to parse JSON playlist: {exc}'}), 400
-    elif playlist_text:
-        playlist = _parse_m3u_playlist(playlist_text)
-    elif playlist_url:
-        try:
-            playlist_text = _fetch_remote_playlist_text(playlist_url)
-            playlist = _parse_m3u_playlist(playlist_text)
-        except Exception as exc:
-            return jsonify({'ok': False, 'error': f'Unable to fetch playlist: {exc}'}), 400
+    if not entries:
+        message = (
+            'The latest saved Roku playlist contains no playable streams. Load a playlist in the Builder first.'
+            if use_saved_playlist else
+            'Provide a valid playlist containing at least one stream.'
+        )
+        return jsonify({'ok': False, 'error': message}), 400
 
-    if not playlist and not source_url:
-        return jsonify({'ok': False, 'error': 'Provide an m3u/m3u8 URL, paste playlist text, upload a playlist file, or supply a JSON custom channel list'}), 400
-
-    root = Path(__file__).resolve().parent / 'data' / 'roku_builds'
-    root.mkdir(parents=True, exist_ok=True)
-    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-') or 'masterchief-roku'
-    project_dir = root / slug
-    project_dir.mkdir(parents=True, exist_ok=True)
-
-    grouped = _build_roku_preview(playlist)
-    preview_model = {
-        'channel_name': name,
-        'bundle_id': bundle_id,
-        'categories': {category: [{'title': item['title'], 'url': item['url'], 'group': item.get('group', category)} for item in entries] for category, entries in grouped.items()},
-        'search_index': [item['title'] for item in playlist[:200]],
-        'source_url': playlist_url or source_url or 'uploaded_playlist',
-        'developer_ip': developer_ip,
-        'theme': theme,
-        'sample_size': len(playlist),
-        'preview_limited': len(playlist) > MAX_PREVIEW_ITEMS
-    }
-
-    manifest_path = project_dir / 'manifest'
-    manifest_path.write_text(_generate_roku_manifest(name, bundle_id, developer_ip, theme), encoding='utf-8')
-
-    source_path = project_dir / 'source.m3u'
-    if playlist:
-        lines = ['#EXTM3U']
-        for item in playlist:
-            title = (item.get('title') or 'Channel').replace('\n', ' ')
-            url = item.get('url', '')
-            group = item.get('group') or 'live'
-            if title and url:
-                lines.append(f'#EXTINF:-1 tvg-group="{group}",{title}')
-                lines.append(url)
-        source_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-    elif source_url:
-        source_path.write_text(f'#EXTM3U\n{source_url}\n', encoding='utf-8')
-
-    images_dir = project_dir / 'images'
-    images_dir.mkdir(parents=True, exist_ok=True)
-    for name_file in ['icon_focus_hd.png', 'icon_focus_sd.png', 'splash_fhd.png', 'splash_hd.png', 'splash_sd.png']:
-        (images_dir / name_file).write_bytes(b'placeholder')
-
-    components_dir = project_dir / 'components'
-    components_dir.mkdir(parents=True, exist_ok=True)
-    (components_dir / 'MainScene.brs').write_text(
-        _roku_project_template(name, bundle_id, grouped),
-        encoding='utf-8'
+    channel_name = str(payload.get('channel_name') or 'MasterChief TV').strip()
+    bundle_id = str(payload.get('bundle_id') or 'com.masterchief.tv').strip()
+    theme = str(payload.get('theme') or 'dark').strip().lower()
+    render_url = str(payload.get('render_url') or '').strip()
+    web_app_url = str(payload.get('web_app_url') or '').strip()
+    logo_text = str(payload.get('logo_text') or 'JBTV').strip()
+    logo_color = str(payload.get('logo_color') or 'green').strip().lower()
+    collection_order_text = payload.get('collection_order')
+    collection_order = (
+        [line.strip() for line in str(collection_order_text).splitlines() if line.strip()]
+        if collection_order_text is not None else None
     )
+    logo_file = request.files.get('logo_file') if request.files else None
+    logo_image_bytes = b''
+    if logo_file is not None and logo_file.filename:
+        logo_image_bytes = logo_file.read(5 * 1024 * 1024 + 1)
+        if len(logo_image_bytes) > 5 * 1024 * 1024:
+            return jsonify({'ok': False, 'error': 'Custom logo images must be 5 MiB or smaller.'}), 413
+    from core.roku_app import build_roku_project, project_slug
+    from core.roku_epg import create_guide_token, save_guide_source
+    import uuid
 
-    (project_dir / 'channel_config.json').write_text(json.dumps({
-        'channel_name': name,
-        'bundle_id': bundle_id,
-        'playlist_url': playlist_url,
-        'source_url': source_url,
-        'developer_ip': developer_ip,
-        'theme': theme,
-        'playlist_count': len(playlist),
-        'entries': playlist[:20],
-        'preview_model': preview_model,
-        'created_at': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
-        'target': 'Roku TV streaming app',
-        'deployment': 'Developer Mode / sideload / upload to TV',
-        'notes': 'Use the Roku developer portal to sideload the generated zip and confirm the playlist loads on-device.'
-    }, indent=2), encoding='utf-8')
-
-    (project_dir / 'README.md').write_text(
-        '# Roku App Project\n\n'
-        f'- Channel name: {name}\n'
-        f'- Bundle ID: {bundle_id}\n'
-        f'- Playlist source: {playlist_url or source_url or "provided in pasted playlist text"}\n'
-        f'- Developer IP: {developer_ip or "not configured yet"}\n'
-        f'- Theme: {theme}\n\n'
-        '## Preview model\n\n'
-        f'{json.dumps(preview_model, indent=2)}\n\n'
-        'Use the Roku developer tools to upload the packaged channel and test it on-device.',
-        encoding='utf-8'
-    )
-
-    zip_path = project_dir / f'{slug}.zip'
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as archive:
-        for p in sorted(project_dir.rglob('*')):
-            if p.is_file() and p.name != zip_path.name:
-                archive.write(p, arcname=str(p.relative_to(project_dir)))
+    web_app_url = str(payload.get('web_app_url') or '').strip().rstrip('/')
+    guide_token = create_guide_token() if dynamic_guide_url and web_app_url else ''
+    guide_api_url = f'{web_app_url}/api/roku/guide/{guide_token}' if guide_token else ''
+    slug = project_slug(channel_name, uuid.uuid4().hex)
+    project_dir = build_root / slug
+    try:
+        archive = build_roku_project(project_dir, {
+            'channel_name': channel_name,
+            'bundle_id': bundle_id,
+            'theme': theme,
+            'render_url': render_url,
+            'web_app_url': web_app_url,
+            'guide_api_url': guide_api_url,
+            'logo_image_bytes': logo_image_bytes,
+            'logo_text': logo_text,
+            'logo_color': logo_color,
+            'collection_order': collection_order,
+        }, entries)
+    except (ValueError, OSError) as exc:
+        app.logger.exception('Could not build Roku project')
+        return jsonify({'ok': False, 'error': str(exc)}), 400 if isinstance(exc, ValueError) else 500
+    if guide_token:
+        try:
+            save_guide_source(Path(__file__).resolve().parent / 'data' / 'roku_guides', guide_token, dynamic_guide_url)
+        except OSError as exc:
+            app.logger.exception('Could not save Roku XMLTV guide configuration')
+            return jsonify({'ok': False, 'error': 'Roku package built, but its live guide configuration could not be saved.'}), 500
 
     return jsonify({
         'ok': True,
-        'project_path': str(project_dir.relative_to(Path(__file__).resolve().parent)),
-        'manifest_path': str(manifest_path.relative_to(Path(__file__).resolve().parent)),
-        'zip_path': str(zip_path.relative_to(Path(__file__).resolve().parent)),
         'slug': slug,
-        'channel_name': name,
+        'channel_name': channel_name,
         'bundle_id': bundle_id,
-        'playlist_count': len(playlist),
-        'preview_model': preview_model,
-        'message': 'Roku app scaffold generated and packaged for sideloading.'
+        'playlist_count': len(entries),
+        'playlist_source': 'latest_saved_build' if use_saved_playlist else 'submitted_playlist',
+        'epg_matches': epg_matches,
+        'live_guide': bool(guide_api_url),
+        'category_count': len(_build_roku_preview(entries)),
+        'download_url': f'/api/roku/download/{slug}',
+        'message': f'Roku app package created at {archive.name}.'
     })
-
 # ── Art Gallery API ──────────────────────────────────────────────────
 _GALLERY_DIR = Path(__file__).resolve().parent / 'data' / 'gallery'
 _GALLERY_META = Path(__file__).resolve().parent / 'data' / 'gallery_meta.json'
@@ -18002,7 +18908,7 @@ def arm_creator():
     try:
         p = Path(__file__).resolve().parent / 'arm_creator.html'
         if p.exists():
-            return p.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8'}
+            return _with_archetype_client(p.read_text(encoding='utf-8')), 200, {'Content-Type': 'text/html; charset=utf-8'}
     except Exception:
         app.logger.exception('Failed to serve arm_creator.html')
     return ('ARM Creator not available', 404)
@@ -18023,7 +18929,7 @@ def web_ide():
 
         if p.exists():
 
-            return p.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8'}
+            return _with_archetype_client(p.read_text(encoding='utf-8')), 200, {'Content-Type': 'text/html; charset=utf-8'}
 
     except Exception:
 
@@ -18051,7 +18957,7 @@ def iac_manager():
 
         if p.exists():
 
-            return p.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8'}
+            return _with_archetype_client(p.read_text(encoding='utf-8')), 200, {'Content-Type': 'text/html; charset=utf-8'}
 
     except Exception:
 
@@ -18577,66 +19483,10 @@ def web_tf_wizard():
     try:
         p = Path(__file__).resolve().parent / 'web_tf_wizard.html'
         if p.exists():
-            return p.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8'}
+            return _with_archetype_client(p.read_text(encoding='utf-8')), 200, {'Content-Type': 'text/html; charset=utf-8'}
     except Exception:
         app.logger.exception('Failed to serve web_tf_wizard.html')
     return redirect(url_for('web_ide'))
-
-
-# ══════════════════════════════════════════════════════════════
-#  System Diagnostics  /sys/*
-# ══════════════════════════════════════════════════════════════
-
-@app.route('/sys/diagnostics')
-def sys_diagnostics():
-    """MasterChief full-repo system diagnostics page."""
-    try:
-        from templates.diagnostics import DIAGNOSTICS_TEMPLATE
-        return render_template_string(DIAGNOSTICS_TEMPLATE)
-    except Exception as exc:
-        return f'<pre style="color:red">Diagnostics load error: {exc}</pre>', 500
-
-
-@app.route('/sys/api/scan')
-def sys_api_scan():
-    """Run full AST workspace scan and return JSON diagnostics data.
-    Results are cached for 60s. Pass ?force=1 to bust the cache."""
-    try:
-        import sys_diagnostics as _sd
-        import concurrent.futures as _cf
-        force = request.args.get('force', '0') == '1'
-        # Run in thread executor so Flask stays responsive
-        with _cf.ThreadPoolExecutor(max_workers=1) as ex:
-            future = ex.submit(_sd.get_cached_scan, force)
-            data = future.result(timeout=120)
-        return jsonify(data)
-    except Exception as exc:
-        app.logger.exception('sys_api_scan error')
-        return jsonify({'error': str(exc)}), 500
-
-
-@app.route('/sys/api/file')
-def sys_api_file():
-    """Return source file content for the inspector panel.
-    Query params: path (required), line (optional, 1-based)."""
-    rel_path = request.args.get('path', '')
-    line     = int(request.args.get('line', 0) or 0)
-    if not rel_path:
-        return jsonify({'error': 'path parameter required'}), 400
-    try:
-        import sys_diagnostics as _sd
-        data = _sd.get_file_content(rel_path, line)
-        # If raw download requested via Accept header or ?raw=1
-        if request.args.get('raw'):
-            ctype = {
-                '.py':'text/x-python', '.html':'text/html',
-                '.js':'application/javascript', '.css':'text/css',
-                '.json':'application/json', '.md':'text/markdown',
-            }.get('.' + rel_path.rsplit('.', 1)[-1], 'text/plain')
-            return data.get('content', ''), 200, {'Content-Type': ctype + '; charset=utf-8'}
-        return jsonify(data)
-    except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
 
 
 @app.route('/sys/api/services')
@@ -18865,6 +19715,7 @@ if __name__=='__main__':
     parser.add_argument('--debug',action='store_true',help='Run in debug mode')
 
     parser.add_argument('--port',type=int,default=8080,help='Port to run on (default: 8080)')
+    parser.add_argument('--host',default='0.0.0.0',help='Interface to bind (default: 0.0.0.0)')
 
     args=parser.parse_args()
 
@@ -18939,7 +19790,7 @@ if __name__=='__main__':
     app.config['MC_BASE_URL'] = f'http://127.0.0.1:{_port}'
 
     try:
-        app.run(host='0.0.0.0', port=_port, debug=args.debug, threaded=True)
+        app.run(host=args.host, port=_port, debug=args.debug, threaded=True)
     except OSError as e:
         if 'Windows error 6' in str(e):
             print(f"⚠️  Windows console error encountered, but server should be running on http://localhost:{_port}")

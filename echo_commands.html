@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Echo Command Center</title>
+  <style>
+    :root{color-scheme:dark;--bg:#11111a;--panel:#1c1c29;--panel2:#242436;--line:#393950;--text:#ececf4;--muted:#a7a7bb;--purple:#a78bfa;--green:#62d69a;--red:#ff7373;--amber:#ffc56b}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Segoe UI,system-ui,sans-serif}
+    header{background:#1c182b;border-bottom:1px solid var(--line);padding:18px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    header h1{font-size:21px;margin:0;color:var(--purple)}header a{color:var(--text);text-decoration:none;border:1px solid var(--line);border-radius:7px;padding:7px 11px}
+    main{max-width:1240px;margin:24px auto;padding:0 18px;display:grid;grid-template-columns:minmax(300px,1fr) minmax(340px,1.2fr);gap:18px}
+    section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+    h2{margin:0 0 12px;font-size:18px;color:var(--purple)}h3{margin:0;font-size:15px}
+    .sub{color:var(--muted);font-size:13px;margin:0 0 15px}
+    input,textarea,select{display:block;width:100%;padding:10px;margin:6px 0 13px;background:#101019;color:var(--text);border:1px solid var(--line);border-radius:7px;font:inherit}
+    textarea{resize:vertical}label{font-size:13px;color:var(--muted)}
+    button{cursor:pointer;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px 11px;font:inherit}
+    button:hover{border-color:var(--purple)}button.primary{background:#5b3d9b;border-color:#7c5cc4}button.danger{color:var(--red)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}.command-list{display:flex;flex-direction:column;gap:8px}
+    .command{border:1px solid var(--line);background:#161622;border-radius:8px;padding:11px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+    .command small{display:block;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}.badge{font-size:11px;padding:2px 7px;border-radius:20px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+    .badge.admin{color:var(--amber);border-color:#806338}.badge.enabled{color:var(--green);border-color:#326b4c}
+    .script-results{max-height:180px;overflow:auto;display:flex;flex-direction:column;gap:5px}
+    .script-results button{text-align:left;overflow-wrap:anywhere;font-family:Consolas,monospace;font-size:12px}
+    #notice{position:sticky;top:0;padding:9px 14px;background:#252538;color:var(--muted);display:none;z-index:5}
+    #notice.error{color:var(--red)}#notice.success{color:var(--green)}
+    .status{padding:10px;border-radius:8px;background:#151520;margin-bottom:14px;color:var(--muted)}
+    .wizard-steps{display:flex;gap:6px;margin-bottom:14px}.wizard-steps span{padding:4px 9px;border:1px solid var(--line);border-radius:20px;color:var(--muted);font-size:12px}
+    .wizard-steps .active{border-color:var(--purple);color:var(--purple)}
+    @media(max-width:800px){main{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⌨ Echo Command Center</h1>
+    <a href="/chatserv">Echo ChatServ</a>
+    <a href="/echo-chat">Echo Chat</a>
+    <a href="/masterchief_code_ui">Project Code UI</a>
+    <a href="/api/echo/commands" target="_blank" rel="noopener">Command API</a>
+  </header>
+  <div id="notice" role="status"></div>
+  <main>
+    <section>
+      <h2>Command catalog</h2>
+      <p class="sub">Built-ins and script add-ons available to Echo. Use buttons to send commands to Echo; actions still require operator authentication.</p>
+      <div id="status" class="status">Checking account and remote channel…</div>
+      <div id="commands" class="command-list">Loading commands…</div>
+      <div id="motdEditor" hidden style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+        <h3>ChatServ Message of the Day</h3>
+        <p class="sub">Edit the text stored in <code>commands/MOTD.txt</code>. Registered users can read it with <code>!motd</code>.</p>
+        <textarea id="motdText" rows="8" maxlength="8000" aria-label="ChatServ Message of the Day"></textarea>
+        <button id="saveMotd" type="button" class="primary">Save MOTD</button>
+      </div>
+    </section>
+
+    <section>
+      <h2 id="editorTitle">Add script command add-on</h2>
+      <p class="sub">Expose a project script as a named `!command`. Add-on commands always require authenticated operator mode. They run as the MasterChief server account.</p>
+      <div class="wizard-steps"><span id="stepBadge1" class="active">1 · Command</span><span id="stepBadge2">2 · Script</span><span id="stepBadge3">3 · Review</span></div>
+      <form id="commandForm">
+        <div id="step1">
+          <label for="commandName">Command name (without !)</label>
+          <input id="commandName" required minlength="2" maxlength="32" pattern="[a-z][a-z0-9_-]+" placeholder="e.g. health-check">
+          <label for="commandDescription">Description</label>
+          <input id="commandDescription" required maxlength="160" placeholder="What this command does">
+        </div>
+        <div id="step2" hidden>
+          <label for="scriptPath">Project-relative script path</label>
+          <input id="scriptPath" required placeholder="data/scripts/system-health-check.py">
+          <label for="scriptSearch">Find orphan scripts by path/name</label>
+          <input id="scriptSearch" placeholder="Type a filename or folder name">
+          <div id="scriptResults" class="script-results"></div>
+          <p class="sub">Supported: Python, PowerShell, Bash. Search excludes virtual environments, build output, and extracted uploads.</p>
+        </div>
+        <div id="step3" hidden>
+          <h3>Review command add-on</h3>
+          <pre id="preview" style="white-space:pre-wrap;background:#101019;border:1px solid var(--line);padding:12px;border-radius:8px"></pre>
+          <p class="sub">The command will not run during setup. Use !OP first, then explicitly send the command to execute it.</p>
+        </div>
+        <div class="actions">
+          <button id="backButton" type="button" hidden>Back</button>
+          <button id="nextButton" type="button" class="primary">Next</button>
+          <button id="saveButton" type="submit" class="primary" hidden>Save command</button>
+          <button id="cancelEditButton" type="button" hidden>Cancel edit</button>
+        </div>
+      </form>
+      <div class="actions" style="margin-top:14px">
+        <button type="button" onclick="window.location.href='/chatserv'">Open Echo ChatServ</button>
+        <button type="button" onclick="window.location.href='/masterchief_code_ui'">Open Code UI</button>
+        <button type="button" onclick="window.location.href='/echo-chat'">Open Code Wizard in Echo Chat</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    const byId = id => document.getElementById(id);
+    let editingName = null;
+    let wizardStep = 1;
+    let commandData = {builtins:[],commands:[]};
+
+    function notice(message, type='') {
+      const element=byId('notice');
+      element.textContent=message;
+      element.className=type;
+      element.style.display='block';
+      setTimeout(()=>{element.style.display='none';},5000);
+    }
+
+    async function api(url, options={}) {
+      const response=await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
+      const result=await response.json();
+      if(!response.ok||(result&&result.ok===false)) throw new Error(result.error||('HTTP '+response.status));
+      return result;
+    }
+
+    async function loadCommands() {
+      try {
+        commandData=await api('/api/echo/commands');
+        const adminStatus=commandData.admin_authorized?'RBAC admin authenticated':'Read-only catalog · sign in as an RBAC admin to manage commands';
+        byId('status').textContent='Running at '+commandData.running_at+' · '+adminStatus+' · '+(commandData.operator_mode?'Operator mode on':'Operator mode off')+' · Gmail updates '+(commandData.email_ready?'configured':'not configured')+' · SMS commands '+(commandData.twilio_ready?'enabled (Twilio charges may apply)':'disabled (no SMS provider configured)');
+        byId('commandForm').hidden=!commandData.admin_authorized;
+        byId('motdEditor').hidden=!commandData.admin_authorized;
+        if(commandData.admin_authorized) await loadMotd();
+        renderCommands();
+      } catch(error) {
+        byId('status').textContent='Cannot load command catalog: '+error.message;
+        notice(error.message,'error');
+      }
+
+      async function loadMotd() {
+        try {
+          const response=await fetch('/api/chatserv/state?channel=%23lobby');
+          const data=await response.json();
+          if(!response.ok||!data.ok)throw new Error(data.error||'Could not load MOTD');
+          byId('motdText').value=data.motd||'';
+        } catch(error) { notice('MOTD could not be loaded: '+error.message,'error'); }
+      }
+
+      byId('saveMotd').addEventListener('click',async()=>{
+        try {
+          await api('/api/chatserv/motd',{method:'POST',body:JSON.stringify({text:byId('motdText').value})});
+          notice('ChatServ MOTD saved to commands/MOTD.txt.','success');
+        } catch(error) { notice('MOTD save failed: '+error.message,'error'); }
+      });
+    }
+
+    function renderCommands() {
+      const list=byId('commands');
+      list.replaceChildren();
+      const items=[...(commandData.builtins||[]),...(commandData.commands||[])];
+      for(const command of items) {
+        const row=document.createElement('div');row.className='command';
+        const details=document.createElement('div');
+        const title=document.createElement('strong');
+        title.textContent='!'+command.name;
+        const description=document.createElement('small');
+        description.textContent=command.description||'';
+        const metadata=document.createElement('small');
+        metadata.className='badge '+(command.operator_required?'admin':'');
+        metadata.textContent=command.operator_required?'Admin operator required':'Available';
+        details.append(title,description,metadata);
+        const buttons=document.createElement('div');buttons.className='actions';
+        const send=document.createElement('button');
+        send.type='button';send.textContent='Send';
+        send.addEventListener('click',()=>sendCommand('!'+command.name));
+        buttons.appendChild(send);
+        if(command.script && commandData.admin_authorized) {
+          const edit=document.createElement('button');
+          edit.type='button';edit.textContent='Edit';
+          edit.addEventListener('click',()=>editCommand(command));
+          const toggle=document.createElement('button');
+          toggle.type='button';toggle.textContent=command.enabled===false?'Enable':'Disable';
+          toggle.addEventListener('click',()=>toggleCommand(command));
+          const remove=document.createElement('button');
+          remove.type='button';remove.className='danger';remove.textContent='Remove';
+          remove.addEventListener('click',()=>deleteCommand(command.name));
+          buttons.append(edit,toggle,remove);
+        }
+        row.append(details,buttons);list.appendChild(row);
+      }
+    }
+
+    async function sendCommand(command) {
+      if(!confirm('Send '+command+' to Echo now?'))return;
+      try {
+        const result=await api('/api/echo/chat',{method:'POST',body:JSON.stringify({message:command,session_id:'command_center'})});
+        notice(result.response||'Command sent.','success');
+        if(command==='!OP'||command==='!masterchief'||command==='!deop') await loadCommands();
+      } catch(error) { notice('Command was not sent: '+error.message,'error'); }
+    }
+
+    function setWizardStep(step) {
+      wizardStep=step;
+      for(let i=1;i<=3;i++) {
+        byId('step'+i).hidden=i!==step;
+        byId('stepBadge'+i).classList.toggle('active',i===step);
+      }
+      byId('backButton').hidden=step===1;
+      byId('nextButton').hidden=step===3;
+      byId('saveButton').hidden=step!==3;
+    }
+
+    byId('nextButton').addEventListener('click',()=>{
+      if(wizardStep===1) {
+        if(!byId('commandName').reportValidity()||!byId('commandDescription').reportValidity())return;
+        setWizardStep(2);
+      } else if(wizardStep===2) {
+        if(!byId('scriptPath').reportValidity())return;
+        const name=byId('commandName').value.trim().toLowerCase();
+        const description=byId('commandDescription').value.trim();
+        const script=byId('scriptPath').value.trim();
+        byId('preview').textContent='Chat command: !'+name+'\nDescription: '+description+'\nScript: '+script+'\nAuthentication: RBAC admin + !OP required\nRun automatically during setup: No';
+        setWizardStep(3);
+      }
+    });
+    byId('backButton').addEventListener('click',()=>setWizardStep(wizardStep-1));
+    byId('commandForm').addEventListener('submit',async event=>{
+      event.preventDefault();
+      const body={
+        name:byId('commandName').value.trim().toLowerCase(),
+        description:byId('commandDescription').value.trim(),
+        script:byId('scriptPath').value.trim(),
+        enabled:true
+      };
+      const url=editingName?'/api/echo/commands/'+encodeURIComponent(editingName):'/api/echo/commands';
+      try {
+        await api(url,{method:editingName?'PUT':'POST',body:JSON.stringify(body)});
+        notice('Command saved. It is now listed for Echo chat and the authenticated SMS webhook.','success');
+        resetForm();
+        await loadCommands();
+      } catch(error) { notice('Save failed: '+error.message,'error'); }
+    });
+
+    async function deleteCommand(name) {
+      if(!confirm('Remove !'+name+' from Echo command configuration? The script file will not be deleted.'))return;
+      try {
+        await api('/api/echo/commands/'+encodeURIComponent(name),{method:'DELETE'});
+        notice('Command removed. Its script file was left unchanged.','success');
+        await loadCommands();
+      } catch(error) { notice('Remove failed: '+error.message,'error'); }
+    }
+
+    async function toggleCommand(command) {
+      try {
+        await api('/api/echo/commands/'+encodeURIComponent(command.name),{
+          method:'PUT',
+          body:JSON.stringify({
+            name:command.name,
+            description:command.description,
+            script:command.script,
+            enabled:command.enabled===false
+          })
+        });
+        notice('Command '+(command.enabled===false?'enabled':'disabled')+'.','success');
+        await loadCommands();
+      } catch(error) { notice('Could not update command: '+error.message,'error'); }
+    }
+
+    function editCommand(command) {
+      editingName=command.name;
+      byId('editorTitle').textContent='Edit !'+command.name;
+      byId('commandName').value=command.name;
+      byId('commandDescription').value=command.description||'';
+      byId('scriptPath').value=command.script||'';
+      byId('cancelEditButton').hidden=false;
+      setWizardStep(1);
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function resetForm() {
+      editingName=null;
+      byId('commandForm').reset();
+      byId('editorTitle').textContent='Add script command add-on';
+      byId('cancelEditButton').hidden=true;
+      byId('scriptResults').replaceChildren();
+      setWizardStep(1);
+    }
+    byId('cancelEditButton').addEventListener('click',resetForm);
+
+    let searchTimer;
+    byId('scriptSearch').addEventListener('input',()=>{
+      clearTimeout(searchTimer);
+      const query=byId('scriptSearch').value.trim();
+      searchTimer=setTimeout(()=>searchScripts(query),250);
+    });
+    async function searchScripts(query) {
+      const results=byId('scriptResults');results.replaceChildren();
+      if(query.length<2)return;
+      try {
+        const response=await fetch('/api/ide/search?q='+encodeURIComponent(query));
+        const data=await response.json();
+        if(!response.ok||!data.ok)throw new Error(data.error||'Search failed');
+        for(const node of data.nodes||[]) {
+          if(!/\.(py|ps1|sh|bash)$/i.test(node.path))continue;
+          const button=document.createElement('button');button.type='button';button.textContent=node.path;
+          button.addEventListener('click',()=>{byId('scriptPath').value=node.path;});
+          results.appendChild(button);
+        }
+      } catch(error) { notice('Script search failed: '+error.message,'error'); }
+    }
+
+    loadCommands();
+  </script>
+</body>
+</html>

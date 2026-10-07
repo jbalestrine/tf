@@ -43,6 +43,22 @@
         .paused-note strong {
             color: #ffd54f;
         }
+        .release-highlight {
+            margin: 18px 0;
+            padding: 16px 18px;
+            border: 1px solid #4CAF50;
+            border-left: 4px solid #4CAF50;
+            border-radius: 8px;
+            background: rgba(76, 175, 80, 0.08);
+        }
+        .release-highlight h2 {
+            color: #81c784;
+            margin-bottom: 8px;
+            font-size: 1.15em;
+        }
+        .release-highlight p {
+            color: #d0d0d0;
+        }
         .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -375,13 +391,18 @@
 
         <div id="alerts"></div>
 
+        <section class="release-highlight" aria-labelledby="release-highlight-title">
+            <h2 id="release-highlight-title">MasterChief 4.0 MASTERCLASS</h2>
+            <p>The architecture-to-code workflow now includes guided Terraform designs, live blueprint-style hub-and-spoke diagrams, subnet grouping, labeled peering, and SVG/Visio export. Echo ChatServ adds persistent account-based rooms, moderation, persona bots, MOTD management, allowlisted page transfers, and platform-admin-only script/model operations. The local pipeline studio supports YAML/JSON interchange and approval gates; the Observability Center connects existing Prometheus, Grafana, and Loki services. Admins can preview and confirm source-bundle staging for local, WSL/WSL2, and USB targets. Optional CI/CD templates validate and plan only; generated infrastructure is not applied automatically. Cloud actions use the user's supplied credentials and remain limited by cloud-provider IAM. See <a href="/about" style="color:#81c784;">About</a> for the full milestone highlights.</p>
+        </section>
+
         <div class="features-grid" id="features-grid">
             <div class="loading">Loading features...</div>
         </div>
 
         <div class="feature-templates">
             <h2>📦 Create New Feature</h2>
-            <p>Use templates, load from GitHub, or create from scripts:</p>
+            <p>Use templates, load from GitHub, or create from scripts. Creating a feature saves its handler; enabling it is a separate RBAC-admin action.</p>
 
             <div class="template-grid" id="template-grid">
                 <div class="template-card" data-template="azure-service">
@@ -431,7 +452,7 @@
             <form id="feature-form">
                 <div class="form-group">
                     <label for="feature-name">Feature Name *</label>
-                    <input type="text" id="feature-name" name="name" required placeholder="e.g., azure-vm-manager">
+                    <input type="text" id="feature-name" name="name" required minlength="2" maxlength="64" pattern="[a-z][a-z0-9_-]+" placeholder="e.g., azure-vm-manager">
                 </div>
 
                 <div class="form-group">
@@ -763,28 +784,8 @@ def register_ui(app):
 
     @app.route('/api/cicd/deploy', methods=['POST'])
     def deploy():
-        data = request.get_json()
-        # Deployif (template === 'github-load') {
-                    openGithubModal();
-                } else if (template === 'script-load') {
-                    openScriptModal();
-                } else {
-                    loadTemplate(template);
-                }
-        return {'status': 'deployment started'}
+        return {'status': 'deployment request received'}
 
-
-        // GitHub form submission
-        document.getElementById('github-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            loadFromGithub();
-        });
-
-        // Script form submission
-        document.getElementById('script-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            createFromScript();
-        });
 def register_ui(app):
     # Add CI/CD UI components
     pass`
@@ -964,6 +965,7 @@ def register_ui(app):
 
         async function createFeature() {
             const formData = new FormData(document.getElementById('feature-form'));
+            const submitButton = document.querySelector('#feature-form button[type="submit"]');
             const data = {
                 name: formData.get('name'),
                 display_name: formData.get('display_name'),
@@ -972,6 +974,8 @@ def register_ui(app):
                 handler_code: formData.get('handler_code')
             };
 
+            submitButton.disabled = true;
+            submitButton.textContent = 'Creating…';
             try {
                 const response = await fetch('/api/features/create', {
                     method: 'POST',
@@ -981,15 +985,18 @@ def register_ui(app):
 
                 const result = await response.json();
 
-                if (result.success) {
+                if (response.ok && result.success) {
                     showAlert('Feature created successfully!', 'success');
                     closeModal();
                     loadFeatures();
                 } else {
-                    showAlert('Error creating feature: ' + result.error, 'error');
+                    showAlert('Error creating feature: ' + (result.error || `HTTP ${response.status}`), 'error');
                 }
             } catch (error) {
                 showAlert('Error creating feature: ' + error.message, 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Create Feature';
             }
         }
 

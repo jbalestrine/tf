@@ -1,0 +1,6 @@
+# Optional, local Hugging Face/PEFT LoRA adapter training dependencies.
+# Install only after selecting a compatible local checkpoint and hardware.
+torch>=2.2
+transformers>=4.40
+peft>=0.10
+accelerate>=0.29

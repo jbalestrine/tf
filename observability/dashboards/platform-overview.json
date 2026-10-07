@@ -16,45 +16,45 @@
         "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 }
       },
       {
-        "title": "Active Deployments",
+        "title": "HTTP Requests Per Second",
         "type": "graph",
         "targets": [
           {
-            "expr": "masterchief_active_deployments",
-            "legendFormat": "Deployments"
+            "expr": "sum by (endpoint) (rate(masterchief_http_requests_total[5m]))",
+            "legendFormat": "{{ endpoint }}"
           }
         ],
         "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 }
       },
       {
-        "title": "Module Load Time",
+        "title": "Request Latency (p95)",
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(masterchief_module_load_duration_seconds[5m])",
-            "legendFormat": "{{ module }}"
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(masterchief_http_request_duration_seconds_bucket[5m])))",
+            "legendFormat": "p95"
           }
         ],
         "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 }
       },
       {
-        "title": "Event Bus Throughput",
+        "title": "Server Errors Per Second",
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(masterchief_events_total[5m])",
-            "legendFormat": "{{ event_type }}"
+            "expr": "sum by (endpoint) (rate(masterchief_http_requests_total{status=~\"5..\"}[5m]))",
+            "legendFormat": "{{ endpoint }}"
           }
         ],
         "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 }
       },
       {
-        "title": "API Response Time",
+        "title": "Requests by HTTP Status",
         "type": "graph",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, rate(masterchief_api_request_duration_seconds_bucket[5m]))",
-            "legendFormat": "p95"
+            "expr": "sum by (status) (rate(masterchief_http_requests_total[5m]))",
+            "legendFormat": "{{ status }}"
           }
         ],
         "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 }

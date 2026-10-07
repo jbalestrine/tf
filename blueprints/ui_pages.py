@@ -2,6 +2,7 @@ from pathlib import Path
 
 from flask import Blueprint, current_app, redirect, send_file, url_for
 
+from utils.code_archetypes import with_archetype_client
 from utils.feature_flags import is_feature_enabled
 
 try:
@@ -57,6 +58,20 @@ def web_ide():
         return redirect(url_for('index'))
     except Exception:
         return ('Web IDE not available', 404)
+
+
+@ui_pages_bp.route('/caf_generator')
+def caf_generator():
+        if not _is_feature_enabled('caf_generator'):
+            return ('<h2>CAF Generator is disabled by feature flag.</h2><p>Use <a href="/master-menu">Master Menu</a> to re-enable it.</p>', 503)
+        try:
+            page = _root() / 'caf_generator.html'
+            if page.exists():
+                html = with_archetype_client(page.read_text(encoding='utf-8'))
+                return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+        except Exception:
+            current_app.logger.exception('Failed to serve caf_generator.html')
+        return ('CAF Generator not available', 404)
 
 
 @ui_pages_bp.route('/iac_manager')
@@ -143,7 +158,8 @@ def masterchief_code_ui():
     try:
         ide_path = _root() / 'web_ide.html'
         if ide_path.exists():
-            return ide_path.read_text(encoding='utf-8'), 200, {'Content-Type': 'text/html; charset=utf-8'}
+            html = with_archetype_client(ide_path.read_text(encoding='utf-8'))
+            return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
         return f'<h1>MasterChief Code UI</h1><p>Web IDE file not found at {ide_path}</p>', 404
     except Exception as exc:
         current_app.logger.exception('Failed to serve MasterChief Code UI')

@@ -70,6 +70,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 #preview-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg3);border-bottom:1px solid var(--border);}
 #preview-header h2{font-size:16px;color:var(--accent);margin:0;}
 #code-preview{flex:1;overflow:auto;padding:0;}
+#caf-architecture-pane{flex:1;min-height:0;overflow:auto;padding:16px;background:var(--bg);}
+#caf-architecture-pane[hidden],#caf-code-pane[hidden]{display:none;}
+.architecture-caption{color:var(--text2);font-size:12px;margin-bottom:10px;}
+.architecture-diagram{overflow:auto;border:1px solid var(--border);border-radius:8px;background:#f8fafc;}
+.architecture-diagram svg{display:block;width:100%;min-width:800px;height:auto;}
 .code-block{height:100%;display:flex;flex-direction:column;}
 .code-header{display:flex;align-items:center;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--border);}
 .code-header .filename{font-size:13px;color:var(--accent);font-weight:600;}
@@ -290,11 +295,19 @@ input:checked + .slider:before{transform:translateX(26px);}
       <div id="preview-header">
         <h2>≡ƒôä Generated CAF Template</h2>
         <div class="btn-group">
+          <button class="btn secondary sm" type="button" onclick="showCAFView('diagram')">Architecture</button>
+          <button class="btn secondary sm" type="button" onclick="showCAFView('code')">Code</button>
+          <button class="btn secondary sm" type="button" onclick="downloadCAFDiagram('svg')">SVG</button>
+          <button class="btn secondary sm" type="button" onclick="downloadCAFDiagram('visio')">Visio</button>
           <button class="btn" onclick="downloadTemplate()">≡ƒÆ╛ Download</button>
           <button class="btn secondary" onclick="copyToClipboard()">≡ƒôï Copy</button>
         </div>
       </div>
-      
+      <div id="caf-architecture-pane" class="architecture-pane">
+        <div class="architecture-caption">Live architecture · derived from the generated CAF Terraform resources and their references</div>
+        <div id="caf-architecture-diagram" class="architecture-diagram" role="region" aria-label="CAF architecture diagram"></div>
+      </div>
+      <div id="caf-code-pane" hidden>
       <!-- File Tabs -->
       <div id="file-tabs">
         <button class="file-tab active" onclick="switchFileTab('main')">main.tf</button>
@@ -302,13 +315,14 @@ input:checked + .slider:before{transform:translateX(26px);}
         <button class="file-tab" onclick="switchFileTab('outputs')">outputs.tf</button>
         <button class="file-tab" onclick="switchFileTab('plan')">plan</button>
       </div>
-      
+
       <div id="code-preview">
         <div class="code-block">
           <div class="code-header">
             <span class="filename" id="current-filename">main.tf</span>
           </div>
           <pre class="code-content" id="generated-code">// Select a CAF module and configure parameters to generate your template</pre>
+        </div>
         </div>
       </div>
     </div>
@@ -390,11 +404,14 @@ const moduleConfigs = {
   }
 };
 
+let cafArchitectureGraph = {title: 'CAF architecture', hub: 'CAF deployment', nodes: [], edges: []};
+let cafRefreshTimer;
+
 function switchFileTab(fileType) {
   // Update tab active state
   document.querySelectorAll('.file-tab').forEach(tab => tab.classList.remove('active'));
   document.querySelector(`[onclick="switchFileTab('${fileType}')"]`).classList.add('active');
-  
+
   // Update filename display
   let filename;
   if (fileType === 'main') filename = 'main.tf';
@@ -402,7 +419,7 @@ function switchFileTab(fileType) {
   else if (fileType === 'outputs') filename = 'outputs.tf';
   else if (fileType === 'plan') filename = 'terraform plan (preview)';
   document.getElementById('current-filename').textContent = filename;
-  
+
   // Update code content
   if (window.generatedTemplates && window.generatedTemplates[fileType]) {
     document.getElementById('generated-code').textContent = window.generatedTemplates[fileType];
@@ -426,7 +443,7 @@ function showServiceConfig() {
   config.fields.forEach(field => {
     html += '<div class="form-row">';
     html += `<label for="${field.name}">${field.label}:</label>`;
-    
+
     if (field.type === 'select') {
       html += `<select id="${field.name}">`;
       field.options.forEach(option => {
@@ -440,10 +457,10 @@ function showServiceConfig() {
     } else {
       html += `<input type="${field.type || 'text'}" id="${field.name}" placeholder="${field.placeholder}">`;
     }
-    
+
     html += '</div>';
   });
-  
+
   html += '</div>';
   configDiv.innerHTML = html;
   configDiv.style.display = 'block';
@@ -465,16 +482,87 @@ function generateCAF() {
     return;
   }
 
-  showStatus('Generating CAF template...', 'info');
+  refreshCAFGeneratedTemplates();
 
-  // Store the generated templates
+  showStatus('CAF template and architecture diagram generated successfully!', 'success');
+}
+
+function refreshCAFGeneratedTemplates() {
+  const module = document.getElementById('caf_module').value;
+  const environment = document.getElementById('environment').value;
+  const location = document.getElementById('location').value;
+  const prefix = document.getElementById('prefix').value;
+  if (!module || !prefix) return false;
   window.generatedTemplates = generateAllTemplates(module, environment, location, prefix);
-  
-  // Show the current active tab
-  const activeTab = document.querySelector('.file-tab.active').getAttribute('onclick').match(/'(\w+)'/)[1];
+  const activeTab = document.querySelector('.file-tab.active')?.getAttribute('onclick')?.match(/'(\w+)'/)?.[1] || 'main';
   switchFileTab(activeTab);
-  
-  showStatus('CAF template generated successfully!', 'success');
+  renderCAFArchitecture(window.generatedTemplates.main, module, environment, location);
+  return true;
+}
+
+function renderCAFArchitecture(mainTemplate, module, environment, location) {
+  const resourcePattern = /resource\s+"([^"]+)"\s+"([^"]+)"\s*\{([\s\S]*?)(?=\nresource\s+"|$)/g;
+  const resourceBlocks = Array.from(mainTemplate.matchAll(resourcePattern));
+  const nodes = resourceBlocks.map((match, index) => ({
+    id: `caf-resource-${index + 1}`,
+    label: match[2],
+    subtitle: match[1],
+    kind: 'Azure resource'
+  }));
+  const byAddress = new Map(resourceBlocks.map((match, index) =>
+    [`${match[1]}.${match[2]}`, nodes[index].id]));
+  const edges = [];
+  resourceBlocks.forEach((match, index) => {
+    const references = match[3].matchAll(/\b([a-z][a-z0-9_]+)\.([a-z][a-z0-9_]*)\.(?:id|name|location)\b/g);
+    for (const reference of references) {
+      const target = byAddress.get(`${reference[1]}.${reference[2]}`);
+      if (target && target !== nodes[index].id) {
+        edges.push({from: target, to: nodes[index].id, label: 'resource reference'});
+      }
+    }
+  });
+  cafArchitectureGraph = {
+    title: `${module || 'CAF'} · ${environment || 'environment'}`,
+    hub: `Azure CAF deployment · ${location || 'region not set'}`,
+    nodes,
+    edges
+  };
+  window.renderArchitectureDiagram(document.getElementById('caf-architecture-diagram'), {
+    ...cafArchitectureGraph,
+    subtitle: `${nodes.length} generated resource blocks · code and diagram share the CAF configuration`
+  });
+}
+
+function showCAFView(view) {
+  const showDiagram = view !== 'code';
+  document.getElementById('caf-architecture-pane').hidden = !showDiagram;
+  document.getElementById('caf-code-pane').hidden = showDiagram;
+}
+
+async function downloadCAFDiagram(format) {
+  if (format === 'svg') {
+    window.downloadArchitectureSvg(document.getElementById('caf-architecture-diagram'), 'caf-architecture');
+    return;
+  }
+  try {
+    const response = await fetch('/api/architecture/visio', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cafArchitectureGraph)
+    });
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.error || `HTTP ${response.status}`);
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'caf-architecture.vsdx';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    showStatus(`Could not export Visio diagram: ${error.message}`, 'error');
+  }
 }
 
 function generateAllTemplates(module, environment, location, prefix) {
@@ -740,12 +828,18 @@ terraform {
   }
 }
 
+variable "user_password" {
+  description = "Initial password supplied at plan/apply time"
+  type        = string
+  sensitive   = true
+}
+
 # Azure AD User
 resource "azuread_user" "example" {
   user_principal_name = "${prefix}@example.onmicrosoft.com"
   display_name        = "${prefix} User"
   mail_nickname       = "${prefix}"
-  password            = "TempPassword123!"
+  password            = "\${var.user_password}"
 
   force_password_change = true
 }
@@ -2394,6 +2488,12 @@ terraform {
   }
 }
 
+variable "sql_administrator_password" {
+  description = "SQL administrator password supplied at plan/apply time"
+  type        = string
+  sensitive   = true
+}
+
 # SQL Server
 resource "azurerm_sql_server" "example" {
   name                         = "${prefix}-sql"
@@ -2401,7 +2501,7 @@ resource "azurerm_sql_server" "example" {
   location                     = azurerm_resource_group.example.location
   version                      = "12.0"
   administrator_login          = "sqladmin"
-  administrator_login_password = "P@ssw0rd123!"
+  administrator_login_password = "\${var.administrator_password}"
 }
 
 # SQL Database
@@ -2501,6 +2601,12 @@ terraform {
   }
 }
 
+variable "administrator_password" {
+  description = "Database administrator password supplied at plan/apply time"
+  type        = string
+  sensitive   = true
+}
+
 # MySQL Server
 resource "azurerm_mysql_server" "example" {
   name                = "${prefix}-mysql"
@@ -2508,7 +2614,7 @@ resource "azurerm_mysql_server" "example" {
   resource_group_name = azurerm_resource_group.example.name
 
   administrator_login          = "mysqladmin"
-  administrator_login_password = "P@ssw0rd123!"
+  administrator_login_password = "\${var.administrator_password}"
 
   sku_name   = "B_Gen5_2"
   storage_mb = 5120
@@ -2547,6 +2653,12 @@ terraform {
   }
 }
 
+variable "administrator_password" {
+  description = "Database administrator password supplied at plan/apply time"
+  type        = string
+  sensitive   = true
+}
+
 # PostgreSQL Server
 resource "azurerm_postgresql_server" "example" {
   name                = "${prefix}-postgres"
@@ -2554,7 +2666,7 @@ resource "azurerm_postgresql_server" "example" {
   resource_group_name = azurerm_resource_group.example.name
 
   administrator_login          = "postgresadmin"
-  administrator_login_password = "P@ssw0rd123!"
+  administrator_login_password = "\${var.administrator_password}"
 
   sku_name   = "B_Gen5_2"
   storage_mb = 5120
@@ -2593,6 +2705,12 @@ terraform {
   }
 }
 
+variable "sql_administrator_password" {
+  description = "SQL administrator password supplied at plan/apply time"
+  type        = string
+  sensitive   = true
+}
+
 # Synapse Workspace
 resource "azurerm_synapse_workspace" "example" {
   name                                 = "${prefix}-synapse"
@@ -2600,7 +2718,7 @@ resource "azurerm_synapse_workspace" "example" {
   location                             = azurerm_resource_group.example.location
   storage_data_lake_gen2_filesystem_id = azurerm_storage_data_lake_gen2_filesystem.example.id
   sql_administrator_login              = "sqladminuser"
-  sql_administrator_login_password     = "P@ssw0rd123!"
+  sql_administrator_login_password     = "\${var.sql_administrator_password}"
 
   identity {
     type = "SystemAssigned"
@@ -3369,7 +3487,7 @@ resource "azurerm_eventhub" "example" {
   };
 
   const template = templates[module] || `# Template for ${module}\n# Implementation coming soon...`;
-  
+
   // Replace placeholders with actual values
   return template
     .replace(/\$\{prefix\}/g, prefix)
@@ -3706,7 +3824,7 @@ variable "message_retention" {
   };
 
   const template = varTemplates[module] || `# Variables for ${module}\n# Implementation coming soon...`;
-  
+
   // Replace placeholders with actual values
   return template
     .replace(/\$\{prefix\}/g, prefix)
@@ -3933,7 +4051,7 @@ output "eventhub_name" {
   };
 
   const template = outputTemplates[module] || `# Outputs for ${module}\n# Implementation coming soon...`;
-  
+
   // Replace placeholders with actual values
   return template
     .replace(/\$\{prefix\}/g, prefix)
@@ -4195,7 +4313,7 @@ Plan: 8 to add, 0 to change, 0 to destroy.
   };
 
   const template = planTemplates[module] || `Terraform plan for ${module}\n# Implementation coming soon...`;
-  
+
   // Replace placeholders with actual values
   return template
     .replace(/\$\{prefix\}/g, prefix)
@@ -4210,11 +4328,11 @@ function clearForm() {
   document.getElementById('prefix').value = '';
   document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
   document.getElementById('serviceConfig').style.display = 'none';
-  
+
   // Clear generated templates
   window.generatedTemplates = null;
   switchFileTab('main');
-  
+
   hideStatus();
 }
 
@@ -4227,7 +4345,7 @@ function downloadTemplate() {
 
   const activeTab = document.querySelector('.file-tab.active').getAttribute('onclick').match(/'(\w+)'/)[1];
   const filename = activeTab === 'main' ? 'main.tf' : activeTab === 'variables' ? 'variables.tf' : 'outputs.tf';
-  
+
   const blob = new Blob([code], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -4335,14 +4453,14 @@ function applyConfiguration(config) {
   if (config.location) document.getElementById('location').value = config.location;
   if (config.prefix) document.getElementById('prefix').value = config.prefix;
   if (config.tags) document.getElementById('tags').value = config.tags;
-  
+
   document.getElementById('enable_monitoring').checked = config.monitoring || false;
   document.getElementById('enable_backup').checked = config.backup || false;
   document.getElementById('enable_security').checked = config.security || false;
   document.getElementById('enable_diagnostics').checked = config.diagnostics || false;
   document.getElementById('enable_logging').checked = config.logging || false;
   document.getElementById('enable_alerts').checked = config.alerts || false;
-  
+
   if (config.serviceConfig) applyServiceConfig(config.serviceConfig);
   if (config.module) showServiceConfig();
 }
@@ -4374,14 +4492,14 @@ function applyServiceConfig(config) {
 function validateConfiguration() {
   const module = document.getElementById('caf_module').value;
   const prefix = document.getElementById('prefix').value;
-  
+
   let errors = [];
-  
+
   if (!module) errors.push('CAF module must be selected');
   if (!prefix.trim()) errors.push('Resource prefix is required');
   if (prefix.length < 3) errors.push('Resource prefix must be at least 3 characters');
   if (!/^[a-z0-9]+$/.test(prefix)) errors.push('Resource prefix must contain only lowercase letters and numbers');
-  
+
   if (errors.length > 0) {
     showStatus('Validation failed: ' + errors.join(', '), 'error');
   } else {
@@ -4476,7 +4594,7 @@ echo "Run 'terraform apply tfplan' to deploy"
     });
 
     const result = await response.json();
-    
+
     if (result.ok) {
       showStatus('Terraform initialized successfully! Check output for plan.', 'success');
       // Show the plan output
@@ -4494,7 +4612,15 @@ echo "Run 'terraform apply tfplan' to deploy"
   window.generatedTemplates = null;
   switchFileTab('main');
 document.addEventListener('DOMContentLoaded', function() {
-  // Any initialization code here
+  const formContent = document.getElementById('form-content');
+  const refresh = () => {
+    clearTimeout(cafRefreshTimer);
+    cafRefreshTimer = setTimeout(refreshCAFGeneratedTemplates, 180);
+  };
+  formContent.addEventListener('input', refresh);
+  formContent.addEventListener('change', refresh);
+  document.getElementById('caf-architecture-pane').hidden = false;
+  document.getElementById('caf-code-pane').hidden = true;
 });
 </script>
 </body>

@@ -2,7 +2,7 @@
 MasterChief Enterprise DevOps Platform
 A comprehensive, modular enterprise DevOps automation platform.
 
-v2.2.8 — October 2026
+v4.0.0 — October 2026
 """
 import glob
 from setuptools import setup, find_packages
@@ -17,19 +17,31 @@ with open("README.md", "r", encoding="utf-8") as fh:
 # ---------------------------------------------------------------------------
 _webapp_files = (
     ["main.py"]
-    + glob.glob("*.html")
-    + ["config.yml", "api_settings.json", "cert_audit.json"]
+    + [f for f in glob.glob("*.html") if "backup" not in f.casefold()]
+    + ["config.yml"]
     # ALL root-level Python modules (main.py imports sys_diagnostics at
     # runtime; others are feature scripts / demos users may invoke)
     + [f for f in glob.glob("*.py")
-       if f not in ("setup.py", "conftest.py", "main.py", "main backup.py")
+       if f not in (
+           "setup.py", "conftest.py", "main.py", "main backup.py",
+           "main_hub.py", "dynamic_worker.py", "bot_simulation.py",
+           "index_workspace.py", "myscript.py", "test_model.py",
+           "test_roku_builder.py",
+       )
        and not f.startswith("_")]
 )
-_static_files = glob.glob("static/*.css") + glob.glob("static/*.js")
+_static_files = (
+    glob.glob("static/*.css")
+    + glob.glob("static/*.js")
+    + glob.glob("static/*.svg")
+    + glob.glob("static/*.png")
+    + glob.glob("static/*.ico")
+)
 
 data_files = [
     ("share/masterchief", _webapp_files),
     ("share/masterchief/static", _static_files),
+    ("share/masterchief/commands", glob.glob("commands/*.txt")),
 ]
 
 # ---------------------------------------------------------------------------
@@ -92,7 +104,7 @@ packages = find_packages(
 
 setup(
     name="masterchief",
-    version="2.2.8",
+    version="4.0.0",
     author="MasterChief Team",
     description="Enterprise DevOps Automation Platform",
     long_description=long_description,

@@ -242,6 +242,46 @@
       margin-top: 18px;
     }
 
+    .library-tools {
+      display: grid;
+      grid-template-columns: minmax(200px, 1fr) minmax(150px, 240px) minmax(140px, 200px) auto;
+      gap: 10px;
+      align-items: center;
+      margin: 14px 0;
+    }
+
+    .category-graph {
+      display: flex;
+      gap: 8px;
+      align-items: end;
+      min-height: 80px;
+      overflow-x: auto;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.18);
+    }
+
+    .graph-bar {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 4px;
+      min-width: 88px;
+      height: 64px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--tv-muted);
+    }
+
+    .graph-bar i {
+      display: block;
+      align-self: end;
+      min-height: 5px;
+      width: 100%;
+      border-radius: 5px 5px 0 0;
+      background: linear-gradient(0deg, #477c54, #8ae2a0);
+    }
+
     .channel-category {
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1);
@@ -368,6 +408,40 @@
       display: grid; gap: 10px;
     }
 
+    .settings-control {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+
+    .settings-control select[multiple] {
+      min-height: 110px;
+    }
+
+    .category-settings {
+      display: grid;
+      gap: 8px;
+      max-height: 250px;
+      overflow: auto;
+    }
+
+    .category-setting {
+      display: grid;
+      grid-template-columns: minmax(100px, 1fr) minmax(100px, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--tv-muted);
+    }
+
+    .settings-info p, .wizard-help {
+      color: var(--tv-muted);
+      line-height: 1.45;
+      margin: 0;
+    }
+
     .settings-title {
       font-size: clamp(30px, 3vw, 54px);
       font-weight: 800;
@@ -449,6 +523,46 @@
       display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 12px 16px;
     }
 
+    .wizard-progress {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .wizard-step {
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 9px;
+      padding: 10px;
+      background: rgba(255,255,255,0.04);
+      color: var(--tv-muted);
+      cursor: pointer;
+    }
+
+    .wizard-step.active {
+      border-color: #8ae2a0;
+      color: #f3fff6;
+      background: rgba(72,125,83,0.35);
+    }
+
+    .wizard-stage {
+      display: none;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.14);
+    }
+
+    .wizard-stage.active { display: block; }
+
+    .build-summary {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      color: var(--tv-muted);
+    }
+
     label {
       display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin: 0 0 8px;
     }
@@ -496,6 +610,8 @@
       .poster-row { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
       .settings-panel { grid-template-columns: 1fr; }
       .builder-grid { grid-template-columns: 1fr; }
+      .library-tools { grid-template-columns: 1fr; }
+      .wizard-progress { grid-template-columns: 1fr 1fr; }
       .tv-shell { min-height: auto; }
     }
   </style>
@@ -506,7 +622,7 @@
       <header class="header">
         <div class="brand">
           <div class="brand-mark"></div>
-          <div class="brand-name">player</div>
+          <div class="brand-name">MasterChief TV</div>
         </div>
         <div class="status">
           <div class="status-pill"><strong>Wed</strong></div>
@@ -525,19 +641,31 @@
 
         <div class="library">
           <div class="library-header">
-            <h2>Recently Added Movies</h2>
-            <small>Customize home highlights from settings</small>
+            <h2>Browse your playlist</h2>
+            <small id="librarySummary">Search and filter all parsed streams</small>
           </div>
+          <div class="library-tools">
+            <input id="channelSearch" type="search" placeholder="Search channels, groups, or IDs" aria-label="Search playlist">
+            <select id="categoryFilter" aria-label="Filter playlist by category">
+              <option value="">All categories</option>
+            </select>
+            <select id="channelSort" aria-label="Sort channels">
+              <option value="name">Sort by name</option>
+              <option value="group">Sort by category</option>
+            </select>
+            <span id="channelCount" role="status">0 channels</span>
+          </div>
+          <div class="category-graph" id="categoryGraph" aria-label="Playlist category counts"></div>
 
           <div class="preview-stage">
             <div class="preview-video-wrap">
               <video id="previewVideo" class="preview-video" controls playsinline poster=""></video>
             </div>
             <div class="preview-meta">
-              <h3 id="activeChannelTitle">Loading channel...</h3>
-              <p id="activeChannelMeta">Live IPTV preview is initializing from your configured playlist.</p>
+              <h3 id="activeChannelTitle">Choose a playlist to begin</h3>
+                  <p id="activeChannelMeta">Upload or enter a playlist in the Roku app wizard below.</p>
               <div class="channel-row" id="liveQuickActions">
-                <button type="button" class="channel-chip active" id="previewActionBtn">Preview app</button>
+                <button type="button" class="channel-chip active" id="previewActionBtn">Preview player</button>
                 <button type="button" class="channel-chip" id="refreshPreviewBtn">Refresh</button>
               </div>
             </div>
@@ -549,26 +677,44 @@
 
       <div class="settings-panel" id="settingsPanel">
         <div class="settings-col">
-          <h1 class="settings-title">Settings</h1>
-          <div class="settings-option primary">General Info</div>
-          <div class="settings-option">Change Language</div>
-          <div class="settings-option">Change Stream Format</div>
-          <div class="settings-option">Change Pin Code</div>
-          <div class="settings-option">Manage Categories</div>
-          <div class="settings-option">Clear Storage</div>
-          <div class="settings-option">Home Highlights</div>
-          <div class="settings-option">Use TMDB API <span class="switch"></span></div>
+          <h1 class="settings-title">Player settings</h1>
+          <label class="settings-control">Language
+            <select id="settingsLanguage">
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </label>
+          <label class="settings-control">Preview playback
+            <select id="settingsPlayback">
+              <option value="auto">Auto detect stream format</option>
+              <option value="hls">Prefer HLS.js when available</option>
+              <option value="native">Use browser-native playback</option>
+            </select>
+          </label>
+          <label class="settings-control">Home highlights
+            <select id="settingsHighlights">
+              <option value="all">Show all categories</option>
+              <option value="favorites">Show favorite categories only</option>
+            </select>
+          </label>
+          <label class="settings-control">Favorite categories
+            <select id="settingsFavorites" multiple size="5" aria-label="Favorite categories"></select>
+          </label>
+          <div id="categorySettings" class="category-settings"></div>
+          <button type="button" class="btn warning" id="clearSettingsBtn">Reset saved preferences</button>
         </div>
 
         <div class="settings-col settings-info">
-          <div class="settings-row"><span>Account Info</span></div>
-          <div class="settings-row"><span>Status</span><strong>Active</strong></div>
-          <div class="settings-row"><span>Registration date</span><strong>2024-12-31</strong></div>
-          <div class="settings-row"><span>Free trial expired</span><strong>Lifetime</strong></div>
-          <div class="settings-row"><span>Device Info</span></div>
-          <div class="settings-row"><span>Mac Address</span><strong>75:00:36:59:76:49</strong></div>
-          <div class="settings-row"><span>App version</span><strong>1.6.17</strong></div>
-          <div class="settings-row"><span>Device key</span><strong>900077</strong></div>
+          <h2>Private Roku feature</h2>
+          <p>Only an RBAC administrator can open this page or change the server-side feature switch.</p>
+          <div class="settings-row"><span>Feature status</span><strong id="rokuFeatureStatus">Checking…</strong></div>
+          <button type="button" class="btn primary" id="rokuFeatureToggle" aria-pressed="false">Checking feature access…</button>
+          <div class="settings-row"><span>Playlist entries</span><strong id="settingsEntryCount">Not loaded</strong></div>
+          <div class="settings-row"><span>Playlist categories</span><strong id="settingsCategoryCount">Not loaded</strong></div>
+          <label class="settings-control">Display name
+            <input id="settingsDisplayName" maxlength="60" placeholder="MasterChief TV">
+          </label>
+          <button type="button" class="btn" id="saveDisplayNameBtn">Save display name</button>
         </div>
       </div>
 
@@ -579,53 +725,148 @@
         </div>
 
         <form id="rokuForm" enctype="multipart/form-data">
-          <div class="builder-grid">
-            <div>
-              <label>Channel name</label>
-              <input name="channel_name" value="MasterChief IPTV" required />
-            </div>
-            <div>
-              <label>Bundle ID</label>
-              <input name="bundle_id" value="com.masterchief.iptv" required />
-            </div>
-            <div>
-              <label>Developer IP</label>
-              <input name="developer_ip" value="192.168.1.50" placeholder="192.168.1.50" />
-            </div>
-            <div>
-              <label>Theme</label>
-              <select name="theme">
-                <option value="dark">Dark / premium</option>
-                <option value="light">Light / minimal</option>
-                <option value="sport">Sport / live energy</option>
-              </select>
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label>Playlist URL</label>
-              <input name="playlist_url" id="playlist_url" value="http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u" />
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label>Upload .m3u / .m3u8 / .json file</label>
-              <input type="file" name="file" accept=".m3u,.m3u8,.json,text/plain" />
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label>Paste custom JSON channels</label>
-              <textarea name="playlist_json" id="playlist_json" placeholder='[{ "title": "News", "url": "http://stream.example/live.m3u8", "group": "News", "category": "news" }]'></textarea>
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label>Paste playlist text</label>
-              <textarea name="playlist_text" id="playlist_text" placeholder="#EXTM3U"></textarea>
-            </div>
-            <div style="grid-column: 1 / -1;">
-              <label>Fallback source URL</label>
-              <input name="source_url" value="http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u" />
-            </div>
+          <div class="wizard-progress" role="navigation" aria-label="Roku app creation steps">
+            <button type="button" class="wizard-step active" data-wizard-target="1">1. App details</button>
+            <button type="button" class="wizard-step" data-wizard-target="2">2. Playlist</button>
+            <button type="button" class="wizard-step" data-wizard-target="3">3. Review &amp; build</button>
+            <button type="button" class="wizard-step" data-wizard-target="4">4. Deploy to Roku</button>
           </div>
-
-          <div class="btn-row">
-            <button type="submit" class="btn primary">Generate Roku project</button>
-            <button type="button" class="btn" id="demoBtn">Load boilerplate</button>
-            <button type="button" class="btn warning" id="validateBtn">Validate playlist</button>
+          <p class="wizard-help" id="wizardHelp" role="status">Start with a channel name and visual theme.</p>
+          <section class="wizard-stage active" data-wizard-stage="1">
+            <div class="builder-grid">
+              <div><label>Channel name</label><input name="channel_name" value="MasterChief TV" maxlength="80" required /></div>
+              <div><label>Roku bundle ID</label><input name="bundle_id" value="com.masterchief.tv" required /></div>
+              <div><label>Roku logo text</label><input name="logo_text" value="JBTV" maxlength="8" pattern="[A-Za-z0-9-]{1,8}" required /><small>Shown on the Roku channel icons. Use 1-8 letters, numbers, or hyphens.</small></div>
+              <div><label>Logo color</label>
+                <select name="logo_color">
+                  <option value="green">MasterChief green</option>
+                  <option value="blue">Blue</option>
+                  <option value="red">Red</option>
+                  <option value="purple">Purple</option>
+                  <option value="gold">Gold</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Custom Roku logo (optional)</label>
+                <input type="file" name="logo_file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+                <small>Packaged at the top-left of the Roku screen. PNG, JPEG, or WebP; maximum 5 MiB.</small>
+              </div>
+              <div><label>Theme</label>
+                <select name="theme">
+                  <option value="dark">Dark / premium</option>
+                  <option value="light">Light / minimal</option>
+                  <option value="sport">Sport / live energy</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Roku sidebar collections (one per line)</label>
+                <textarea name="collection_order" id="collectionOrder" rows="20">XXX
+Sports
+UFC
+WWE
+Boxing
+NFL
+NBA
+MLB
+NHL
+Soccer
+Motorsports
+Tennis
+Cricket
+Rugby
+Golf
+Olympics
+Jackie Chan Films
+Transporter
+Two and a Half Men
+Lord of the Rings
+Batman
+The Big Bang Theory
+Curb Your Enthusiasm
+BBC Earth
+24/7 Channels
+HBO
+CINEMAX
+SHOWTIME
+STARZ
+NETFLIX
+NEWS CHANNELS
+Series</textarea>
+                <small>Reorder these built-in collections or remove a line to hide one. Provider playlist categories remain available.</small>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>MasterChief web app URL (optional)</label>
+                <input name="web_app_url" id="web_app_url" type="url" placeholder="http://192.168.1.20:8080 or https://your-app.example" autocomplete="url">
+                <small>Used for a separate Roku-native Web Tools Links screen. Use the computer's LAN address or a public HTTPS URL; localhost is only reachable on the computer itself. Roku cannot render these HTML/JavaScript pages.</small>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>MasterChief Render URL (optional)</label>
+                <input name="render_url" id="render_url" type="url" placeholder="https://your-service.onrender.com" autocomplete="url">
+                <small>Creates a separate read-only MasterChief dashboard tile in the Roku app; the IPTV player remains available.</small>
+              </div>
+            </div>
+          </section>
+          <section class="wizard-stage" data-wizard-stage="2">
+            <div class="builder-grid">
+              <div style="grid-column:1/-1">
+                <label>Playlist URL</label>
+                <input name="playlist_url" id="playlist_url" type="url" placeholder="https://your-authorized-provider.example/playlist.m3u" autocomplete="off" />
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Additional playlist URLs (one per line, optional)</label>
+                <textarea name="additional_playlist_urls" id="additional_playlist_urls" rows="3" placeholder="https://another-authorized-provider.example/playlist.m3u"></textarea>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Upload .m3u / .m3u8 / .json files</label>
+                <input type="file" name="file" accept=".m3u,.m3u8,.json,text/plain" multiple />
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Paste JSON channels (optional)</label>
+                <textarea name="playlist_json" id="playlist_json" rows="5" placeholder='[{"title":"Example News","url":"https://example.com/live.m3u8","group":"News"}]'></textarea>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Paste M3U playlist (optional)</label>
+                <textarea name="playlist_text" id="playlist_text" rows="7" placeholder="#EXTM3U"></textarea>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>XMLTV guide URL (optional)</label>
+                <input name="epg_url" id="epg_url" type="url" placeholder="https://your-authorized-provider.example/guide.xml" autocomplete="off" />
+                <small>Used for current/next listings. The guide's channel IDs must match playlist tvg-id values. A Roku-reachable MasterChief web app URL is required for scheduled refresh.</small>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Upload XMLTV guide (optional)</label>
+                <input type="file" name="epg_file" accept=".xml,.xmltv,.gz,application/xml,text/xml" />
+                <small>Uploaded guide data is included in the built playlist; use a guide URL for periodic updates.</small>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn warning" id="validateBtn">Load and validate playlist</button>
+            </div>
+          </section>
+          <section class="wizard-stage" data-wizard-stage="3">
+            <p>Review the full parsed catalog in the searchable player preview. The generated Roku package embeds every parsed channel in small data files for reliable Roku loading.</p>
+            <div class="build-summary" id="buildSummary">Load a playlist to see the entry and category totals here.</div>
+            <div class="btn-row">
+              <button type="submit" class="btn primary">Build Roku app package</button>
+              <button type="button" class="btn" id="rebuildSavedBtn">Rebuild from latest saved playlist</button>
+            </div>
+            <p class="wizard-help">Use this if Roku reports playlist data missing or empty. It reuses the newest saved playlist from an earlier package and rebuilds with the latest Roku fixes.</p>
+          </section>
+          <section class="wizard-stage" data-wizard-stage="4">
+            <p>Install directly to a Roku in Developer Mode on this same LAN, or download the package and upload it in the Roku Developer web page.</p>
+            <div class="builder-grid">
+              <div><label>Roku Developer Mode device IP</label><input id="rokuDeviceIp" placeholder="192.168.1.25 or 192.168.1.25:80"></div>
+              <div><label>Developer Mode password (used once)</label><input id="rokuDevPassword" type="password" autocomplete="new-password"></div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn primary" id="deployRokuBtn" disabled>Install latest package to Roku</button>
+              <button type="button" class="btn" id="downloadRokuBtn" disabled>Download Roku package</button>
+            </div>
+            <p class="wizard-help">The password is sent only with the install request and is not saved. Direct install requires the app server and Roku to reach each other on the same LAN; guest Wi-Fi, client isolation, VPNs, or a sleeping Roku can block it. The reported error will include connection or device-response details.</p>
+          </section>
+          <div class="btn-row wizard-navigation">
+            <button type="button" class="btn secondary" id="wizardBackBtn">Back</button>
+            <button type="button" class="btn secondary" id="wizardNextBtn">Next</button>
           </div>
         </form>
 
@@ -636,12 +877,11 @@
 
       <div class="bottom-bar">
         <div class="meta">
-          <span class="tag">Version: 1.6.17</span>
-          <span class="tag">Status: Active</span>
+          <span class="tag">MasterChief TV</span>
+          <span class="tag" id="playerFeaturePill">Feature status: Checking…</span>
         </div>
         <div class="meta">
-          <span class="tag">Web Page: https://i-player.live</span>
-          <span class="tag">Device key: 900077</span>
+          <span class="tag" id="playlistSummary">No playlist loaded</span>
         </div>
       </div>
     </div>
@@ -649,221 +889,439 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
   <script>
-    const viewButtons = document.querySelectorAll('[data-view]');
-    const homeView = document.querySelector('.home-view');
-    const settingsPanel = document.getElementById('settingsPanel');
-    const builderPanel = document.getElementById('builderPanel');
-    const form = document.getElementById('rokuForm');
-    const result = document.getElementById('result');
-    const playlistUrlField = document.getElementById('playlist_url');
-    const previewVideo = document.getElementById('previewVideo');
-    const activeChannelTitle = document.getElementById('activeChannelTitle');
-    const activeChannelMeta = document.getElementById('activeChannelMeta');
-    const previewCategories = document.getElementById('previewCategories');
+    (() => {
+      const form = document.getElementById('rokuForm');
+      const result = document.getElementById('result');
+      const video = document.getElementById('previewVideo');
+      const catalog = document.getElementById('previewCategories');
+      const categoryFilter = document.getElementById('categoryFilter');
+      const pageSize = 120;
+      const settingsKey = 'masterchief.roku.player.settings';
+      let entries = [];
+      let activeIndex = -1;
+      let currentView = 'home';
+      let pageIndex = 0;
+      let featureEnabled = false;
+      let latestProject = localStorage.getItem('masterchief.roku.lastProject') || '';
+      let hls = null;
+      let settings = readSettings();
 
-    function isHlsSource(url) {
-      return typeof url === 'string' && (/\.m3u8(?:\?.*)?$/i.test(url) || /m3u8/i.test(url));
-    }
-
-    function setPreviewMedia(url) {
-      if (!url) return;
-      const trimmed = String(url).trim();
-      if (isHlsSource(trimmed) && window.Hls) {
-        if (previewVideo.hlsInstance) {
-          previewVideo.hlsInstance.destroy();
-        }
-        const hls = new window.Hls({ liveSyncDurationCount: 3, backBufferLength: 90, lowLatencyMode: false });
-        previewVideo.hlsInstance = hls;
-        hls.loadSource(trimmed);
-        hls.attachMedia(previewVideo);
-        hls.on(window.Hls.Events.ERROR, (_, data) => {
-          if (data.fatal) {
-            activeChannelMeta.textContent = 'HLS stream failed to load. Check the playlist URL or switch to a .m3u8-capable source.';
-          }
-        });
-        previewVideo.play().catch(() => {});
-        return;
+      function readSettings() {
+        const defaults = {language:'en', playback:'auto', highlights:'all', favorites:[], categoryNames:{}, displayName:'MasterChief TV'};
+        try { return Object.assign(defaults, JSON.parse(localStorage.getItem(settingsKey) || '{}')); }
+        catch (error) { console.error('Could not read Roku preferences:', error); return defaults; }
       }
 
-      if (trimmed.startsWith('http://') && window.location.protocol === 'https:') {
-        previewVideo.src = trimmed.replace(/^http:\/\//i, 'https://');
-      } else {
-        previewVideo.src = trimmed;
-      }
-      previewVideo.load();
-      previewVideo.play().catch(() => {});
-    }
-
-    function toggleView(viewName) {
-      const isSettings = viewName === 'settings';
-      homeView.style.display = isSettings ? 'none' : 'block';
-      settingsPanel.classList.toggle('active', isSettings);
-      builderPanel.classList.toggle('active', !isSettings);
-      viewButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewName));
-    }
-
-    viewButtons.forEach(btn => {
-      btn.addEventListener('click', () => toggleView(btn.dataset.view));
-    });
-
-    function showResult(msg, isError = false) {
-      result.className = 'result visible' + (isError ? ' error' : '');
-      result.innerHTML = msg;
-    }
-
-    function renderPreviewFromJson(json) {
-      const grouped = json.grouped || {};
-      const categories = Object.entries(grouped);
-      if (!categories.length) {
-        activeChannelTitle.textContent = 'No channels available';
-        activeChannelMeta.textContent = 'Add a valid M3U, M3U8, or JSON playlist to populate the preview.';
-        previewCategories.innerHTML = '';
-        return;
+      function persistSettings() {
+        localStorage.setItem(settingsKey, JSON.stringify(settings));
+        document.querySelector('.brand-name').textContent = settings.displayName || 'MasterChief TV';
       }
 
-      const firstEntry = categories[0][1][0];
-      if (firstEntry) {
-        activeChannelTitle.textContent = firstEntry.title || 'Live preview';
-        activeChannelMeta.textContent = firstEntry.url || 'Preloading selected IPTV channel';
-        if (firstEntry.url) {
-          setPreviewMedia(firstEntry.url);
+      function notify(message, isError = false) {
+        result.className = 'result visible' + (isError ? ' error' : '');
+        result.textContent = message;
+      }
+
+      function stopPreview() {
+        if (hls) { hls.destroy(); hls = null; }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
+
+      function play(url) {
+        stopPreview();
+        if (!featureEnabled || !url) return;
+        if (/\.m3u8(?:[?#].*)?$/i.test(url) && settings.playback !== 'native' && window.Hls && window.Hls.isSupported()) {
+          hls = new window.Hls({liveSyncDurationCount:3, backBufferLength:90});
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(window.Hls.Events.ERROR, (_, info) => {
+            if (info.fatal) document.getElementById('activeChannelMeta').textContent = 'Stream playback failed. Check its URL, codec, or browser HTTPS restrictions.';
+          });
+        } else {
+          video.src = url;
+          video.load();
         }
       }
 
-      previewCategories.innerHTML = categories.map(([category, entries]) => {
-        const chips = entries.map((item) => {
-          const activeClass = item.title === activeChannelTitle.textContent ? 'active' : '';
-          return `<button class="channel-chip ${activeClass}" type="button" data-title="${escapeHtml(item.title || 'Channel')}" data-url="${escapeHtml(item.url || '')}">${escapeHtml(item.title || 'Channel')}</button>`;
-        }).join('');
-        return `<div class="channel-category"><h4>${escapeHtml(category)}</h4><div class="channel-row">${chips}</div></div>`;
-      }).join('');
+      async function requestJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || `Request failed (HTTP ${response.status})`);
+        return body;
+      }
 
-      previewCategories.querySelectorAll('.channel-chip').forEach((chip) => {
-        chip.addEventListener('click', () => {
-          const title = chip.dataset.title;
-          const url = chip.dataset.url;
-          activeChannelTitle.textContent = title || 'Live preview';
-          activeChannelMeta.textContent = url || 'Preview channel selected';
-          previewCategories.querySelectorAll('.channel-chip').forEach((node) => node.classList.remove('active'));
-          chip.classList.add('active');
-          if (url) {
-            setPreviewMedia(url);
+      async function loadFeatureStatus() {
+        try {
+          const body = await requestJson('/api/roku/settings');
+          featureEnabled = body.settings.enabled;
+          document.getElementById('rokuFeatureStatus').textContent = featureEnabled ? 'Enabled' : 'Disabled';
+          document.getElementById('rokuFeatureToggle').textContent = featureEnabled ? 'Turn Roku feature off' : 'Turn Roku feature on';
+          document.getElementById('rokuFeatureToggle').setAttribute('aria-pressed', String(featureEnabled));
+          document.getElementById('playerFeaturePill').textContent = `Feature status: ${featureEnabled ? 'On' : 'Off'}`;
+          if (!featureEnabled) {
+            stopPreview();
+            document.getElementById('activeChannelTitle').textContent = 'Roku feature is off';
+            document.getElementById('activeChannelMeta').textContent = 'Enable it in Settings to load playlists or build a Roku package.';
           }
+        } catch (error) {
+          document.getElementById('rokuFeatureStatus').textContent = 'Unavailable';
+          document.getElementById('rokuFeatureToggle').disabled = true;
+          document.getElementById('rokuFeatureToggle').textContent = 'Feature status unavailable';
+          notify(`Could not load Roku feature settings: ${error.message}`, true);
+        }
+      }
+
+      function categoryName(group) { return settings.categoryNames[group] || group; }
+
+      function refreshFilters() {
+        const selected = categoryFilter.value;
+        const groups = Array.from(new Set(entries.map(item => item.group || 'Uncategorized'))).sort();
+        categoryFilter.replaceChildren(new Option('All categories', ''));
+        groups.forEach(group => {
+          const count = entries.filter(item => (item.group || 'Uncategorized') === group).length;
+          categoryFilter.add(new Option(`${categoryName(group)} (${count.toLocaleString()})`, group));
         });
+        if (groups.includes(selected)) categoryFilter.value = selected;
+        const favorites = document.getElementById('settingsFavorites');
+        favorites.replaceChildren(...groups.map(group => new Option(categoryName(group), group)));
+        Array.from(favorites.options).forEach(option => { option.selected = settings.favorites.includes(option.value); });
+        document.getElementById('settingsEntryCount').textContent = entries.length.toLocaleString();
+        document.getElementById('settingsCategoryCount').textContent = groups.length.toLocaleString();
+        renderCategorySettings(groups);
+      }
+
+      function renderCategorySettings(groups) {
+        const host = document.getElementById('categorySettings');
+        host.replaceChildren();
+        groups.forEach(group => {
+          const row = document.createElement('label');
+          row.className = 'category-setting';
+          const label = document.createElement('span');
+          label.textContent = group;
+          const input = document.createElement('input');
+          input.value = categoryName(group);
+          input.maxLength = 60;
+          input.setAttribute('aria-label', `Display name for ${group}`);
+          input.addEventListener('change', () => {
+            const value = input.value.trim();
+            if (!value || value === group) delete settings.categoryNames[group];
+            else settings.categoryNames[group] = value;
+            persistSettings();
+            refreshFilters();
+            renderGraph();
+            renderCatalog();
+          });
+          row.append(label, input);
+          host.append(row);
+        });
+      }
+
+      function renderGraph() {
+        const host = document.getElementById('categoryGraph');
+        host.replaceChildren();
+        const counts = new Map();
+        entries.forEach(item => {
+          const group = item.group || 'Uncategorized';
+          counts.set(group, (counts.get(group) || 0) + 1);
+        });
+        const max = Math.max(1, ...counts.values());
+        Array.from(counts.entries()).sort((a,b) => b[1]-a[1]).slice(0,30).forEach(([group,count]) => {
+          const bar = document.createElement('div');
+          bar.className = 'graph-bar';
+          const amount = document.createElement('span');
+          amount.textContent = count.toLocaleString();
+          const fill = document.createElement('i');
+          fill.style.height = `${Math.max(5, Math.round(count / max * 34))}px`;
+          const label = document.createElement('span');
+          label.textContent = categoryName(group);
+          bar.append(amount, fill, label);
+          host.append(bar);
+        });
+      }
+
+      function renderCatalog() {
+        const query = document.getElementById('channelSearch').value.trim().toLocaleLowerCase();
+        const selected = categoryFilter.value;
+        const favorites = new Set(settings.favorites);
+        const filtered = entries.map((item,index) => ({item,index})).filter(({item}) => {
+          const group = item.group || 'Uncategorized';
+          return (!selected || selected === group) &&
+            (currentView !== 'home' || settings.highlights !== 'favorites' || favorites.has(group)) &&
+            `${item.title || ''} ${group} ${item.tvg_id || ''}`.toLocaleLowerCase().includes(query);
+        }).sort((a,b) => {
+          if (document.getElementById('channelSort').value === 'group') {
+            const compared = (a.item.group || '').localeCompare(b.item.group || '');
+            if (compared) return compared;
+          }
+          return (a.item.title || '').localeCompare(b.item.title || '');
+        });
+        const start = pageIndex * pageSize;
+        const page = filtered.slice(start, start + pageSize);
+        document.getElementById('channelCount').textContent = `${filtered.length.toLocaleString()} of ${entries.length.toLocaleString()} channels`;
+        document.getElementById('librarySummary').textContent = entries.length
+          ? `${entries.length.toLocaleString()} channels across ${categoryFilter.options.length - 1} categories`
+          : 'Load a playlist in the wizard to browse channels.';
+        catalog.replaceChildren();
+        const section = document.createElement('div');
+        section.className = 'channel-category';
+        const heading = document.createElement('h4');
+        heading.textContent = selected ? categoryName(selected) : 'All channels';
+        const row = document.createElement('div');
+        row.className = 'channel-row';
+        page.forEach(({item,index}) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'channel-chip' + (index === activeIndex ? ' active' : '');
+          button.textContent = item.title || `Channel ${index + 1}`;
+          button.title = `${categoryName(item.group || 'Uncategorized')} · ${item.tvg_id || 'No TVG ID'}`;
+          button.addEventListener('click', () => {
+            if (!featureEnabled) return;
+            activeIndex = index;
+            document.getElementById('activeChannelTitle').textContent = item.title || 'Selected channel';
+            document.getElementById('activeChannelMeta').textContent = `${categoryName(item.group || 'Uncategorized')} · ${item.tvg_id || 'No TVG ID'}`;
+            play(item.url);
+            renderCatalog();
+          });
+          row.append(button);
+        });
+        section.append(heading,row);
+        if (!page.length) {
+          const empty = document.createElement('p');
+          empty.textContent = entries.length ? 'No channels match the selected filters.' : 'No playlist loaded.';
+          section.append(empty);
+        }
+        catalog.append(section);
+        if (start + pageSize < filtered.length) {
+          const more = document.createElement('button');
+          more.type = 'button';
+          more.className = 'btn';
+          more.textContent = `Load next ${Math.min(pageSize, filtered.length - start - pageSize)} channels`;
+          more.addEventListener('click', () => { pageIndex += 1; renderCatalog(); });
+          catalog.append(more);
+        }
+      }
+
+      function makePlaylistFormData() {
+        const data = new FormData();
+        const files = form.elements.namedItem('file').files;
+        const json = form.elements.namedItem('playlist_json').value.trim();
+        const text = form.elements.namedItem('playlist_text').value.trim();
+        const url = form.elements.namedItem('playlist_url').value.trim();
+        const additionalUrls = form.elements.namedItem('additional_playlist_urls').value
+          .split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+        const hasPlaylistSource = files.length > 0 || Boolean(json || text || url || additionalUrls.length);
+        if (!hasPlaylistSource) return null;
+        for (const file of files) data.append('file', file);
+        if (json) data.append('playlist_json', json);
+        if (text) data.append('playlist_text', text);
+        if (url) data.append('playlist_url', url);
+        for (const additionalUrl of additionalUrls) data.append('additional_playlist_url', additionalUrl);
+        const guideUrl = form.elements.namedItem('epg_url').value.trim();
+        const guideFile = form.elements.namedItem('epg_file').files[0];
+        if (guideUrl) data.append('epg_url', guideUrl);
+        if (guideFile) data.append('epg_file', guideFile);
+        return data;
+      }
+
+      async function validatePlaylist() {
+        if (!featureEnabled) { notify('Enable the private Roku feature in Settings first.', true); return false; }
+        const data = makePlaylistFormData();
+        if (!data) { notify('Choose a playlist URL, file, M3U text, or JSON first.', true); return false; }
+        const button = document.getElementById('validateBtn');
+        button.disabled = true;
+        button.textContent = 'Loading playlist…';
+        try {
+          const body = await requestJson('/api/roku/validate', {method:'POST', body:data});
+          entries = Array.isArray(body.entries) ? body.entries : [];
+          activeIndex = -1;
+          pageIndex = 0;
+          refreshFilters();
+          renderGraph();
+          renderCatalog();
+          const summary = `${entries.length.toLocaleString()} channels · ${body.categories.length.toLocaleString()} categories`;
+          document.getElementById('playlistSummary').textContent = summary;
+          document.getElementById('buildSummary').textContent = `${summary}. ${body.truncated ? 'The 100,000-entry safety limit was reached.' : 'All parsed entries are included.'}`;
+          document.getElementById('activeChannelTitle').textContent = entries.length ? 'Playlist ready' : 'No playable channels';
+          document.getElementById('activeChannelMeta').textContent = entries.length ? 'Search or select a category, then choose a channel.' : 'Check that entries contain supported stream URLs.';
+          notify(`Playlist loaded with ${entries.length.toLocaleString()} entries across ${body.categories.length.toLocaleString()} categories.${body.truncated ? ' The 100,000-entry limit was reached.' : ''}`);
+          return true;
+        } catch (error) {
+          notify(`Playlist could not be loaded: ${error.message}`, true);
+          return false;
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Load and validate playlist';
+        }
+      }
+
+      function setWizardStep(step) {
+        const number = Math.max(1, Math.min(4, step));
+        document.querySelectorAll('[data-wizard-stage]').forEach(section =>
+          section.classList.toggle('active', Number(section.dataset.wizardStage) === number));
+        document.querySelectorAll('[data-wizard-target]').forEach(button =>
+          button.classList.toggle('active', Number(button.dataset.wizardTarget) === number));
+        document.getElementById('wizardBackBtn').disabled = number === 1;
+        document.getElementById('wizardNextBtn').hidden = number === 4;
+        document.getElementById('wizardHelp').textContent = [
+          'Set the app name, logo, colors, and Roku sidebar collections. A Render connection adds a separate dashboard tile.',
+          'Load a playlist you own or are authorized to access. Choose one source.',
+          'Review the searchable catalog and build a native Roku package; this does not install it.',
+          'Download the package or enter a Roku Developer Mode device on your local network.'
+        ][number - 1];
+      }
+
+      document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
+        currentView = button.dataset.view;
+        const settingsView = currentView === 'settings';
+        document.querySelector('.home-view').style.display = settingsView ? 'none' : 'block';
+        document.getElementById('settingsPanel').classList.toggle('active', settingsView);
+        document.getElementById('builderPanel').classList.toggle('active', !settingsView);
+        document.querySelectorAll('[data-view]').forEach(node => node.classList.toggle('active', node === button));
+        if (currentView === 'movies') categoryFilter.value = Array.from(categoryFilter.options).find(o => /movie|film/i.test(o.value))?.value || '';
+        else if (currentView === 'series') categoryFilter.value = Array.from(categoryFilter.options).find(o => /series/i.test(o.value))?.value || '';
+        else if (currentView === 'home') categoryFilter.value = '';
+        pageIndex = 0;
+        renderCatalog();
+      }));
+
+      document.getElementById('channelSearch').addEventListener('input', () => { pageIndex = 0; renderCatalog(); });
+      categoryFilter.addEventListener('change', () => { pageIndex = 0; renderCatalog(); });
+      document.getElementById('channelSort').addEventListener('change', renderCatalog);
+      document.getElementById('refreshPreviewBtn').addEventListener('click', validatePlaylist);
+      document.getElementById('validateBtn').addEventListener('click', validatePlaylist);
+      async function buildRokuPackage(useSavedPlaylist = false) {
+        if (!featureEnabled) return notify('Enable the private Roku feature in Settings first.', true);
+        if (!useSavedPlaylist && !entries.length) return notify('Load and validate a playlist before building.', true);
+        const button = useSavedPlaylist
+          ? document.getElementById('rebuildSavedBtn')
+          : form.querySelector('[type="submit"]');
+        const defaultText = useSavedPlaylist ? 'Rebuild from latest saved playlist' : 'Build Roku app package';
+        button.disabled = true;
+        button.textContent = useSavedPlaylist ? 'Loading saved playlist and rebuilding…' : 'Building Roku package…';
+        try {
+          const data = new FormData(form);
+          if (useSavedPlaylist) {
+            data.delete('file');
+            data.delete('playlist_url');
+            data.delete('playlist_json');
+            data.delete('playlist_text');
+            data.set('use_saved_playlist', 'true');
+          }
+          const body = await requestJson('/api/roku/build', {method:'POST', body:data});
+          latestProject = body.slug;
+          localStorage.setItem('masterchief.roku.lastProject', latestProject);
+          document.getElementById('deployRokuBtn').disabled = false;
+          document.getElementById('downloadRokuBtn').disabled = false;
+          const sourceMessage = useSavedPlaylist ? ' using the latest saved playlist' : '';
+          notify(`Roku package ready${sourceMessage}: ${body.playlist_count.toLocaleString()} entries in ${body.category_count.toLocaleString()} categories. Project ${body.slug}.`);
+          setWizardStep(4);
+        } catch (error) { notify(`Roku build failed: ${error.message}`, true); }
+        finally { button.disabled = false; button.textContent = defaultText; }
+      }
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        await buildRokuPackage(false);
       });
-    }
+      document.getElementById('rebuildSavedBtn').addEventListener('click', () => buildRokuPackage(true));
 
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    async function loadLivePreview() {
-      const text = (form.playlist_text.value || '').trim();
-      const jsonText = (form.playlist_json.value || '').trim();
-      const url = (playlistUrlField.value || '').trim();
-      const file = form.file && form.file.files ? form.file.files[0] : null;
-      if (!text && !jsonText && !url && !file) {
-        activeChannelTitle.textContent = 'Live preview ready';
-        activeChannelMeta.textContent = 'Configure a playlist URL or upload local JSON/M3U content to populate the preview.';
-        return;
+      document.getElementById('deployRokuBtn').addEventListener('click', async () => {
+        const device = document.getElementById('rokuDeviceIp').value.trim();
+        const password = document.getElementById('rokuDevPassword').value;
+        if (!latestProject) return notify('Build a Roku package first.', true);
+        if (!device || !password) return notify('Enter the Roku Developer Mode IP and password.', true);
+        const button = document.getElementById('deployRokuBtn');
+        button.disabled = true;
+        try {
+          const body = await requestJson('/api/roku/deploy', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({slug:latestProject, device, password})
+          });
+          document.getElementById('rokuDevPassword').value = '';
+          notify(body.message || 'Roku package sent.');
+        } catch (error) { notify(`Roku install failed: ${error.message}`, true); }
+        finally { button.disabled = false; }
+      });
+      document.getElementById('downloadRokuBtn').addEventListener('click', () => {
+        if (latestProject) location.href = `/api/roku/download/${encodeURIComponent(latestProject)}`;
+      });
+      if (latestProject) {
+        document.getElementById('deployRokuBtn').disabled = false;
+        document.getElementById('downloadRokuBtn').disabled = false;
+        document.getElementById('buildSummary').textContent = `Latest package ${latestProject} is ready to download or install.`;
       }
+      document.getElementById('rokuFeatureToggle').addEventListener('click', async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          const body = await requestJson('/api/roku/settings', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({enabled:!featureEnabled})
+          });
+          featureEnabled = body.settings.enabled;
+          if (!featureEnabled) { stopPreview(); entries = []; refreshFilters(); renderGraph(); renderCatalog(); }
+          await loadFeatureStatus();
+          notify(`Private Roku feature ${featureEnabled ? 'enabled' : 'disabled'}.`);
+        } catch (error) { notify(`Could not update feature status: ${error.message}`, true); }
+        finally { button.disabled = false; }
+      });
 
-      const payload = new FormData();
-      if (text) payload.append('playlist_text', text);
-      if (jsonText) payload.append('playlist_json', jsonText);
-      if (url) payload.append('playlist_url', url);
-      if (file) payload.append('file', file);
-
-      try {
-        const resp = await fetch('/api/roku/validate', { method: 'POST', body: payload });
-        const json = await resp.json();
-        if (!resp.ok || !json.ok) throw new Error(json.error || 'Validation failed');
-        renderPreviewFromJson(json);
-      } catch (error) {
-        activeChannelTitle.textContent = 'Preview unavailable';
-        activeChannelMeta.textContent = error.message || 'Unable to load the live app preview.';
-      }
-    }
-
-    document.getElementById('refreshPreviewBtn').addEventListener('click', loadLivePreview);
-
-    form.playlist_url.addEventListener('input', loadLivePreview);
-    form.playlist_text.addEventListener('input', loadLivePreview);
-    form.playlist_json.addEventListener('input', loadLivePreview);
-    form.file.addEventListener('change', loadLivePreview);
-
-    loadLivePreview();
-
-    document.getElementById('demoBtn').addEventListener('click', () => {
-      form.channel_name.value = 'MasterChief IPTV';
-      form.bundle_id.value = 'com.masterchief.iptv';
-      form.developer_ip.value = '192.168.1.50';
-      form.theme.value = 'dark';
-      playlistUrlField.value = 'http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u';
-      form.playlist_text.value = '';
-      form.playlist_json.value = '';
-      form.source_url.value = 'http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u';
-      loadLivePreview();
-      showResult('<strong>Live IPTV source loaded.</strong> The app is now using your custom playlist URL as the default source.', false);
-    });
-
-    document.getElementById('validateBtn').addEventListener('click', async () => {
-      const text = (form.playlist_text.value || '').trim();
-      const jsonText = (form.playlist_json.value || '').trim();
-      const url = (playlistUrlField.value || '').trim();
-      const file = form.file.files[0];
-      if (!text && !jsonText && !url && !file) {
-        showResult('<strong>Validation failed:</strong> add a playlist URL, custom JSON, text, or upload a file first.', true);
-        return;
-      }
-      const payload = new FormData();
-      if (text) payload.append('playlist_text', text);
-      if (jsonText) payload.append('playlist_json', jsonText);
-      if (url) payload.append('playlist_url', url);
-      if (file) payload.append('file', file);
-      try {
-        const resp = await fetch('/api/roku/validate', { method: 'POST', body: payload });
-        const json = await resp.json();
-        if (!resp.ok || !json.ok) throw new Error(json.error || 'Validation failed');
-        renderPreviewFromJson(json);
-        const cats = Object.keys(json.grouped || {});
-        showResult('<strong>Playlist validation passed.</strong><br />Entries: ' + json.count + '<br />Categories: ' + (cats.length ? cats.join(', ') : 'n/a') + '<br />Sample: ' + (json.preview || 'n/a'));
-      } catch (err) {
-        showResult('<strong>Validation failed:</strong> ' + err.message, true);
-      }
-    });
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const payload = new FormData(form);
-      const name = (payload.get('channel_name') || '').toString().trim();
-      const bundle = (payload.get('bundle_id') || '').toString().trim();
-      if (!name || !bundle) {
-        showResult('<strong>Missing data:</strong> channel name and bundle ID are required.', true);
-        return;
-      }
-      try {
-        const resp = await fetch('/api/roku/build', { method: 'POST', body: payload });
-        const json = await resp.json();
-        if (!resp.ok || !json.ok) throw new Error(json.error || 'Could not generate the Roku project');
-        showResult(
-          '<strong>Project created successfully.</strong><br />' +
-          'Channel: ' + json.channel_name + '<br />' +
-          'Bundle: ' + json.bundle_id + '<br />' +
-          'Entries: ' + json.playlist_count + '<br />' +
-          'Manifest: ' + (json.manifest_path || 'n/a') + '<br />' +
-          'Package: ' + (json.zip_path || 'n/a') + '<br /><br />' +
-          '<span style="opacity:0.8;">' + json.message + '</span>'
-        );
-      } catch (err) {
-        showResult('<strong>Build failure:</strong> ' + err.message, true);
-      }
-    });
+      document.getElementById('settingsLanguage').value = settings.language;
+      document.getElementById('settingsPlayback').value = settings.playback;
+      document.getElementById('settingsHighlights').value = settings.highlights;
+      document.getElementById('settingsDisplayName').value = settings.displayName;
+      persistSettings();
+      document.getElementById('settingsLanguage').addEventListener('change', event => {
+        settings.language = event.target.value;
+        document.documentElement.lang = settings.language;
+        document.querySelector('.settings-title').textContent = settings.language === 'es' ? 'Ajustes del reproductor' : 'Player settings';
+        persistSettings();
+      });
+      document.getElementById('settingsPlayback').addEventListener('change', event => {
+        settings.playback = event.target.value;
+        persistSettings();
+        if (activeIndex >= 0) play(entries[activeIndex].url);
+      });
+      document.getElementById('settingsHighlights').addEventListener('change', event => {
+        settings.highlights = event.target.value;
+        persistSettings();
+        renderCatalog();
+      });
+      document.getElementById('settingsFavorites').addEventListener('change', event => {
+        settings.favorites = Array.from(event.target.selectedOptions).map(option => option.value);
+        persistSettings();
+        renderCatalog();
+      });
+      document.getElementById('saveDisplayNameBtn').addEventListener('click', () => {
+        settings.displayName = document.getElementById('settingsDisplayName').value.trim() || 'MasterChief TV';
+        persistSettings();
+        notify('Display name saved.');
+      });
+      document.getElementById('clearSettingsBtn').addEventListener('click', () => {
+        if (!confirm('Reset saved player preferences and category names?')) return;
+        localStorage.removeItem(settingsKey);
+        location.reload();
+      });
+      document.querySelectorAll('[data-wizard-target]').forEach(button =>
+        button.addEventListener('click', () => setWizardStep(Number(button.dataset.wizardTarget))));
+      document.getElementById('wizardBackBtn').addEventListener('click', () => {
+        const active = Number(document.querySelector('[data-wizard-stage].active').dataset.wizardStage);
+        setWizardStep(active - 1);
+      });
+      document.getElementById('wizardNextBtn').addEventListener('click', async () => {
+        const active = Number(document.querySelector('[data-wizard-stage].active').dataset.wizardStage);
+        if (active === 2 && !entries.length && !await validatePlaylist()) return;
+        setWizardStep(active + 1);
+      });
+      document.documentElement.lang = settings.language;
+      setWizardStep(1);
+      refreshFilters();
+      renderGraph();
+      renderCatalog();
+      loadFeatureStatus();
+    })();
   </script>
 </body>
 </html>

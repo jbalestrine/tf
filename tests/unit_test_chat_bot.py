@@ -137,6 +137,68 @@ class TestEchoChatBot(unittest.TestCase):
             self.assertIn('timestamp', response)
             self.assertIn('message_id', response)
             self.assertEqual(response['session_id'], "test")
+
+    def test_workspace_help_command(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = TrainingDataStore(storage_path=tmpdir)
+            bot = EchoChatBot(training_store=store)
+
+            response = bot.chat("!help", session_id="code_help")
+
+            self.assertIn("!library find", response['response'])
+            self.assertIn("!write", response['response'])
+            self.assertIn("does not execute", response['response'])
+
+    def test_write_command_uses_local_project_examples(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            examples = root / 'data' / 'scripts'
+            examples.mkdir(parents=True)
+            (examples / 'example.py').write_text('print("reference marker")', encoding='utf-8')
+            store = TrainingDataStore(storage_path=str(root / 'training'))
+            bot = EchoChatBot(training_store=store)
+            bot._workspace_root = root
+            bot._refresh_language_reference_index(force=True)
+
+            from unittest.mock import patch
+
+            with patch.object(bot, '_generate_with_local_llm', return_value='generated script') as local_model, \
+                    patch.object(bot, '_generate_with_ollama', return_value=None) as ollama:
+                response = bot.chat('!write python print a greeting', session_id='code_write')
+
+            self.assertEqual(response['response'], 'generated script')
+            self.assertIn('reference marker', local_model.call_args.args[0])
+            ollama.assert_not_called()
+
+    def test_library_command_finds_user_script_folder(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            scripts = root / 'data' / 'scripts'
+            scripts.mkdir(parents=True)
+            (scripts / 'orphan_backup.py').write_text('print("backup")', encoding='utf-8')
+            store = TrainingDataStore(storage_path=str(root / 'training'))
+            bot = EchoChatBot(training_store=store)
+            bot._workspace_root = root
+            bot._refresh_language_reference_index(force=True)
+
+            response = bot.chat('!library find orphan backup', session_id='code_library')
+
+            self.assertIn('data/scripts/orphan_backup.py', response['response'])
+
+    def test_write_command_does_not_send_examples_to_remote_ollama(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = TrainingDataStore(storage_path=tmpdir)
+            bot = EchoChatBot(training_store=store)
+
+            from unittest.mock import patch
+
+            with patch.dict(os.environ, {'ECHO_OLLAMA_URL': 'https://example.invalid/api/generate'}), \
+                    patch.object(bot, '_generate_with_local_llm', return_value=None), \
+                    patch.object(bot, '_generate_with_ollama') as ollama:
+                response = bot.chat('!write python create a utility', session_id='code_private')
+
+            self.assertIn('not sent to remote models', response['response'])
+            ollama.assert_not_called()
     
     def test_greeting_detection(self):
         """Test greeting detection."""

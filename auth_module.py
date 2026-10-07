@@ -3,7 +3,7 @@ MasterChief Authentication Module
 Handles user authentication, session management, and OAuth flows
 """
 
-from flask import Flask, request, redirect, url_for, session, jsonify, g, flash, current_app
+from flask import Flask, request, redirect, url_for, session, jsonify, g, flash, current_app, abort, get_flashed_messages
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from authlib.integrations.flask_client import OAuth
 from authlib.integrations.base_client import OAuthError
@@ -13,6 +13,8 @@ import jwt
 from urllib.parse import urlencode
 import logging
 from functools import wraps
+from html import escape as html_escape
+from urllib.parse import urlsplit
 
 from auth_config import auth_config
 
@@ -25,10 +27,9 @@ def requires_permission(permission):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            # If auth subsystem is not initialized, allow route access instead
-            # of crashing on current_app.login_manager lookups.
+            # Fail closed if the authentication subsystem did not initialize.
             if not hasattr(current_app, 'login_manager'):
-                return f(*args, **kwargs)
+                abort(503, description='Authentication is unavailable; protected access is disabled.')
 
             if not current_user.is_authenticated:
                 return redirect(url_for('login'))
@@ -141,60 +142,46 @@ class AuthModule:
         def login():
             """Simple login form"""
             if request.method == 'POST':
-                username = request.form.get('username')
-                password = request.form.get('password')
+                username = (request.form.get('username') or '').strip()
+                password = request.form.get('password') or ''
                 
                 # --- Try RBAC manager first ---
                 rbac_mgr = current_app.config.get('_rbac_mgr')
-                authenticated = False
-
-                if rbac_mgr:
+                if rbac_mgr and username and password:
                     session_data = rbac_mgr.authenticate(username, password)
                     if session_data:
-                        # Get user details and permissions
-                        users = rbac_mgr.get_users()
-                        user = next((u for u in users if u['username'] == username), None)
+                        user = next(
+                            (item for item in rbac_mgr.get_users() if item['id'] == session_data['user_id']),
+                            None,
+                        )
                         if user:
-                            # Get user permissions
-                            roles = rbac_mgr.get_roles()
-                            role = next((r for r in roles if r['name'] == user.get('role')), None)
-                            permissions = role.get('permissions', []) if role else []
-                            
+                            role = next(
+                                (item for item in rbac_mgr.get_roles() if item['name'] == user.get('role')),
+                                None,
+                            )
                             rbac_user = User(
                                 user_id=user['id'],
                                 username=user['username'],
                                 email=f"{user['username']}@localhost",
                                 provider='rbac',
                                 role=user.get('role'),
-                                permissions=permissions
+                                permissions=role.get('permissions', []) if role else [],
                             )
                             login_user(rbac_user)
-                            next_page = request.args.get('next')
-                            return redirect(next_page or '/')
-
-                # --- Fallback: built-in accounts (always available) ---
-                _builtin = {
-                    'admin': {'pw': 'masterchief', 'role': 'admin', 'perms': ['*']},
-                    'public': {'pw': 'public', 'role': 'viewer', 'perms': ['view']},
-                }
-                acct = _builtin.get(username)
-                if acct and password == acct['pw']:
-                    fallback_user = User(
-                        user_id=username,
-                        username=username,
-                        email=f"{username}@localhost",
-                        provider='local',
-                        role=acct['role'],
-                        permissions=acct['perms'],
-                    )
-                    login_user(fallback_user)
-                    next_page = request.args.get('next')
-                    return redirect(next_page or '/')
+                            next_page = request.args.get('next', '')
+                            parsed_next = urlsplit(next_page)
+                            if not next_page.startswith('/') or next_page.startswith('//') or parsed_next.netloc:
+                                next_page = '/'
+                            return redirect(next_page)
                 
-                flash('Invalid credentials')
+                flash('Sign-in failed. Check your username, password, and account status.', 'error')
                 return redirect(url_for('login'))
             
             # GET request - show login form
+            messages = ''.join(
+                f'<div class="error">{html_escape(message)}</div>'
+                for _category, message in get_flashed_messages(with_categories=True)
+            )
             return '''
             <!DOCTYPE html>
             <html>
@@ -209,25 +196,17 @@ class AuthModule:
                     input:focus { outline: none; border-color: #4CAF50; }
                     button { background: #4CAF50; color: #fff; border: none; padding: 0.75rem; border-radius: 5px; cursor: pointer; margin-top: 1rem; font-size: 1em; transition: all 0.3s; }
                     button:hover { background: #45a049; transform: translateY(-2px); }
-                    .error { color: #f44336; text-align: center; margin-bottom: 1rem; font-weight: bold; }
-                    .info { background: #2196F3; color: #fff; padding: 1rem; border-radius: 5px; margin-bottom: 1rem; border-left: 4px solid #0b7dda; }
-                    .info h3 { margin: 0 0 0.5rem 0; color: #fff; }
                     .contact { text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #3a3a3a; color: #888; }
                 </style>
             </head>
             <body>
                 <div class="login-container">
                     <h2>MasterChief Access</h2>
+                    __LOGIN_MESSAGES__
                     
-                    <div class="info">
-                        <h3>Public Access Available</h3>
-                        <p>You have the right to use public login with password: <strong>public</strong></p>
-                        <p>This provides access to general content but you will be restricted from administrative functions.</p>
-                    </div>
-                    
-                    <form method="post">
-                        <input type="text" name="username" placeholder="Username" required>
-                        <input type="password" name="password" placeholder="Password" required>
+                    <form method="post" autocomplete="on">
+                        <input type="text" name="username" placeholder="Username" autocomplete="username" required>
+                        <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
                         <button type="submit">Login</button>
                     </form>
                     
@@ -237,22 +216,12 @@ class AuthModule:
                 </div>
             </body>
             </html>
-            '''
+            '''.replace('__LOGIN_MESSAGES__', messages)
 
         @self.app.route('/roku')
         def roku_autologin():
-            """Auto-login endpoint for Roku TV — no credentials required."""
-            from flask_login import login_user
-            roku_user = User(
-                user_id='roku-tv',
-                username='roku',
-                email='roku@localhost',
-                provider='roku',
-                role='admin',
-                permissions=['*']
-            )
-            login_user(roku_user, remember=True)
-            return redirect('/')
+            """Require normal authentication before opening the private Roku client."""
+            return redirect(url_for('login', next='/'))
 
         @self.app.route('/auth/azure/login')
         def azure_login():
@@ -282,7 +251,7 @@ class AuthModule:
                 session['provider'] = 'azure'
                 session['token'] = token
 
-                return redirect('/web-ide')
+                return redirect('/okta')
 
             except OAuthError as e:
                 logger.error(f"Azure OAuth error: {e}")
@@ -404,21 +373,6 @@ class AuthModule:
                         role=user.get('role'),
                         permissions=permissions
                     )
-            # Fallback: reload built-in accounts from session
-            _builtin = {
-                'admin': {'role': 'admin', 'perms': ['*']},
-                'public': {'role': 'viewer', 'perms': ['view']},
-            }
-            if user_id in _builtin:
-                acct = _builtin[user_id]
-                return User(
-                    user_id=user_id,
-                    username=user_id,
-                    email=f"{user_id}@localhost",
-                    provider='local',
-                    role=acct['role'],
-                    permissions=acct['perms'],
-                )
             return None
 
         return auth_module

@@ -4,12 +4,12 @@
 
 ### One-command setup from source
 
-From the parent directory, run the command for your shell. It clones the repo, installs the base app and CLI, then starts the web app.
+From the parent directory, run the command for your shell. It clones the repo, installs the base app and CLI, then starts the web app on the local machine.
 
 PowerShell:
 
 ```powershell
-git clone https://github.com/jbalestrine/masterchief.git; if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }; Set-Location masterchief; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned; .\MasterchiefRun.ps1
+git clone https://github.com/jbalestrine/masterchief.git; if ($LASTEXITCODE -ne 0) { throw 'Clone failed' }; Set-Location masterchief; Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; .\MasterchiefRun.ps1 -Port 8080
 ```
 
 Linux/macOS:
@@ -18,7 +18,26 @@ Linux/macOS:
 git clone https://github.com/jbalestrine/masterchief.git && cd masterchief && bash scripts/start.sh
 ```
 
-If already cloned, run `.\MasterchiefRun.ps1` in PowerShell or `bash scripts/start.sh` in a POSIX shell. The Windows app opens on port 8084; the POSIX starter runs on port 8080.
+If already cloned, run `.\MasterchiefRun.ps1 -Port 8080` in PowerShell or `bash scripts/start.sh` in a POSIX shell. The Windows source runner binds to `0.0.0.0:8080` by default; open `http://localhost:8080/` on the host or use the host's IP on a reachable network. Authenticated users receive GOD access, so limit network access to trusted clients. Cloud operations use the user's supplied provider credentials and are limited by those credentials' IAM permissions. The POSIX starter runs `run.py`; use the URL printed by its startup output.
+
+For exact Windows, line-by-line setup instructions, optional dependency guidance, and the matching local launch command, see the [primary README](README.md#fresh-setup).
+
+The About page checks the latest version in `jbalestrine/masterchief`. Because that repository is private, set `GITHUB_TOKEN` to a read-only repository token in the app's environment if you want the version check to succeed; the token is sent only from the server to GitHub and is not returned to the browser. `GITHUB_REPO` can override the repository identifier.
+
+The Observability Center is at `/observability`. To connect existing services, set the following in the server environment (or `.env`) and restart MasterChief:
+
+```dotenv
+PROMETHEUS_URL=http://prometheus.example:9090
+GRAFANA_URL=http://grafana.example:3000
+LOKI_URL=http://loki.example:3100
+# Optional read-only bearer tokens; never put secrets in browser code:
+# PROMETHEUS_TOKEN=
+# GRAFANA_API_TOKEN=
+# LOKI_TOKEN=
+# METRICS_TOKEN=
+```
+
+MasterChief exposes HTTP counters and latency histograms at `/metrics`, restricted to loopback unless `METRICS_TOKEN` is configured. Point Prometheus at that endpoint using [observability/prometheus-scrape-example.yml](observability/prometheus-scrape-example.yml). Grafana dashboards and alert rules are supplied under `observability/`; Loki log queries need a configured log shipper. No monitoring services are installed or started automatically.
 
 The base install does not download local AI models. To install all optional integrations, run:
 

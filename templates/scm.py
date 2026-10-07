@@ -155,6 +155,44 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg0);color:var
 
 </div>
 
+<details style="margin:12px 16px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);">
+  <summary style="cursor:pointer;font-weight:700;color:var(--blue);">Git command and recovery reference</summary>
+  <div style="padding:10px 4px;max-width:1100px;font-size:12px;line-height:1.7;">
+    <p><strong>Inspect first</strong></p>
+    <pre><code>git status --short
+git diff
+git diff --staged
+git log --oneline --decorate -10
+git branch -vv</code></pre>
+    <p><strong>Everyday workflow</strong></p>
+    <pre><code>git switch -c feature/my-change
+git add -- path/to/file
+git restore --staged -- path/to/file
+git commit -m "Describe the change"
+git fetch origin
+git pull --ff-only
+git push -u origin feature/my-change</code></pre>
+    <p><strong>Recovery: preserve work before changing anything</strong></p>
+    <pre><code>git diff &gt; working-tree-backup.patch
+git diff --staged &gt; staged-backup.patch
+git stash push -u -m "backup before recovery"
+git stash list
+git stash apply "stash@{0}"</code></pre>
+    <p><strong>Undo choices</strong></p>
+    <pre><code>git restore --worktree -- path/to/file
+git restore --source=&lt;commit&gt; -- path/to/file
+git revert &lt;commit&gt;
+git reflog
+git branch rescue/keep-before-recovery &lt;commit&gt;</code></pre>
+    <p style="color:var(--muted);">
+      <code>git restore --worktree</code> discards uncommitted edits to the named file. Prefer <code>git revert</code>
+      for undoing a commit already shared with others. Before recovery, inspect status and make a backup/stash.
+      Avoid <code>git reset --hard</code> and <code>git clean</code> unless you have verified what will be lost.
+      Never share remote URLs if they contain embedded credentials.
+    </p>
+  </div>
+</details>
+
 <script>
 let _files = [];    // {status, file, checked}
 let _pushAfterCommit = false;

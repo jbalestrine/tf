@@ -4,13 +4,15 @@
     <interface>
         <function name="load" />
         <field id="selectedChannel" type="assocarray" />
+        <field id="previewChannel" type="assocarray" />
+        <field id="openCloudDashboard" type="boolean" value="false" />
     </interface>
     <script type="text/brightscript"><![CDATA[
 
 sub init()
-    m.m3uUrl = "http://1tv41.icu:8080/get.php?username=3022207888&password=leonmatthews60@gmail.com&type=m3u"
-    m.rowH    = 40
-    m.maxRows = 13
+    m.m3uUrl = "pkg:/data/channels.json"
+    m.rowH    = 42
+    m.maxRows = 9
     m.leftW   = 300
     m.cBg     = "0x0D1117FF"
     m.cCard   = "0x161B22FF"
@@ -21,26 +23,188 @@ sub init()
     m.cBlue   = "0x58A6FFFF"
     m.cGreen  = "0x3FB950FF"
     m.cRed    = "0xF85149FF"
-    m.allChannels = [50000]
+    m.allChannels = []
+    m.channelsByGroup = {}
+    m.categoryCounts = {}
+    m.channelsByPrefix = {}
+    m.smartCollections = {}
+    m.collectionNames = [
+        "XXX",
+        "Sports",
+        "UFC",
+        "WWE",
+        "Boxing",
+        "NFL",
+        "NBA",
+        "MLB",
+        "NHL",
+        "Soccer",
+        "Motorsports",
+        "Tennis",
+        "Cricket",
+        "Rugby",
+        "Golf",
+        "Olympics",
+        "Jackie Chan Films",
+        "Transporter",
+        "Two and a Half Men",
+        "Lord of the Rings",
+        "Batman",
+        "The Big Bang Theory",
+        "Curb Your Enthusiasm",
+        "BBC Earth",
+        "24/7 Channels",
+        "HBO",
+        "CINEMAX",
+        "SHOWTIME",
+        "STARZ",
+        "NETFLIX",
+        "NEWS CHANNELS",
+        "Series"
+    ]
+    m.visibleCollectionNames = m.collectionNames
+    m.webAppUrl = ""
+    m.guideApiUrl = ""
+    m.customLogoEnabled = false
+    m.webToolsVisible = false
+    m.wordSplitter = CreateObject("roRegex", "[^a-z0-9]+", "i")
+    m.favoritesChannels = []
+    m.favoriteCount = 0
+    m.tolkienChannels = []
     m.groups      = []
-    m.groupIdx    = 0
+    m.groupIdx    = 1
     m.groupOffset = 0
     m.filtered    = []
     m.streamOffset= 0
     m.streamCursor= 0
     m.focusSide   = "group"
     m.loaded      = false
+    m.aboutVisible = false
+    m.searchQuery = ""
+    m.favorites = {}
+    m.favoriteSection = CreateObject("roRegistrySection", "MasterChiefFavorites")
+    loadFavorites()
+    loadAppConfig()
     buildChrome()
     m.task = CreateObject("roSGNode", "M3UTask")
-    m.task.observeField("groupsJson", "onData")
+    m.task.observeField("batchIndex", "onData")
+    m.task.observeField("complete", "onPlaylistComplete")
     m.task.observeField("error",      "onError")
+    m.guideTask = CreateObject("roSGNode", "EPGTask")
+    m.guideTask.observeField("listingsJson", "onGuideData")
+    m.guideTask.observeField("error", "onGuideError")
+    m.guideTimer = CreateObject("roSGNode", "Timer")
+    m.guideTimer.duration = 1800
+    m.guideTimer.repeat = true
+    m.guideTimer.observeField("fire", "onGuideTimer")
+    if m.guideApiUrl <> "" then m.guideTask.url = m.guideApiUrl
+    if m.guideApiUrl <> "" then m.guideTimer.control = "start"
+end sub
+
+sub addSportsCollections(channel as Object, searchableText as String)
+    tokens = {}
+    for each word in m.wordSplitter.Split(searchableText)
+        if word <> "" then tokens[word] = true
+    end for
+    category = ""
+    if channel.category <> invalid then category = LCase(channel.category)
+    groupName = ""
+    if channel.group <> invalid then groupName = LCase(channel.group)
+    isSport = category = "sport" or category = "sports" or groupName = "sport" or groupName = "sports"
+
+    if tokens.DoesExist("ufc") or Instr(1, searchableText, "ultimate fighting championship") > 0
+        m.smartCollections["UFC"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("wwe") or tokens.DoesExist("wwf") or tokens.DoesExist("wrestling")
+        m.smartCollections["WWE"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("boxing") or tokens.DoesExist("boxer") or Instr(1, searchableText, "fight night") > 0
+        m.smartCollections["Boxing"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("nfl") or Instr(1, searchableText, "national football league") > 0
+        m.smartCollections["NFL"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("nba") or Instr(1, searchableText, "national basketball association") > 0
+        m.smartCollections["NBA"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("mlb") or Instr(1, searchableText, "major league baseball") > 0
+        m.smartCollections["MLB"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("nhl") or Instr(1, searchableText, "national hockey league") > 0
+        m.smartCollections["NHL"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("soccer") or tokens.DoesExist("fifa") or tokens.DoesExist("uefa") or
+        tokens.DoesExist("football") or Instr(1, searchableText, "premier league") > 0 or
+        Instr(1, searchableText, "champions league") > 0 or Instr(1, searchableText, "la liga") > 0
+        m.smartCollections["Soccer"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("nascar") or tokens.DoesExist("motorsport") or tokens.DoesExist("motorsports") or
+        tokens.DoesExist("motogp") or tokens.DoesExist("f1") or tokens.DoesExist("indycar") or
+        Instr(1, searchableText, "formula 1") > 0
+        m.smartCollections["Motorsports"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("tennis") or tokens.DoesExist("wimbledon") or tokens.DoesExist("atp") or tokens.DoesExist("wta")
+        m.smartCollections["Tennis"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("cricket") or tokens.DoesExist("ipl")
+        m.smartCollections["Cricket"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("rugby") then
+        m.smartCollections["Rugby"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("golf") or tokens.DoesExist("pga") or tokens.DoesExist("lpga")
+        m.smartCollections["Golf"].push(channel)
+        isSport = true
+    end if
+    if tokens.DoesExist("olympic") or tokens.DoesExist("olympics")
+        m.smartCollections["Olympics"].push(channel)
+        isSport = true
+    end if
+    if isSport then m.smartCollections["Sports"].push(channel)
+end sub
+
+sub loadAppConfig()
+    configText = ReadAsciiFile("pkg:/data/app_config.json")
+    if configText = invalid then return
+    config = ParseJson(configText)
+    if config = invalid then return
+    if config.web_app_url <> invalid then m.webAppUrl = config.web_app_url
+    if config.guide_api_url <> invalid then m.guideApiUrl = config.guide_api_url
+    if config.custom_logo = true then m.customLogoEnabled = true
+    if type(config.collection_order) <> "roArray" then return
+    configuredCollections = []
+    for each requestedName in config.collection_order
+        for each supportedName in m.collectionNames
+            if requestedName = supportedName
+                alreadyAdded = false
+                for each addedName in configuredCollections
+                    if addedName = requestedName then alreadyAdded = true
+                end for
+                if not alreadyAdded then configuredCollections.push(requestedName)
+                exit for
+            end if
+        end for
+    end for
+    m.visibleCollectionNames = configuredCollections
 end sub
 
 sub buildChrome()
     bg = m.top.createChild("Rectangle")
     bg.translation = [0, 0]
     bg.width  = 1280
-    bg.height = 624
+    bg.height = 720
     bg.color  = m.cBg
 
     sideBar = m.top.createChild("Rectangle")
@@ -50,10 +214,31 @@ sub buildChrome()
     sideBar.color  = m.cCard
 
     sideHdr = m.top.createChild("Label")
-    sideHdr.translation = [34, 16]
-    sideHdr.text  = "GROUPS"
+    sideHdr.translation = [82, 20]
+    sideHdr.text  = "MASTERCHIEF - ECHO STARLITE"
     sideHdr.font  = "font:SmallBoldSystemFont"
     sideHdr.color = m.cBlue
+    sideHdr.width = 210
+    if m.customLogoEnabled
+        logo = m.top.createChild("Poster")
+        logo.translation = [34, 12]
+        logo.width = 42
+        logo.height = 38
+        logo.uri = "pkg:/images/custom_logo.png"
+    end if
+    m.clockLbl = m.top.createChild("Label")
+    m.clockLbl.translation = [1000, 16]
+    m.clockLbl.width = 250
+    m.clockLbl.height = 26
+    m.clockLbl.horizAlign = "right"
+    m.clockLbl.font = "font:SmallBoldSystemFont"
+    m.clockLbl.color = m.cText
+    m.clockTimer = CreateObject("roSGNode", "Timer")
+    m.clockTimer.duration = 30
+    m.clockTimer.repeat = true
+    m.clockTimer.observeField("fire", "onClockTick")
+    m.clockTimer.control = "start"
+    updateClock()
 
     m.groupList = m.top.createChild("Group")
     m.groupList.translation = [20, 46]
@@ -66,7 +251,7 @@ sub buildChrome()
 
     chHdr = m.top.createChild("Label")
     chHdr.translation = [344, 16]
-    chHdr.text  = "CHANNELS"
+    chHdr.text  = "BROWSE YOUR PLAYLIST"
     chHdr.font  = "font:SmallBoldSystemFont"
     chHdr.color = m.cBlue
 
@@ -85,42 +270,256 @@ sub buildChrome()
     m.statusLbl.font  = "font:SmallSystemFont"
     m.statusLbl.color = m.cSub
     m.statusLbl.width = 1220
+
+    m.detailLbl = m.top.createChild("Label")
+    m.detailLbl.translation = [34, 624]
+    m.detailLbl.width = 1210
+    m.detailLbl.height = 78
+    m.detailLbl.wrap = true
+    m.detailLbl.font = "font:SmallSystemFont"
+    m.detailLbl.color = m.cSub
+
+    m.aboutOverlay = m.top.createChild("Group")
+    m.aboutOverlay.visible = false
+    overlayBg = m.aboutOverlay.createChild("Rectangle")
+    overlayBg.width = 1280
+    overlayBg.height = 720
+    overlayBg.color = "0x0D1117FF"
+    aboutAccent = m.aboutOverlay.createChild("Rectangle")
+    aboutAccent.translation = [250, 120]
+    aboutAccent.width = 780
+    aboutAccent.height = 4
+    aboutAccent.color = m.cBlue
+    aboutTitle = m.aboutOverlay.createChild("Label")
+    aboutTitle.translation = [250, 155]
+    aboutTitle.width = 780
+    aboutTitle.height = 70
+    aboutTitle.text = "MASTERCHIEF - ECHO STARLITE"
+    aboutTitle.font = "font:LargeBoldSystemFont"
+    aboutTitle.color = m.cText
+    aboutBody = m.aboutOverlay.createChild("Label")
+    aboutBody.translation = [250, 255]
+    aboutBody.width = 780
+    aboutBody.height = 200
+    aboutBody.text = "A Roku-native edition of the MasterChief app." + chr(10) + chr(10) + "Browse your playlist and play supported streams with the built-in Roku player." + chr(10) + chr(10) + "Echo Chat, code tools, builds, and other server-backed features remain available in the MasterChief web app." + chr(10) + chr(10) + "Press BACK to return to your playlist."
+    aboutBody.font = "font:MediumSystemFont"
+    aboutBody.color = m.cText
+    aboutBody.wrap = true
+    aboutFooter = m.aboutOverlay.createChild("Label")
+    aboutFooter.translation = [250, 620]
+    aboutFooter.width = 780
+    aboutFooter.height = 50
+    aboutFooter.text = "JOEY BALLZ"
+    aboutFooter.horizAlign = "center"
+    aboutFooter.font = "font:MediumBoldSystemFont"
+    aboutFooter.color = m.cBlue
+
+    m.webToolsOverlay = m.top.createChild("Group")
+    m.webToolsOverlay.visible = false
+    toolsBg = m.webToolsOverlay.createChild("Rectangle")
+    toolsBg.width = 1280
+    toolsBg.height = 720
+    toolsBg.color = "0x0D1117FF"
+    toolsTitle = m.webToolsOverlay.createChild("Label")
+    toolsTitle.translation = [210, 82]
+    toolsTitle.width = 860
+    toolsTitle.height = 70
+    toolsTitle.text = "MASTERCHIEF WEB TOOLS LINKS"
+    toolsTitle.font = "font:LargeBoldSystemFont"
+    toolsTitle.color = m.cText
+    toolsBody = m.webToolsOverlay.createChild("Label")
+    toolsBody.translation = [210, 175]
+    toolsBody.width = 860
+    toolsBody.height = 390
+    toolsBody.font = "font:MediumSystemFont"
+    toolsBody.color = m.cText
+    toolsBody.wrap = true
+    toolsBody.text = "These pages require a web browser and JavaScript. Open the links on a computer, phone, or tablet; Roku cannot display the full pages." + chr(10) + chr(10) + webToolLinkText(m.webAppUrl)
+    toolsFooter = m.webToolsOverlay.createChild("Label")
+    toolsFooter.translation = [210, 610]
+    toolsFooter.width = 860
+    toolsFooter.height = 50
+    toolsFooter.text = "BACK returns to your playlist."
+    toolsFooter.horizAlign = "center"
+    toolsFooter.font = "font:MediumBoldSystemFont"
+    toolsFooter.color = m.cBlue
+end sub
+
+sub loadFavorites()
+    if m.favoriteSection = invalid then return
+    keys = m.favoriteSection.GetKeyList()
+    if keys = invalid then return
+    for each key in keys
+        url = m.favoriteSection.Read(key)
+        if url <> invalid and url <> ""
+            m.favorites[url] = true
+            m.favoriteCount = m.favoriteCount + 1
+        end if
+    end for
 end sub
 
 function load(args as Dynamic)
     if m.loaded then return invalid
+    resetPlaylist()
     m.statusLbl.text  = "Downloading playlist..."
     m.statusLbl.color = m.cSub
     m.task.url = ""
     m.task.url = m.m3uUrl
 end function
 
+sub onClockTick()
+    updateClock()
+end sub
+
+sub updateClock()
+    if m.clockLbl = invalid then return
+    now = CreateObject("roDateTime")
+    m.clockLbl.text = now.AsDateString("long") + "  " + now.AsTimeString()
+end sub
+
+sub onGuideTimer()
+    if m.guideApiUrl = "" then return
+    m.guideTask.url = ""
+    m.guideTask.url = m.guideApiUrl
+end sub
+
+sub onGuideData()
+    response = ParseJson(m.guideTask.listingsJson)
+    if response = invalid or type(response.programmes) <> "roAssociativeArray" then return
+    for each channel in m.allChannels
+        channelId = channel.tvg_id
+        if channelId <> invalid and response.programmes[channelId] <> invalid
+            listings = response.programmes[channelId]
+            if listings.now <> invalid then channel.program_now = listings.now
+            if listings.next <> invalid then channel.program_next = listings.next
+        end if
+    end for
+    renderStreams()
+    updateDetails()
+end sub
+
+sub onGuideError()
+    if m.guideTask.error <> "" and m.statusLbl <> invalid
+        m.statusLbl.text = "Live guide refresh failed: " + m.guideTask.error
+        m.statusLbl.color = m.cRed
+    end if
+end sub
+
+sub resetPlaylist()
+    m.allChannels = []
+    m.channelsByGroup = {}
+    m.categoryCounts = {}
+    m.channelsByPrefix = {}
+    m.smartCollections = {}
+    m.tolkienChannels = []
+    m.favoritesChannels = []
+    m.providerGroups = {}
+    m.groups = []
+    m.playlistLoadFailed = false
+    m.lastBatchIndex = 0
+    m.loaded = false
+    m.task.batchAck = 0
+    m.task.batchIndex = 0
+    m.task.complete = false
+    m.task.channelsJson = ""
+    m.task.error = ""
+    for each collectionName in m.collectionNames
+        m.smartCollections[collectionName] = []
+    end for
+end sub
+
+function webToolLinkText(baseUrl as String) as String
+    routes = [
+        {name: "MasterChief Home", path: "/"},
+        {name: "Web IDE", path: "/web_ide"},
+        {name: "Terraform Wizard", path: "/tf_wizard"},
+        {name: "Azure CAF Generator", path: "/arm_creator"},
+        {name: "MasterChief Code UI", path: "/masterchief_code_ui"}
+    ]
+    result = ""
+    for each route in routes
+        target = route.path
+        if baseUrl <> "" then target = baseUrl + route.path
+        if result <> "" then result = result + chr(10) + chr(10)
+        result = result + route.name + chr(10) + target
+    end for
+    if baseUrl = ""
+        result = "Set a web app URL in the Roku Builder to show complete links." + chr(10) + chr(10) + result
+    end if
+    return result
+end function
+
 sub onError()
     msg = m.task.error
     if msg = "" then return
+    m.playlistLoadFailed = true
     m.statusLbl.text  = "Error: " + msg
     m.statusLbl.color = m.cRed
 end sub
 
 sub onData()
-    gj = m.task.groupsJson
+    batchIndex = m.task.batchIndex
+    if batchIndex <= m.lastBatchIndex then return
     cj = m.task.channelsJson
-    if gj = "" then return
-    groups   = ParseJson(gj)
-    channels = ParseJson(cj)
-    if groups = invalid or channels = invalid
-        m.statusLbl.text  = "Parse error"
+    if cj = ""
+        m.playlistLoadFailed = true
+        m.task.batchAck = batchIndex
+        m.statusLbl.text = "Error: Roku received an empty playlist data batch."
         m.statusLbl.color = m.cRed
         return
     end if
-    m.allChannels = channels
-    m.groups      = groups
-    m.groupIdx    = 0
+    channels = ParseJson(cj)
+    if channels = invalid or type(channels) <> "roArray"
+        m.playlistLoadFailed = true
+        m.task.batchAck = batchIndex
+        m.statusLbl.text  = "Error: Roku could not parse a playlist data batch."
+        m.statusLbl.color = m.cRed
+        return
+    end if
+    for each channel in channels
+        m.allChannels.push(channel)
+        groupName = channel.group
+        if groupName = invalid or groupName = "" then groupName = "Uncategorized"
+        categoryName = channel.category
+        if categoryName = invalid or categoryName = "" then categoryName = groupName
+        if not m.providerGroups.DoesExist(groupName) then m.providerGroups[groupName] = true
+        channel.search_text = buildSearchText(channel)
+        addChannelToIndex(groupName, channel)
+        if categoryName <> groupName then addChannelToIndex(categoryName, channel)
+        indexSearchPrefixes(channel)
+        if isTolkienMovie(channel) then m.tolkienChannels.push(channel)
+        addToSmartCollections(channel)
+        if m.favorites.doesExist(channel.url) then m.favoritesChannels.push(channel)
+    end for
+    m.lastBatchIndex = batchIndex
+    m.task.batchAck = batchIndex
+    m.statusLbl.text = "Loading playlist... " + stri(m.allChannels.count()).trim() + " channels"
+    m.statusLbl.color = m.cSub
+end sub
+
+sub onPlaylistComplete()
+    if not m.task.complete or m.playlistLoadFailed then return
+    m.favoriteCount = m.favoritesChannels.count()
+    m.groups = ["About Me", "Web Tools Links", "Search", "All Channels", "Favorites"]
+    for each collectionName in m.visibleCollectionNames
+        m.groups.push(collectionName)
+    end for
+    providerGroups = []
+    for each group in m.providerGroups
+        providerGroups.push(group)
+    end for
+    providerGroups.sort()
+    for each group in providerGroups
+        if not hasGroupName(group)
+            m.groups.push(group)
+        end if
+    end for
+    m.groupIdx    = 3
     m.groupOffset = 0
     m.loaded      = true
     total = m.allChannels.count()
-    gc    = m.groups.count()
-    m.statusLbl.text  = stri(total).trim() + " ch  |  " + stri(gc).trim() + " groups   </> pane  OK play  * reload"
+    gc    = providerGroups.count()
+    m.statusLbl.text  = stri(total).trim() + " channels | " + stri(gc).trim() + " categories | OK plays | Play toggles Favorite | * controls"
     m.statusLbl.color = m.cGreen
     filterGroup()
     renderGroups()
@@ -133,12 +532,458 @@ sub filterGroup()
     m.streamCursor = 0
     if m.groups.count() = 0 then return
     g = m.groups[m.groupIdx]
-    for each ch in m.allChannels
-        chGroup = ch.group
-        if chGroup = "" then chGroup = "Uncategorized"
-        if chGroup = g then m.filtered.push(ch)
+    if g = "About Me"
+        m.countLbl.text = "MasterChief on Roku"
+        updateDetails()
+        return
+    end if
+    if g = "Web Tools Links"
+        m.filtered = []
+        m.countLbl.text = "Web links"
+        updateDetails()
+        return
+    end if
+    if g = "Search"
+        m.countLbl.text = "Type to search"
+        updateDetails()
+        return
+    end if
+    candidates = m.allChannels
+    if g = "Lord of the Rings"
+        candidates = m.tolkienChannels
+    else if m.smartCollections[g] <> invalid
+        candidates = m.smartCollections[g]
+    else if g = "Favorites"
+        candidates = m.favoritesChannels
+    else if g <> "All Channels"
+        candidates = m.channelsByGroup[g]
+        if candidates = invalid then candidates = []
+    end if
+    for each ch in candidates
+        if matchesSearch(ch) then m.filtered.push(ch)
     end for
+    if g = "Lord of the Rings"
+        prioritized = []
+        for rank = 0 to 3
+            for each ch in m.filtered
+                if playbackFormatRank(ch) = rank then prioritized.push(ch)
+            end for
+        end for
+        m.filtered = prioritized
+    end if
     m.countLbl.text = stri(m.filtered.count()).trim() + " ch"
+    updateDetails()
+end sub
+
+sub addChannelToIndex(groupName as String, channel as Object)
+    if m.channelsByGroup[groupName] = invalid
+        m.channelsByGroup[groupName] = []
+        m.categoryCounts[groupName] = 0
+    end if
+    m.channelsByGroup[groupName].push(channel)
+    m.categoryCounts[groupName] = m.categoryCounts[groupName] + 1
+end sub
+
+function hasGroupName(groupName as String) as Boolean
+    for each existingGroup in m.groups
+        if existingGroup = groupName then return true
+    end for
+    return false
+end function
+
+sub indexSearchPrefixes(channel as Object)
+    seen = {}
+    words = m.wordSplitter.Split(channel.search_text)
+    for each word in words
+        if Len(word) >= 3
+            prefix = Left(word, 3)
+            if not seen.DoesExist(prefix)
+                seen[prefix] = true
+                if m.channelsByPrefix[prefix] = invalid then m.channelsByPrefix[prefix] = []
+                m.channelsByPrefix[prefix].push(channel)
+            end if
+        end if
+    end for
+end sub
+
+sub addToSmartCollections(channel as Object)
+    text = channel.search_text
+    if isAdultChannel(channel, text) then m.smartCollections["XXX"].push(channel)
+    addSportsCollections(channel, text)
+    if isJackieChanFilm(text) then m.smartCollections["Jackie Chan Films"].push(channel)
+    if Instr(1, text, "transporter") > 0 then m.smartCollections["Transporter"].push(channel)
+    if Instr(1, text, "two and a half men") > 0 or Instr(1, text, "two & a half men") > 0
+        m.smartCollections["Two and a Half Men"].push(channel)
+    end if
+    if Instr(1, text, "batman") > 0 then m.smartCollections["Batman"].push(channel)
+    if Instr(1, text, "big bang theory") > 0 then m.smartCollections["The Big Bang Theory"].push(channel)
+    if Instr(1, text, "curb your enthusiasm") > 0 then m.smartCollections["Curb Your Enthusiasm"].push(channel)
+    if Instr(1, text, "bbc earth") > 0 then m.smartCollections["BBC Earth"].push(channel)
+    if Instr(1, text, "24/7") > 0 or Instr(1, text, "24 7") > 0 or Instr(1, text, "24-7") > 0
+        m.smartCollections["24/7 Channels"].push(channel)
+    end if
+    if Instr(1, text, "hbo") > 0 then m.smartCollections["HBO"].push(channel)
+    if Instr(1, text, "cinemax") > 0 then m.smartCollections["CINEMAX"].push(channel)
+    if Instr(1, text, "showtime") > 0 then m.smartCollections["SHOWTIME"].push(channel)
+    if Instr(1, text, "starz") > 0 then m.smartCollections["STARZ"].push(channel)
+    if Instr(1, text, "netflix") > 0 then m.smartCollections["NETFLIX"].push(channel)
+    if isNewsChannel(channel, text) then m.smartCollections["NEWS CHANNELS"].push(channel)
+    if LCase(channel.category) = "series" or LCase(channel.group) = "series"
+        m.smartCollections["Series"].push(channel)
+    end if
+end sub
+
+function isJackieChanFilm(searchableText as String) as Boolean
+    if Instr(1, searchableText, "jackie chan") > 0 then return true
+    filmTitles = [
+        "armour of god",
+        "around the world in 80 days",
+        "city hunter",
+        "drunken master",
+        "fearless hyena",
+        "legend of drunken master",
+        "new police story",
+        "police story",
+        "project a",
+        "rumble in the bronx",
+        "rush hour",
+        "shanghai knights",
+        "shanghai noon",
+        "snake in the eagle's shadow",
+        "the foreigner",
+        "the medallion",
+        "the myth",
+        "the tuxedo",
+        "wheels on meals",
+        "who am i"
+    ]
+    for each filmTitle in filmTitles
+        if Instr(1, searchableText, filmTitle) > 0 then return true
+    end for
+    return false
+end function
+
+function isAdultChannel(channel as Object, searchableText as String) as Boolean
+    lowerText = LCase(searchableText)
+    channelGroup = ""
+    if channel.group <> invalid then channelGroup = LCase(channel.group)
+    channelCategory = ""
+    if channel.category <> invalid then channelCategory = LCase(channel.category)
+    if channelGroup = "movies" or channelCategory = "movies" then return false
+    if channelGroup = "adult" or channelGroup = "xxx" or channelGroup = "x-rated" or
+        channelCategory = "adult" or channelCategory = "xxx" or channelCategory = "x-rated"
+        return true
+    end if
+    if Instr(1, lowerText, "18+") > 0 then return true
+    if channel.name <> invalid and Instr(1, channel.name, "XXX") > 0 then return true
+    if Instr(1, lowerText, "x-rated") > 0 or Instr(1, lowerText, "big ass") > 0 or
+        Instr(1, lowerText, "blow job") > 0 or Instr(1, lowerText, "blowjob") > 0 or
+        Instr(1, lowerText, "big tits") > 0
+        return true
+    end if
+    words = m.wordSplitter.Split(lowerText)
+    for each word in words
+        if word = "porn" or word = "pornography" or word = "erotic" or
+            word = "hentai" or word = "playboy" or word = "hustler" or
+            word = "brazzers" or word = "milf" or word = "anal" or
+            word = "blondes" or word = "brunettes" or word = "babes"
+            return true
+        end if
+    end for
+    return false
+end function
+
+function isNewsChannel(channel as Object, searchableText as String) as Boolean
+    if LCase(channel.category) = "news" then return true
+    if Instr(1, searchableText, "news") > 0 or Instr(1, searchableText, "cnn") > 0 or
+        Instr(1, searchableText, "msnbc") > 0 or Instr(1, searchableText, "cnbc") > 0 or
+        Instr(1, searchableText, "bloomberg") > 0 or Instr(1, searchableText, "al jazeera") > 0 or
+        Instr(1, searchableText, "sky news") > 0 or Instr(1, searchableText, "fox news") > 0
+        return true
+    end if
+    return false
+end function
+
+function buildSearchText(channel as Object) as String
+    text = LCase(channel.name)
+    if channel.group <> invalid then text = text + " " + LCase(channel.group)
+    if channel.category <> invalid then text = text + " " + LCase(channel.category)
+    if channel.tvg_id <> invalid then text = text + " " + LCase(channel.tvg_id)
+    if channel.metadata <> invalid
+        for each key in channel.metadata
+            keyName = LCase(key)
+            value = channel.metadata[key]
+            if keyName <> "tvg_logo" and keyName <> "logo" and keyName <> "url" and value <> invalid
+                if type(value) = "roString" or type(value) = "String"
+                    text = text + " " + LCase(value)
+                end if
+            end if
+        end for
+    end if
+    return text
+end function
+
+function isTolkienMovie(channel as Object) as Boolean
+    title = LCase(channel.name)
+    return Instr(1, title, "lord of the rings") > 0 or Instr(1, title, "hobbit") > 0
+end function
+
+function playbackFormatRank(channel as Object) as Integer
+    format = channel.stream_format
+    if format = invalid then return 3
+    format = LCase(format)
+    if format = "hls" then return 0
+    if format = "mp2ts" then return 1
+    if format = "mp4" then return 2
+    return 3
+end function
+
+function matchesSearch(channel as Object) as Boolean
+    if m.searchQuery = "" then return true
+    return Instr(1, channel.search_text, m.searchQuery) > 0
+end function
+
+function searchCandidates(query as String) as Object
+    bestPrefix = ""
+    words = m.wordSplitter.Split(query)
+    for each word in words
+        if Len(word) >= 3 and Len(word) > Len(bestPrefix)
+            bestPrefix = Left(word, 3)
+        end if
+    end for
+    if bestPrefix <> "" and m.channelsByPrefix[bestPrefix] <> invalid
+        return m.channelsByPrefix[bestPrefix]
+    end if
+    return m.allChannels
+end function
+
+sub updateDetails()
+    index = m.streamOffset + m.streamCursor
+    if index < 0 or index >= m.filtered.count()
+        m.detailLbl.text = "EXTINF details appear here when a channel is selected."
+        return
+    end if
+    channel = m.filtered[index]
+    tvgId = "not provided"
+    if channel.tvg_id <> invalid and channel.tvg_id <> "" then tvgId = channel.tvg_id
+    groupName = channel.group
+    if groupName = invalid or groupName = "" then groupName = "Uncategorized"
+    logoState = "not provided"
+    if channel.logo <> invalid and channel.logo <> "" then logoState = "available"
+    duration = "-1"
+    if channel.duration <> invalid then duration = channel.duration
+    format = "unknown"
+    if channel.stream_format <> invalid then format = channel.stream_format
+    genre = ""
+    if channel.metadata <> invalid
+        genre = channel.metadata.genre
+        if genre = invalid then genre = channel.metadata.tvg_genre
+        if genre = invalid then genre = channel.metadata.category
+        if genre = invalid then genre = ""
+    end if
+    metadata = ""
+    if channel.metadata <> invalid and channel.metadata.count() > 0
+        metadata = formatExtinfMetadata(channel.metadata)
+    end if
+    genreText = ""
+    if genre <> "" then genreText = " | Genre=" + genre
+    m.detailLbl.text = "EXTINF: Group=" + groupName + " | TVG-ID=" + tvgId + " | Logo=" + logoState + " | Duration=" + duration + " | Format=" + format + genreText + metadata
+end sub
+
+function formatExtinfMetadata(attributes as Object) as String
+    result = ""
+    keys = ["tvg_name", "group_title", "tvg_language", "tvg_country", "tvg_type", "genre", "tvg_genre", "tvg_rating", "tvg_director", "tvg_actor", "category"]
+    labels = ["tvg-name", "group-title", "tvg-language", "tvg-country", "tvg-type", "genre", "tvg-genre", "tvg-rating", "tvg-director", "tvg-actor", "category"]
+    for i = 0 to keys.count() - 1
+        value = attributes[keys[i]]
+        if value <> invalid and value <> ""
+            if result <> "" then result = result + " | "
+            result = result + labels[i] + "=" + value
+        end if
+    end for
+    if result = "" then return ""
+    return " | EXTINF attributes: " + result
+end function
+
+function countGroup(groupName as String) as Integer
+    if groupName = "About Me" then return 0
+    if groupName = "Search" then return 0
+    if groupName = "All Channels" then return m.allChannels.count()
+    if groupName = "Lord of the Rings" then return m.tolkienChannels.count()
+    if groupName = "Favorites" then return m.favoriteCount
+    if m.smartCollections[groupName] <> invalid then return m.smartCollections[groupName].count()
+    count = m.categoryCounts[groupName]
+    if count = invalid then return 0
+    return count
+end function
+
+function openOptionsDialog() as Boolean
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = "Playlist controls"
+    dialog.message = "Search, organize, or manage the selected channel."
+    dialog.buttons = ["Search channels", "Lord of the Rings", "All channels", "Favorites", "Add/remove favorite", "Clear search", "About Me", "MasterChief dashboard", "Close"]
+    dialog.observeField("buttonSelected", "onOptionsSelected")
+    m.top.getScene().dialog = dialog
+    return true
+end function
+
+sub onOptionsSelected(msg as Object)
+    index = msg.GetData()
+    m.top.getScene().dialog = invalid
+    if index = 0
+        openSearchDialog()
+    else if index = 1
+        m.searchQuery = ""
+        selectGroup("Lord of the Rings")
+    else if index = 2
+        m.searchQuery = ""
+        selectGroup("All Channels")
+    else if index = 3
+        m.searchQuery = ""
+        selectGroup("Favorites")
+    else if index = 4
+        toggleFavorite()
+    else if index = 5
+        m.searchQuery = ""
+        filterGroup()
+        renderStreams()
+        m.statusLbl.text = "Search cleared."
+    else if index = 6
+        openAboutMe()
+    else if index = 7
+        m.top.openCloudDashboard = true
+    end if
+end sub
+
+sub openAboutMe()
+    m.aboutVisible = true
+    m.aboutOverlay.visible = true
+end sub
+
+sub openWebTools()
+    m.webToolsVisible = true
+    m.webToolsOverlay.visible = true
+end sub
+
+sub openSearchDialog()
+    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog.title = "Search channels"
+    dialog.text = m.searchQuery
+    dialog.buttons = ["Search", "Cancel"]
+    dialog.observeField("buttonSelected", "onSearchSelected")
+    m.top.getScene().dialog = dialog
+end sub
+
+sub onSearchSelected(msg as Object)
+    index = msg.GetData()
+    dialog = m.top.getScene().dialog
+    if index = 0 and dialog <> invalid
+        m.searchQuery = LCase(Trim(dialog.text))
+        selectGroup("Search")
+        candidates = searchCandidates(m.searchQuery)
+        m.filtered = []
+        for each channel in candidates
+            if matchesSearch(channel) then m.filtered.push(channel)
+        end for
+        m.streamOffset = 0
+        m.streamCursor = 0
+        m.countLbl.text = stri(m.filtered.count()).trim() + " ch"
+        renderStreams()
+        m.statusLbl.text = "Search: " + m.searchQuery
+    end if
+    m.top.getScene().dialog = invalid
+end sub
+
+sub selectGroup(groupName as String)
+    index = -1
+    for i = 0 to m.groups.count() - 1
+        if m.groups[i] = groupName
+            index = i
+            exit for
+        end if
+    end for
+    if index < 0 then return
+    m.groupIdx = index
+    m.groupOffset = 0
+    m.focusSide = "group"
+    filterGroup()
+    renderGroups()
+    renderStreams()
+end sub
+
+sub toggleFavorite()
+    if m.favoriteSection = invalid
+        m.statusLbl.text = "Favorites are unavailable on this device."
+        m.statusLbl.color = m.cRed
+        return
+    end if
+    index = m.streamOffset + m.streamCursor
+    if index < 0 or index >= m.filtered.count()
+        m.statusLbl.text = "Select a channel before changing favorites."
+        return
+    end if
+    channel = m.filtered[index]
+    url = channel.url
+    if m.favorites.doesExist(url)
+        keys = m.favoriteSection.GetKeyList()
+        for each key in keys
+            if m.favoriteSection.Read(key) = url
+                m.favoriteSection.Delete(key)
+                exit for
+            end if
+        end for
+        m.favorites.Delete(url)
+        m.favoriteCount = m.favoriteCount - 1
+        removeFavoriteChannel(url)
+        if not m.favoriteSection.Flush()
+            m.statusLbl.text = "Could not save the favorites list."
+            m.statusLbl.color = m.cRed
+            return
+        end if
+        m.statusLbl.text = "Removed from Favorites: " + channel.name
+    else
+        keys = m.favoriteSection.GetKeyList()
+        keyIndex = 1
+        key = "favorite_" + stri(keyIndex).trim()
+        keyInUse = true
+        while keyInUse
+            keyInUse = false
+            if keys <> invalid
+                for each existingKey in keys
+                    if existingKey = key
+                        keyInUse = true
+                        exit for
+                    end if
+                end for
+            end if
+            if keyInUse
+            keyIndex = keyIndex + 1
+            key = "favorite_" + stri(keyIndex).trim()
+            end if
+        end while
+        if not m.favoriteSection.Write(key, url) or not m.favoriteSection.Flush()
+            m.statusLbl.text = "Could not save the favorites list."
+            m.statusLbl.color = m.cRed
+            return
+        end if
+        m.favorites[url] = true
+        m.favoriteCount = m.favoriteCount + 1
+        m.favoritesChannels.push(channel)
+        m.statusLbl.text = "Added to Favorites: " + channel.name
+    end if
+    m.statusLbl.color = m.cGreen
+    filterGroup()
+    renderGroups()
+    renderStreams()
+end sub
+
+sub removeFavoriteChannel(url as String)
+    for i = 0 to m.favoritesChannels.count() - 1
+        if m.favoritesChannels[i].url = url
+            m.favoritesChannels.delete(i)
+            return
+        end if
+    end for
 end sub
 
 sub renderGroups()
@@ -148,7 +993,7 @@ sub renderGroups()
     if m.groups.count() = 0
         lbl = m.groupList.createChild("Label")
         lbl.translation = [12, 10]
-        lbl.text  = "Loading Your Bad ass movie..."
+        lbl.text  = "No categories are available."
         lbl.font  = "font:SmallSystemFont"
         lbl.color = m.cSub
         return
@@ -173,7 +1018,13 @@ sub renderGroups()
         end if
         lbl = m.groupList.createChild("Label")
         lbl.translation = [12, y + 10]
-        lbl.text  = m.groups[i]
+        if m.groups[i] = "About Me"
+            lbl.text = "About Me  (OK)"
+        else if m.groups[i] = "Search"
+            lbl.text = "Search channels  (OK)"
+        else
+            lbl.text = m.groups[i] + "  (" + stri(countGroup(m.groups[i])).trim() + ")"
+        end if
         lbl.font  = "font:SmallSystemFont"
         if isActive then lbl.color = m.cText else lbl.color = m.cSub
         lbl.width = m.leftW - 16
@@ -186,12 +1037,22 @@ sub renderStreams()
     while m.streamList.getChildCount() > 0
         m.streamList.removeChildIndex(0)
     end while
+    if m.focusSide = "stream" and m.streamOffset + m.streamCursor < m.filtered.count()
+        selected = m.filtered[m.streamOffset + m.streamCursor]
+        m.top.previewChannel = {
+            name: selected.name,
+            url: selected.url,
+            stream_format: selected.stream_format,
+            http_headers: selected.http_headers
+        }
+    end if
     if m.filtered.count() = 0
         lbl = m.streamList.createChild("Label")
         lbl.translation = [12, 10]
         lbl.text  = "No channels."
         lbl.font  = "font:SmallSystemFont"
         lbl.color = m.cSub
+        updateDetails()
         return
     end if
     chW    = 920
@@ -219,14 +1080,48 @@ sub renderStreams()
         numLbl.font  = "font:SmallSystemFont"
         numLbl.color = m.cSub
         numLbl.width = 52
+        nameX = 66
+        if s.logo <> invalid and s.logo <> ""
+            poster = m.streamList.createChild("Poster")
+            poster.translation = [66, y + 4]
+            poster.width = 34
+            poster.height = 34
+            poster.uri = s.logo
+            nameX = 108
+        end if
         name = s.name
+        if m.favorites.doesExist(s.url) then name = "[FAV] " + name
         nameLbl = m.streamList.createChild("Label")
-        nameLbl.translation = [66, y + 10]
+        nameLbl.translation = [nameX, y + 4]
         nameLbl.text  = name
         nameLbl.font  = "font:SmallSystemFont"
         if isSel then nameLbl.color = "0xFFFFFFFF" else nameLbl.color = m.cText
-        nameLbl.width = chW - 70
+        nameLbl.width = chW - nameX - 12
         nameLbl.truncateOnDelimiter = "..."
+        groupName = s.group
+        if groupName = invalid or groupName = "" then groupName = "Uncategorized"
+        format = s.stream_format
+        if format = invalid or format = "" then format = "hls"
+        genre = ""
+        if s.metadata <> invalid
+            genre = s.metadata.genre
+            if genre = invalid then genre = s.metadata.tvg_genre
+            if genre = invalid then genre = s.metadata.category
+            if genre = invalid then genre = ""
+        end if
+        metaLbl = m.streamList.createChild("Label")
+        metaLbl.translation = [nameX, y + 23]
+        metaLbl.text = groupName + "  |  " + format
+        if s.program_now <> invalid and s.program_now.title <> invalid
+            metaLbl.text = "NOW: " + s.program_now.title
+            if s.program_next <> invalid and s.program_next.title <> invalid
+                metaLbl.text = metaLbl.text + "  |  NEXT: " + s.program_next.title
+            end if
+        end if
+        if genre <> "" then metaLbl.text = metaLbl.text + "  |  " + genre
+        metaLbl.font = "font:SmallSystemFont"
+        metaLbl.color = m.cSub
+        metaLbl.width = chW - nameX - 12
         y = y + m.rowH
     end for
     if m.filtered.count() > m.maxRows
@@ -236,10 +1131,26 @@ sub renderStreams()
         hint.font  = "font:SmallSystemFont"
         hint.color = m.cSub
     end if
+    updateDetails()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    if m.aboutVisible or m.webToolsVisible
+        if key = "back"
+            if m.aboutVisible
+                m.aboutVisible = false
+                m.aboutOverlay.visible = false
+            else
+                m.webToolsVisible = false
+                m.webToolsOverlay.visible = false
+            end if
+        end if
+        return true
+    end if
+    if key = "options"
+        return openOptionsDialog()
+    end if
     if m.focusSide = "group"
         if key = "up"
             if m.groupIdx > 0
@@ -261,18 +1172,36 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 renderStreams()
             end if
             return true
-        else if key = "right" or key = "OK"
-            if m.filtered.count() > 0
+        else if key = "right"
+            if m.groups[m.groupIdx] = "About Me"
+                openAboutMe()
+            else if m.groups[m.groupIdx] = "Web Tools Links"
+                openWebTools()
+            else if m.groups[m.groupIdx] = "Search"
+                openSearchDialog()
+            else if m.filtered.count() > 0
                 m.focusSide = "stream"
                 renderGroups()
                 renderStreams()
             end if
             return true
+        else if key = "OK"
+            if m.groups[m.groupIdx] = "About Me"
+                openAboutMe()
+            else if m.groups[m.groupIdx] = "Web Tools Links"
+                openWebTools()
+            else if m.groups[m.groupIdx] = "Search"
+                openSearchDialog()
+            else if m.filtered.count() > 0
+                playChannel(0)
+            else
+                m.statusLbl.text = "There are no channels in this view."
+            end if
+            return true
         else if key = "replay"
-            m.loaded = false
+            resetPlaylist()
             m.statusLbl.text  = "Reloading..."
             m.statusLbl.color = m.cSub
-            m.task.groupsJson = ""
             m.task.url = ""
             m.task.url = m.m3uUrl
             return true
@@ -303,15 +1232,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         else if key = "OK"
             idx = m.streamOffset + m.streamCursor
-            if idx >= 0 and idx < m.filtered.count()
-                s = m.filtered[idx]
-                if s.url <> ""
-                    ch = {name: s.name, url: s.url, group: s.group, logo: s.logo}
-                    m.statusLbl.text  = "> NOW PLAYING: " + s.name
-                    m.statusLbl.color = m.cGreen
-                    m.top.selectedChannel = ch
-                end if
-            end if
+            playChannel(idx)
+            return true
+        else if key = "play"
+            toggleFavorite()
             return true
         else if key = "replay"
             filterGroup()
@@ -321,6 +1245,29 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
 end function
+
+sub playChannel(index as Integer)
+    if index < 0 or index >= m.filtered.count() then return
+    stream = m.filtered[index]
+    if stream.url = "" then return
+    channel = {
+        name: stream.name,
+        url: stream.url,
+        group: stream.group,
+        logo: stream.logo,
+        category: stream.category,
+        tvg_id: stream.tvg_id,
+        duration: stream.duration,
+        metadata: stream.metadata,
+        stream_format: stream.stream_format,
+        http_headers: stream.http_headers
+        ,program_now: stream.program_now
+        ,program_next: stream.program_next
+    }
+    m.statusLbl.text = "> NOW PLAYING: " + stream.name
+    m.statusLbl.color = m.cGreen
+    m.top.selectedChannel = channel
+end sub
 
     ]]></script>
 </component>

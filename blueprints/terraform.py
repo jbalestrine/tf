@@ -70,6 +70,22 @@ def api_terraform_generate():
         current_app.logger.exception('Failed to generate terraform project')
         return jsonify({'ok': False, 'error': str(e)}), 500
 
+
+@terraform_bp.route('/api/terraform/validate-design', methods=['POST'])
+def api_terraform_validate_design():
+    """Validate Azure naming, network topology, and role assignment conflicts."""
+    from core.infrastructure_validation import validate_infrastructure_design
+
+    design = request.get_json(silent=True)
+    if design is None:
+        return jsonify({'ok': False, 'error': 'A JSON design object is required.'}), 400
+    issues = validate_infrastructure_design(design)
+    return jsonify({
+        'ok': not any(issue['severity'] == 'error' for issue in issues),
+        'issues': issues,
+    }), 200
+
+
 @terraform_bp.route('/api/terraform/run', methods=['POST'])
 def api_terraform_run():
     """Run terraform actions (init|plan|deploy) asynchronously and return exec_id.

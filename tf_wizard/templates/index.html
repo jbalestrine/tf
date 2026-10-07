@@ -29,6 +29,93 @@
       </div>
       <div id="form-content">
 
+        <section class="form-section guided-wizard" aria-labelledby="guided-wizard-title">
+          <h3 id="guided-wizard-title">Enterprise setup wizard</h3>
+          <p class="field-help">Build an editable Terraform starter in steps. Nothing is deployed automatically; inspect the generated plan and code before any apply.</p>
+          <div class="wizard-step-tabs" role="tablist" aria-label="Setup steps">
+            <button type="button" class="wizard-step-tab active" data-wizard-step="0" onclick="showGuidedStep(0)">1. Template</button>
+            <button type="button" class="wizard-step-tab" data-wizard-step="1" onclick="showGuidedStep(1)">2. Components</button>
+            <button type="button" class="wizard-step-tab" data-wizard-step="2" onclick="showGuidedStep(2)">3. Delivery</button>
+            <button type="button" class="wizard-step-tab" data-wizard-step="3" onclick="showGuidedStep(3)">4. Review</button>
+          </div>
+          <div class="wizard-step-panel" data-wizard-panel="0">
+            <label for="guided-template">Starter design</label>
+            <select id="guided-template" onchange="selectGuidedTemplate(this.value)">
+              <option value="enterprise">Enterprise landing-zone starter</option>
+              <option value="web">Secure web application</option>
+              <option value="aks">AKS platform</option>
+              <option value="hub">Hub-and-spoke network</option>
+              <option value="custom">Choose components myself</option>
+            </select>
+            <label for="guided-project">Project / naming prefix</label>
+            <input id="guided-project" type="text" value="masterchief" maxlength="32">
+            <label for="guided-environment">Environment</label>
+            <select id="guided-environment">
+              <option value="dev">Development</option>
+              <option value="test">Test</option>
+              <option value="staging">Staging</option>
+              <option value="prod">Production</option>
+              <option value="sandbox">Sandbox</option>
+            </select>
+            <label for="guided-location">Azure region</label>
+            <input id="guided-location" type="text" value="eastus2" placeholder="e.g. eastus2">
+            <p class="field-help">These are starter defaults. Confirm region availability, naming rules, subscription access, and CIDR ownership before use.</p>
+          </div>
+          <div class="wizard-step-panel" data-wizard-panel="1" hidden>
+            <div class="guided-component-grid">
+              <label><input type="checkbox" value="resource_group"> Resource group</label>
+              <label><input type="checkbox" value="hub_spoke"> Hub + two spokes</label>
+              <label><input type="checkbox" value="aks"> AKS cluster + registry</label>
+              <label><input type="checkbox" value="web_app"> Linux Web App + service plan</label>
+              <label><input type="checkbox" value="sql"> Azure SQL server + database</label>
+              <label><input type="checkbox" value="vm"> Windows VM starter</label>
+              <label><input type="checkbox" value="expressroute"> ExpressRoute hooks</label>
+              <label><input type="checkbox" value="ilb"> Internal load balancer</label>
+              <label><input type="checkbox" value="public_lb"> Public load balancer</label>
+              <label><input type="checkbox" value="ip_scope"> IP scopes / subnet CIDRs</label>
+              <label><input type="checkbox" value="dns"> Private DNS</label>
+              <label><input type="checkbox" value="nsg"> Network security group</label>
+              <label><input type="checkbox" value="waf"> Front Door + WAF starter</label>
+              <label><input type="checkbox" value="key_vault"> Key Vault</label>
+              <label><input type="checkbox" value="guardrails"> Policy guardrail assignment</label>
+              <label><input type="checkbox" value="monitoring"> Log Analytics workspace</label>
+              <label><input type="checkbox" value="private_access"> Private endpoint starter</label>
+              <label><input type="checkbox" value="odbc"> ODBC / VM script hook</label>
+              <label><input type="checkbox" value="adds"> AD DS role VM hook</label>
+              <label><input type="checkbox" value="adfs"> AD FS role VM hook</label>
+              <label><input type="checkbox" value="adcs"> AD CS role VM hook</label>
+              <label><input type="checkbox" value="sofs"> SOFS role VM hook</label>
+            </div>
+            <p class="field-help">AD DS, AD FS, AD CS, SOFS, and ODBC are workload roles/client configuration—not native AzureRM resources. Their VM/script entries are review-required placeholders, not turnkey installs.</p>
+          </div>
+          <div class="wizard-step-panel" data-wizard-panel="2" hidden>
+            <label for="guided-pipeline">CI/CD validation template</label>
+            <select id="guided-pipeline">
+              <option value="">None</option>
+              <option value="github-actions">GitHub Actions (validate + plan; no apply)</option>
+              <option value="azure-devops">Azure DevOps (validate + plan; no apply)</option>
+              <option value="gitlab-ci">GitLab CI (validate + plan; no apply)</option>
+            </select>
+            <fieldset class="guided-options">
+              <legend>Sandbox and integrations</legend>
+              <label><input id="guided-local-sandbox" type="checkbox" checked> Local fmt / validate kit + optional Azurite</label>
+              <label><input id="guided-azure-sandbox" type="checkbox"> Isolated Azure sandbox instructions</label>
+              <label><input type="checkbox" class="guided-hook" value="Slack"> Slack notification hook guidance</label>
+              <label><input type="checkbox" class="guided-hook" value="Microsoft Teams"> Microsoft Teams notification hook guidance</label>
+              <label><input type="checkbox" class="guided-hook" value="Generic HTTPS webhook"> Generic HTTPS webhook hook guidance</label>
+            </fieldset>
+            <p class="field-help">The local kit validates Terraform and can run Azurite for Storage-only testing. Azure plans may require authentication and billable services. No pipeline or sandbox applies resources automatically.</p>
+          </div>
+          <div class="wizard-step-panel" data-wizard-panel="3" hidden>
+            <div id="guided-review" class="guided-review" aria-live="polite"></div>
+            <button type="button" class="btn info" onclick="applyGuidedSetup()">Build design + Terraform</button>
+          </div>
+          <div class="wizard-step-controls">
+            <button type="button" class="btn secondary sm" onclick="moveGuidedStep(-1)">Back</button>
+            <button type="button" class="btn secondary sm" onclick="moveGuidedStep(1)">Continue</button>
+          </div>
+        </section>
+
         <!-- Module Details -->
         <div class="form-section">
           <h3>&#x1F3D7;&#xFE0F; Module Details</h3>
@@ -74,6 +161,21 @@
           </div>
         </div>
 
+        <div class="form-section">
+          <h3>Azure Network &amp; Access Validation</h3>
+          <div class="form-row">
+            <label for="infrastructure-design">Design JSON</label>
+            <textarea id="infrastructure-design" rows="12" spellcheck="false">{
+  "names": {},
+  "virtual_networks": [],
+  "role_assignments": []
+}</textarea>
+          </div>
+          <p class="validation-help">Define each virtual network with a canonical CIDR and its subnet names/CIDRs. Add role assignments with principal_id, role, and Azure scope to check duplicates and broad roles.</p>
+          <button class="btn info sm" type="button" onclick="validateInfrastructureDesign()">Validate Azure Design</button>
+          <div id="infrastructure-validation" role="status" aria-live="polite"></div>
+        </div>
+
         <!-- Providers -->
         <div class="form-section">
           <h3>&#x2601;&#xFE0F; Providers</h3>
@@ -102,8 +204,122 @@
         <!-- Resources -->
         <div class="form-section">
           <h3>&#x1F4E6; Resources</h3>
+          <div class="form-row">
+            <label for="network-preset">Add a network topology</label>
+            <select id="network-preset" onchange="addNetworkPreset(this.value); this.value = ''">
+              <option value="">Choose a VNet / network preset…</option>
+              <option value="azure_vnet">Azure: Virtual Network</option>
+              <option value="azure_hub_spoke">Azure: Hub and Spoke (hub + two spokes)</option>
+              <option value="azure_expressroute">Azure: ExpressRoute circuit + gateway</option>
+              <option value="azure_vm_sql_odbc">Azure: VM + SQL + ODBC client starter</option>
+              <option value="aws_vpc">AWS: VPC with public and private subnets</option>
+              <option value="gcp_vpc">Google Cloud: VPC and subnet</option>
+            </select>
+            <small class="field-help">Templates are editable Terraform starting points, not a complete provider schema catalog. ODBC is client configuration, not an Azure resource; the VM + SQL + ODBC starter adds a VM extension hook for your reviewed driver/DSN setup. Review provider documentation, secrets, CIDRs and service-provider values before applying.</small>
+          </div>
+          <div class="form-row resource-quick-add">
+            <label for="resource-preset">Quick add a resource</label>
+            <div class="quick-add-row">
+              <input id="resource-filter" type="search" placeholder="Filter resource catalog…" aria-label="Filter Terraform resource catalog">
+              <select id="resource-preset">
+                <option value="">Choose a resource type…</option>
+                <optgroup label="Azure">
+                  <option value="azurerm_resource_group">Resource group</option>
+                  <option value="azurerm_virtual_network">Virtual network</option>
+                  <option value="azurerm_subnet">Subnet</option>
+                  <option value="azurerm_network_security_group">Network security group</option>
+                  <option value="azurerm_virtual_network_peering">VNet peering</option>
+                  <option value="azurerm_network_interface">Network interface</option>
+                  <option value="azurerm_linux_virtual_machine">Linux virtual machine</option>
+                  <option value="azurerm_windows_virtual_machine">Windows virtual machine</option>
+                  <option value="azurerm_virtual_machine_extension">VM extension (ODBC / scripts)</option>
+                  <option value="azurerm_managed_disk">Managed disk</option>
+                  <option value="azurerm_public_ip">Public IP address</option>
+                  <option value="azurerm_nat_gateway">NAT gateway</option>
+                  <option value="azurerm_route_table">Route table</option>
+                  <option value="azurerm_firewall">Azure Firewall</option>
+                  <option value="azurerm_bastion_host">Azure Bastion</option>
+                  <option value="azurerm_virtual_network_gateway">VPN / ExpressRoute gateway</option>
+                  <option value="azurerm_virtual_network_gateway_connection">VNet gateway connection</option>
+                  <option value="azurerm_express_route_circuit">ExpressRoute circuit</option>
+                  <option value="azurerm_express_route_circuit_peering">ExpressRoute circuit peering</option>
+                  <option value="azurerm_express_route_circuit_authorization">ExpressRoute circuit authorization</option>
+                  <option value="azurerm_express_route_gateway">ExpressRoute gateway (Virtual WAN)</option>
+                  <option value="azurerm_express_route_connection">ExpressRoute connection (Virtual WAN)</option>
+                  <option value="azurerm_private_dns_zone">Private DNS zone</option>
+                  <option value="azurerm_private_dns_zone_virtual_network_link">Private DNS VNet link</option>
+                  <option value="azurerm_lb">Load balancer</option>
+                  <option value="azurerm_lb_backend_address_pool">Load balancer backend pool</option>
+                  <option value="azurerm_application_gateway">Application Gateway</option>
+                  <option value="azurerm_application_security_group">Application security group</option>
+                  <option value="azurerm_network_watcher">Network Watcher</option>
+                  <option value="azurerm_network_connection_monitor">Network connection monitor</option>
+                  <option value="azurerm_mssql_server">Azure SQL server</option>
+                  <option value="azurerm_mssql_database">Azure SQL database</option>
+                  <option value="azurerm_mssql_firewall_rule">SQL firewall rule</option>
+                  <option value="azurerm_mssql_virtual_network_rule">SQL VNet rule</option>
+                  <option value="azurerm_private_endpoint">Private endpoint (SQL, storage, etc.)</option>
+                  <option value="azurerm_storage_container">Storage container</option>
+                  <option value="azurerm_storage_account">Storage account</option>
+                  <option value="azurerm_key_vault">Key Vault</option>
+                  <option value="azurerm_kubernetes_cluster">AKS cluster</option>
+                  <option value="azurerm_container_registry">Container registry</option>
+                  <option value="azurerm_service_plan">App Service plan</option>
+                  <option value="azurerm_linux_web_app">Linux Web App</option>
+                  <option value="azurerm_windows_web_app">Windows Web App</option>
+                  <option value="azurerm_function_app_flex_consumption">Flex Consumption Function App</option>
+                  <option value="azurerm_log_analytics_workspace">Log Analytics workspace</option>
+                  <option value="azurerm_monitor_diagnostic_setting">Diagnostic setting</option>
+                  <option value="azurerm_user_assigned_identity">Managed identity</option>
+                  <option value="azurerm_role_assignment">Role assignment</option>
+                  <option value="azurerm_recovery_services_vault">Recovery Services vault</option>
+                  <option value="azurerm_backup_protected_vm">VM backup protection</option>
+                  <option value="azurerm_servicebus_namespace">Service Bus namespace</option>
+                  <option value="azurerm_servicebus_queue">Service Bus queue</option>
+                  <option value="azurerm_eventhub_namespace">Event Hubs namespace</option>
+                  <option value="azurerm_cosmosdb_account">Cosmos DB account</option>
+                  <option value="azurerm_data_factory">Data Factory</option>
+                  <option value="azurerm_synapse_workspace">Synapse workspace</option>
+                  <option value="azurerm_redis_cache">Azure Cache for Redis</option>
+                  <option value="azurerm_cdn_frontdoor_profile">Front Door profile</option>
+                  <option value="azurerm_cdn_frontdoor_firewall_policy">Front Door WAF policy</option>
+                  <option value="azurerm_subscription_policy_assignment">Subscription policy assignment</option>
+                </optgroup>
+                <optgroup label="AWS">
+                  <option value="aws_vpc">VPC</option>
+                  <option value="aws_subnet">Subnet</option>
+                  <option value="aws_security_group">Security group</option>
+                  <option value="aws_vpc_peering_connection">VPC peering</option>
+                  <option value="aws_internet_gateway">Internet gateway</option>
+                  <option value="aws_route_table">Route table</option>
+                  <option value="aws_vpn_gateway">VPN gateway</option>
+                  <option value="aws_dx_connection">Direct Connect connection</option>
+                  <option value="aws_instance">EC2 instance</option>
+                  <option value="aws_db_instance">RDS database</option>
+                  <option value="aws_db_subnet_group">RDS subnet group</option>
+                  <option value="aws_lb">Load balancer</option>
+                  <option value="aws_s3_bucket">S3 bucket</option>
+                  <option value="aws_lambda_function">Lambda function</option>
+                  <option value="aws_apigatewayv2_api">API Gateway</option>
+                </optgroup>
+                <optgroup label="Google Cloud">
+                  <option value="google_compute_network">VPC network</option>
+                  <option value="google_compute_subnetwork">Subnetwork</option>
+                  <option value="google_compute_network_peering">VPC network peering</option>
+                  <option value="google_compute_firewall">Firewall rule</option>
+                  <option value="google_compute_instance">Compute Engine instance</option>
+                  <option value="google_compute_router">Cloud Router</option>
+                  <option value="google_compute_ha_vpn_gateway">HA VPN gateway</option>
+                  <option value="google_sql_database_instance">Cloud SQL instance</option>
+                  <option value="google_storage_bucket">Cloud Storage bucket</option>
+                  <option value="google_bigquery_dataset">BigQuery dataset</option>
+                </optgroup>
+              </select>
+              <button class="btn secondary sm" type="button" onclick="addSelectedResource()">Add resource</button>
+            </div>
+          </div>
           <div id="resources-list"></div>
-          <button class="btn secondary sm" onclick="addResource()">+ Add Resource</button>
+          <button class="btn secondary sm" type="button" onclick="addResource('__custom__')">+ Custom Resource</button>
         </div>
 
         <!-- Outputs -->
@@ -129,9 +345,21 @@
         <div id="preview-header">
           <h2>Live Preview</h2>
           <div class="btn-group">
+            <button class="btn secondary sm" id="diagram-view-button" type="button" onclick="showPreviewMode('diagram')">Architecture</button>
+            <button class="btn secondary sm" id="code-view-button" type="button" onclick="showPreviewMode('code')">Code</button>
+            <button class="btn secondary sm" type="button" onclick="downloadCurrentSvg()">SVG</button>
+            <button class="btn secondary sm" type="button" onclick="downloadCurrentVisio()">Visio</button>
             <button class="btn secondary sm" onclick="copyPreview()">&#x1F4CB; Copy</button>
           </div>
         </div>
+        <div id="architecture-preview">
+          <div class="architecture-title">
+            <strong>Live system architecture</strong>
+            <span>Updates as you edit providers, resources, attributes, and connections.</span>
+          </div>
+          <div id="architecture-diagram" class="architecture-diagram" role="region" aria-label="Live architecture diagram"></div>
+        </div>
+        <div id="code-preview-pane" hidden>
         <div id="file-tabs">
           <button class="file-tab active" data-file="versions" onclick="showTab(this)">versions.tf</button>
           <button class="file-tab" data-file="variables" onclick="showTab(this)">variables.tf</button>
@@ -141,6 +369,7 @@
         <div id="code-preview">
           <div class="code-block">
             <pre class="code-content" id="preview-code"># Configure your module in the sidebar to see a live preview...</pre>
+          </div>
           </div>
         </div>
       </div>
@@ -154,6 +383,7 @@
   </div>
 </div>
 
+<script src="/static/architecture_diagram.js"></script>
 <script src="/tf_wizard/static/wizard.js"></script>
 </body>
 </html>

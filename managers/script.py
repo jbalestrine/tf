@@ -2,6 +2,9 @@ import json
 import time
 import os
 import shutil
+import stat
+import tempfile
+import threading
 from pathlib import Path
 from datetime import datetime
 import subprocess
@@ -42,58 +45,112 @@ def _interpreter_cmd_for_path(p: Path, requested_shell=None):
 
 
 class ScriptManager:
-    def __init__(self, scripts_folder):
+    _SCRIPT_EXTENSIONS = {'.sh', '.ps1', '.py', '.bash'}
+    _SKIP_DIRECTORY_NAMES = {
+        '.git', '.hg', '.svn', '.venv', 'venv', 'virtualenv', 'env',
+        '__pycache__', 'node_modules', 'site-packages', '.tox',
+        '.pytest_cache', '.mypy_cache', '.ruff_cache', '.cache',
+        'dist', 'build', 'target',
+    }
+
+    def __init__(self, scripts_folder, repo_root=None):
         self.scripts_folder = Path(scripts_folder)
+        self.repo_root = Path(repo_root) if repo_root else Path(__file__).resolve().parents[1]
+        self._index_lock = threading.Lock()
 
     def list_scripts(self, include_repo_paths: bool = True, use_cache: bool = True):
-        """Return scripts organized by category with a simple on-disk cache.
+        """Index supported scripts under the app tree without walking dependencies."""
+        repo_root = self.repo_root.resolve()
+        cache_file = repo_root / 'data' / (
+            'script_index_repo.json' if include_repo_paths else 'script_index_local.json'
+        )
+        cache_ttl = 300
 
-        Returns a list of category dicts: [{'category':'name','scripts':[...]}]
-        """
-        cache_file = Path(__file__).resolve().parent / 'data' / 'script_index.json'
-        cache_age = None
-        if cache_file.exists():
+        def read_fresh_cache():
             try:
-                cache_age = time.time() - cache_file.stat().st_mtime
-                if use_cache and cache_age is not None and cache_age < 30:
-                    with open(cache_file,'r',encoding='utf-8') as f:
-                        return json.load(f)
-            except Exception:
-                # If reading the cache fails, ignore and do a fresh scan
-                pass
+                age = time.time() - cache_file.stat().st_mtime
+                if 0 <= age < cache_ttl:
+                    with cache_file.open('r', encoding='utf-8') as cache:
+                        cached = json.load(cache)
+                    if isinstance(cached, list):
+                        return cached
+            except (OSError, json.JSONDecodeError):
+                return None
+            return None
 
-        scripts=[]
-        searched=set()
-        # Primary scripts folder
-        for ext in ['*.sh','*.ps1','*.py','*.bash']:
-            for script_file in self.scripts_folder.glob(ext):
-                if script_file.exists():
-                    key=str(script_file.resolve())
-                    if key in searched:
-                        continue
-                    searched.add(key)
-                    scripts.append({'name':script_file.name,'path':str(script_file.resolve()),'size':script_file.stat().st_size,'modified':datetime.fromtimestamp(script_file.stat().st_mtime).isoformat(),'type':script_file.suffix[1:],'source':'scripts_folder'})
+        if use_cache:
+            cached = read_fresh_cache()
+            if cached is not None:
+                return cached
 
-        if include_repo_paths:
-            # Also scan repo root and parent directories for scripts (limited depth/glob)
-            try:
-                repo_root=Path(__file__).resolve().parents[0]
-                search_dirs=[repo_root, repo_root.parent]
-                for sd in search_dirs:
-                    if not sd.exists():
-                        continue
-                    for ext in ['**/*.sh','**/*.ps1','**/*.py','**/*.bash']:
-                        for script_file in sd.glob(ext):
-                            if script_file.is_file():
-                                key=str(script_file.resolve())
-                                if key in searched:
-                                    continue
-                                searched.add(key)
-                                scripts.append({'name':script_file.name,'path':str(script_file.resolve()),'size':script_file.stat().st_size,'modified':datetime.fromtimestamp(script_file.stat().st_mtime).isoformat(),'type':script_file.suffix[1:],'source':'repo'})
-            except Exception:
-                pass
+        with self._index_lock:
+            if use_cache:
+                cached = read_fresh_cache()
+                if cached is not None:
+                    return cached
 
-        # Categorize scripts by heuristics (folder names, filename keywords)
+            scripts = []
+            searched = set()
+            scripts_root = self.scripts_folder.resolve()
+
+            def scan_tree(scan_root: Path, source: str, skip_scripts_root: bool = False):
+                if not scan_root.is_dir():
+                    return
+                for current, directories, filenames in os.walk(scan_root, topdown=True, followlinks=False):
+                    current_path = Path(current)
+                    kept_directories = []
+                    for directory in directories:
+                        if directory.casefold() in self._SKIP_DIRECTORY_NAMES:
+                            continue
+                        if directory.casefold().startswith('_extracted_disabled'):
+                            continue
+                        candidate = current_path / directory
+                        try:
+                            resolved_candidate = candidate.resolve()
+                            if resolved_candidate == cache_file.resolve():
+                                continue
+                            if skip_scripts_root and resolved_candidate == scripts_root:
+                                continue
+                            if skip_scripts_root:
+                                resolved_candidate.relative_to(scripts_root)
+                                continue
+                        except ValueError:
+                            pass
+                        except OSError:
+                            continue
+                        if candidate.is_symlink():
+                            continue
+                        kept_directories.append(directory)
+                    directories[:] = kept_directories
+
+                    for filename in filenames:
+                        script_file = current_path / filename
+                        if script_file.suffix.casefold() not in self._SCRIPT_EXTENSIONS:
+                            continue
+                        try:
+                            metadata = script_file.lstat()
+                        except OSError:
+                            continue
+                        if not stat.S_ISREG(metadata.st_mode):
+                            continue
+                        absolute_path = os.path.abspath(script_file)
+                        key = os.path.normcase(absolute_path)
+                        if key in searched:
+                            continue
+                        searched.add(key)
+                        scripts.append({
+                            'name': script_file.name,
+                            'path': absolute_path,
+                            'size': metadata.st_size,
+                            'modified': datetime.fromtimestamp(metadata.st_mtime).isoformat(),
+                            'type': script_file.suffix[1:],
+                            'source': source,
+                        })
+
+            scan_tree(scripts_root, 'scripts_folder')
+            if include_repo_paths and repo_root != scripts_root:
+                scan_tree(repo_root, 'repo', skip_scripts_root=True)
+
         categories_map = {}
         def add_to_category(cat, item):
             if cat not in categories_map:
@@ -115,8 +172,10 @@ class ScriptManager:
             p = Path(s['path'])
             name = p.name.lower()
             placed = False
-            # heuristic: folder names
-            parts = [part.lower() for part in p.parts]
+            try:
+                parts = [part.casefold() for part in p.relative_to(repo_root).parts]
+            except ValueError:
+                parts = [part.casefold() for part in p.relative_to(scripts_root).parts]
             for cat, kws in keywords.items():
                 if any(k in name for k in kws) or any(k in part for part in parts for k in kws):
                     add_to_category(cat, s)
@@ -133,13 +192,21 @@ class ScriptManager:
             items = sorted(categories_map[cat], key=lambda x: x['name'])
             result.append({'category':cat,'scripts':items})
 
-        # Cache index to disk for short period
+        # Replace the cache atomically so readers never observe partial JSON.
         try:
             cache_file.parent.mkdir(parents=True,exist_ok=True)
-            with open(cache_file,'w',encoding='utf-8') as f:
-                json.dump(result,f)
-        except Exception:
-            pass
+            with tempfile.NamedTemporaryFile(
+                mode='w', encoding='utf-8', dir=cache_file.parent,
+                prefix=cache_file.name + '.', suffix='.tmp', delete=False
+            ) as cache:
+                json.dump(result, cache)
+                temporary_cache = Path(cache.name)
+            temporary_cache.replace(cache_file)
+        except OSError:
+            try:
+                temporary_cache.unlink(missing_ok=True)
+            except (NameError, OSError):
+                pass
 
         return result
 
@@ -222,7 +289,10 @@ class ScriptManager:
 
 
 def register_script_module(app, scripts_folder='scripts'):
-    script_mgr = ScriptManager(scripts_folder)
+    scripts_root = Path(scripts_folder)
+    if not scripts_root.is_absolute():
+        scripts_root = Path(app.root_path) / scripts_root
+    script_mgr = ScriptManager(scripts_root, repo_root=app.root_path)
     
     @app.route('/scripts')
     def scripts_list():
@@ -243,15 +313,21 @@ def register_script_module(app, scripts_folder='scripts'):
         from templates.base import HTML_TEMPLATE
         from flask import request, get_flashed_messages
         return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}',SCRIPTS_TEMPLATE.replace('{% extends "base.html" %}','').replace('{% block content %}','').replace('{% endblock %}','')),scripts=scripts,categories=categories,request=request,get_flashed_messages=get_flashed_messages)
+    @app.route('/scripts/refresh_index', methods=['POST'])
     def refresh_index():
         # Admin token protection disabled for local development.
         # This endpoint is intentionally left open in dev to simplify testing.
-        cache_file = Path(app.root_path) / 'data' / 'script_index.json'
+        cache_files = [
+            script_mgr.repo_root / 'data' / 'script_index_repo.json',
+            script_mgr.repo_root / 'data' / 'script_index_local.json',
+            script_mgr.repo_root / 'data' / 'script_index.json',
+        ]
         try:
-            if cache_file.exists():
-                cache_file.unlink()
+            for cache_file in cache_files:
+                if cache_file.exists():
+                    cache_file.unlink()
             return jsonify({'ok':True,'message':'index invalidated'})
-        except Exception as e:
+        except OSError as e:
             return jsonify({'ok':False,'error':str(e)}),500
     
     @app.route('/scripts/add',methods=['POST'])

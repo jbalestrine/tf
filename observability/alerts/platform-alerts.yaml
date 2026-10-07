@@ -13,41 +13,41 @@ groups:
           summary: "MasterChief platform is down"
           description: "The MasterChief platform has been down for more than 1 minute."
       
-      - alert: HighDeploymentFailureRate
-        expr: rate(masterchief_deployments_failed_total[5m]) > 0.1
+      - alert: HighServerErrorRate
+        expr: sum(rate(masterchief_http_requests_total{status=~"5.."}[5m])) > 0.1
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "High deployment failure rate detected"
-          description: "Deployment failure rate is {{ $value }} per second over the last 5 minutes."
+          summary: "MasterChief is returning frequent server errors"
+          description: "MasterChief returned more than 0.1 HTTP 5xx responses per second over the last 5 minutes."
       
-      - alert: ModuleLoadFailure
-        expr: increase(masterchief_module_load_errors_total[5m]) > 0
+      - alert: RepeatedServerErrors
+        expr: increase(masterchief_http_requests_total{status=~"5.."}[5m]) > 3
         for: 1m
         labels:
           severity: warning
         annotations:
-          summary: "Module load failure detected"
-          description: "Module {{ $labels.module }} failed to load."
+          summary: "Repeated MasterChief server errors"
+          description: "More than three HTTP 5xx responses were recorded in the last 5 minutes."
       
-      - alert: HighEventBusLatency
-        expr: histogram_quantile(0.95, rate(masterchief_event_bus_latency_seconds_bucket[5m])) > 1
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(masterchief_http_request_duration_seconds_bucket[5m]))) > 1
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "High event bus latency"
-          description: "95th percentile event bus latency is {{ $value }} seconds."
+          summary: "MasterChief HTTP request latency is high"
+          description: "95th percentile request latency is {{ $value }} seconds."
       
-      - alert: HighAPIErrorRate
-        expr: rate(masterchief_api_errors_total[5m]) > 0.05
+      - alert: HighAPIErrorRatio
+        expr: sum(rate(masterchief_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(masterchief_http_requests_total[5m])), 1) > 0.05
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "High API error rate"
-          description: "API error rate is {{ $value }} per second."
+          summary: "MasterChief HTTP 5xx ratio is high"
+          description: "More than 5% of MasterChief HTTP requests returned a server error over the last 5 minutes."
 
   - name: masterchief_infrastructure
     interval: 60s

@@ -1,0 +1,266 @@
+"""Generate portable infrastructure artifacts from a common resource model."""
+
+from __future__ import annotations
+
+import io
+import json
+import re
+import zipfile
+from typing import Any
+
+import yaml
+
+
+SUPPORTED_FORMATS = {
+    "terraform": "Terraform / HCL",
+    "arm-json": "Azure ARM JSON",
+    "bicep": "Azure Bicep",
+    "powershell": "PowerShell + ARM",
+    "json": "Generic JSON",
+    "yaml": "Generic YAML",
+}
+
+
+def _safe_name(value: Any) -> str:
+    name = re.sub(r"[^A-Za-z0-9_-]+", "-", str(value or "iac-module")).strip("-_")
+    if not name:
+        raise ValueError("Module name must contain at least one letter or number.")
+    return name[:64]
+
+
+def _object_list(value: Any, field: str, limit: int = 200) -> list[dict]:
+    if not isinstance(value, list) or len(value) > limit:
+        raise ValueError(f"{field} must be a list of no more than {limit} objects.")
+    if any(not isinstance(item, dict) for item in value):
+        raise ValueError(f"Every {field} entry must be an object.")
+    return value
+
+
+def _escape_hcl(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return "null"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_escape_hcl(item) for item in value) + "]"
+    if isinstance(value, dict):
+        fields = ", ".join(
+            f"{re.sub(r'[^A-Za-z0-9_-]', '_', str(key))} = {_escape_hcl(item)}"
+            for key, item in value.items()
+        )
+        return "{ " + fields + " }"
+    raise ValueError(f"Unsupported value in resource properties: {type(value).__name__}")
+
+
+def _arm_template(name: str, spec: dict, resources: list[dict]) -> dict:
+    parameters = {}
+    for item in _object_list(spec.get("variables", []), "variables", 100):
+        key = str(item.get("name") or "").strip()
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,63}", key):
+            raise ValueError(f"Invalid parameter name: {key}")
+        parameter_type = str(item.get("type") or "string").capitalize()
+        parameter = {"type": parameter_type}
+        if "default" in item and item["default"] is not None:
+            parameter["defaultValue"] = item["default"]
+        if item.get("description"):
+            parameter["metadata"] = {"description": str(item["description"])[:500]}
+        parameters[key] = parameter
+
+    arm_resources = []
+    for index, resource in enumerate(resources):
+        resource_type = str(resource.get("type") or "").strip()
+        api_version = str(resource.get("api_version") or resource.get("apiVersion") or "2023-09-01").strip()
+        resource_name = str(resource.get("name") or f"resource-{index + 1}").strip()
+        if not resource_type or len(resource_type) > 200:
+            raise ValueError(f"Resource {index + 1} needs a valid Azure resource type.")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-preview)?", api_version):
+            raise ValueError(f"Resource {resource_name} has an invalid api_version.")
+        output = {
+            "type": resource_type,
+            "apiVersion": api_version,
+            "name": resource_name,
+        }
+        if resource.get("location"):
+            output["location"] = resource["location"]
+        elif spec.get("location"):
+            output["location"] = spec["location"]
+        if isinstance(resource.get("properties"), dict):
+            output["properties"] = resource["properties"]
+        if isinstance(resource.get("depends_on"), list):
+            output["dependsOn"] = resource["depends_on"]
+        arm_resources.append(output)
+
+    return {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": parameters,
+        "resources": arm_resources,
+        "outputs": {},
+        "metadata": {"_generator": f"MasterChief IaC Generator: {name}"},
+    }
+
+
+def _bicep_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return "null"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return "'" + value.replace("'", "''") + "'"
+    if isinstance(value, list):
+        return "[" + ", ".join(_bicep_value(item) for item in value) + "]"
+    if isinstance(value, dict):
+        properties = []
+        for key, item in value.items():
+            safe_key = str(key)
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", safe_key):
+                safe_key = "'" + safe_key.replace("'", "''") + "'"
+            properties.append(f"{safe_key}: {_bicep_value(item)}")
+        return "{ " + ", ".join(properties) + " }"
+    raise ValueError(f"Unsupported Bicep property value: {type(value).__name__}")
+
+
+def _render_bicep(spec: dict, resources: list[dict]) -> str:
+    lines = ["// Generated by MasterChief IaC Generator."]
+    for item in _object_list(spec.get("variables", []), "variables", 100):
+        name = str(item.get("name") or "").strip()
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,63}", name):
+            raise ValueError(f"Invalid parameter name: {name}")
+        bicep_type = str(item.get("type") or "string")
+        if bicep_type not in {"string", "int", "bool", "array", "object", "secureString", "secureObject"}:
+            bicep_type = "string"
+        lines.append(f"param {name} {bicep_type}" + (f" = {_bicep_value(item['default'])}" if "default" in item else ""))
+    if spec.get("location"):
+        lines.append("param location string = " + _bicep_value(spec["location"]))
+    for index, resource in enumerate(resources):
+        resource_type = str(resource.get("type") or "").strip()
+        api_version = str(resource.get("api_version") or resource.get("apiVersion") or "2023-09-01").strip()
+        if not resource_type:
+            raise ValueError(f"Resource {index + 1} needs a valid Azure resource type.")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-preview)?", api_version):
+            raise ValueError(f"Resource {index + 1} has an invalid api_version.")
+        resource_name = re.sub(r"[^A-Za-z0-9_]", "_", str(resource.get("name") or f"resource_{index + 1}"))
+        body = {"name": resource.get("name") or f"resource-{index + 1}"}
+        if resource.get("location") or spec.get("location"):
+            body["location"] = resource.get("location") or spec["location"]
+        if isinstance(resource.get("properties"), dict):
+            body.update(resource["properties"])
+        lines.extend([
+            f"resource {resource_name} '{resource_type}@{api_version}' = {{",
+            "  " + _bicep_value(body),
+            "}",
+        ])
+    return "\n".join(lines) + "\n"
+
+
+def _terraform_files(name: str, spec: dict, resources: list[dict]) -> dict[str, str]:
+    from tf_wizard.generator import generate_module_zip
+
+    normalized_resources = []
+    for index, item in enumerate(resources):
+        resource_type = str(item.get("terraform_type") or item.get("type") or "").strip()
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_-]*", resource_type):
+            raise ValueError(f"Resource {index + 1} needs a Terraform resource type such as azurerm_resource_group.")
+        resource_name = re.sub(r"[^A-Za-z0-9_-]", "_", str(item.get("name") or f"resource_{index + 1}"))
+        normalized_resources.append({
+            "type": resource_type,
+            "name": resource_name,
+            "attributes": item.get("attributes") or item.get("properties") or {},
+        })
+    module_zip = generate_module_zip({
+        "module_name": name,
+        "providers": spec.get("providers") or [],
+        "variables": spec.get("variables") or [],
+        "resources": normalized_resources,
+        "outputs": spec.get("outputs") or [],
+        "backend": spec.get("backend"),
+    })
+    with zipfile.ZipFile(io.BytesIO(module_zip)) as archive:
+        return {
+            path.removeprefix(f"{name}/"): archive.read(path).decode("utf-8")
+            for path in archive.namelist()
+        }
+
+
+def generate_iac_files(payload: dict) -> tuple[str, dict[str, str]]:
+    if not isinstance(payload, dict):
+        raise ValueError("An IaC specification object is required.")
+    artifact_format = str(payload.get("format") or "terraform").strip().lower()
+    if artifact_format not in SUPPORTED_FORMATS:
+        raise ValueError(f"Unsupported format. Choose one of: {', '.join(SUPPORTED_FORMATS)}.")
+    name = _safe_name(payload.get("module_name") or payload.get("name"))
+    resources = _object_list(payload.get("resources", []), "resources")
+    description = str(payload.get("description") or "Infrastructure module generated by MasterChief.")[:500]
+    files: dict[str, str]
+
+    if artifact_format == "terraform":
+        files = _terraform_files(name, payload, resources)
+    elif artifact_format == "arm-json":
+        files = {"azuredeploy.json": json.dumps(_arm_template(name, payload, resources), indent=2) + "\n"}
+    elif artifact_format == "bicep":
+        files = {"main.bicep": _render_bicep(payload, resources)}
+    elif artifact_format == "powershell":
+        template_name = "azuredeploy.json"
+        files = {
+            template_name: json.dumps(_arm_template(name, payload, resources), indent=2) + "\n",
+            "deploy.ps1": (
+                "# Generated by MasterChief IaC Generator.\n"
+                "[CmdletBinding()]\n"
+                "param(\n"
+                "    [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$ResourceGroupName,\n"
+                f"    [string]$TemplateFile = (Join-Path $PSScriptRoot '{template_name}')\n"
+                ")\n"
+                "$ErrorActionPreference = 'Stop'\n"
+                "if (-not (Get-Module -ListAvailable -Name Az.Resources)) {\n"
+                "    throw 'Install the Az.Resources module before deployment: Install-Module Az.Resources'\n"
+                "}\n"
+                "New-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName "
+                "-TemplateFile $TemplateFile -Verbose\n"
+            ),
+        }
+    elif artifact_format == "json":
+        files = {"resources.json": json.dumps({
+            "name": name,
+            "description": description,
+            "parameters": payload.get("variables") or [],
+            "resources": resources,
+            "outputs": payload.get("outputs") or [],
+        }, indent=2) + "\n"}
+    else:
+        files = {"resources.yaml": yaml.safe_dump({
+            "name": name,
+            "description": description,
+            "parameters": payload.get("variables") or [],
+            "resources": resources,
+            "outputs": payload.get("outputs") or [],
+        }, sort_keys=False, allow_unicode=True)}
+
+    files["README.md"] = (
+        f"# {name}\n\n{description}\n\n"
+        f"Generated format: **{SUPPORTED_FORMATS[artifact_format]}**.\n\n"
+        "## Lifecycle guide\n\n"
+        "1. **INIT** — initialize local tooling/providers and confirm backend configuration.\n"
+        "2. **PLAN** — preview and review proposed changes before any write operation.\n"
+        "3. **APPLY** — apply only after an authorized operator explicitly approves the reviewed plan.\n"
+        "4. **ROLLBACK** — restore a known-good configuration/state using a reviewed recovery plan; "
+        "rollback is not a guaranteed automatic undo.\n"
+        "5. **TEARDOWN** — explicitly remove managed resources only after reviewing the destroy plan.\n\n"
+        "This package is generated source; generation does not initialize, apply, roll back, or destroy resources.\n"
+    )
+    return artifact_format, files
+
+
+def generate_iac_zip(payload: dict) -> tuple[str, bytes]:
+    artifact_format, files = generate_iac_files(payload)
+    name = _safe_name(payload.get("module_name") or payload.get("name"))
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        for filename, content in files.items():
+            archive.writestr(f"{name}/{filename}", content)
+    return artifact_format, output.getvalue()

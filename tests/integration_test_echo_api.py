@@ -30,6 +30,23 @@ class TestEchoAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Echo Starlite - Chat', response.data)
         self.assertIn(b'Training Stats', response.data)
+
+    def test_chatserv_page_and_public_room_state_load(self):
+        page = self.client.get('/chatserv')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'Echo ChatServ', page.data)
+
+        state = self.client.get('/api/chatserv/state?channel=%23lobby')
+        self.assertEqual(state.status_code, 200)
+        self.assertIn('Welcome to MasterChief Echo ChatServ', state.get_json()['motd'])
+
+    def test_gguf_selection_requires_rbac_admin(self):
+        response = self.client.post(
+            '/api/echo/select_model',
+            json={'model': 'example.gguf'},
+            headers={'Origin': 'http://localhost'},
+        )
+        self.assertEqual(response.status_code, 403)
     
     def test_echo_chat_api(self):
         """Test Echo chat API endpoint."""

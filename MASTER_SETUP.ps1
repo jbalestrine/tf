@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([int]$Port = 8084)
+param([int]$Port = 8080)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -53,7 +53,7 @@ function Start-SourceApp {
 
     Push-Location $repoRoot
     try {
-        & $sourcePython (Join-Path $repoRoot 'main.py') --port $Port
+        & $sourcePython (Join-Path $repoRoot 'main.py') --host 0.0.0.0 --port $Port
         if ($LASTEXITCODE -ne 0) { throw "MasterChief exited with code $LASTEXITCODE." }
     } finally {
         Pop-Location

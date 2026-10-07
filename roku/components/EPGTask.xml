@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="EPGTask" extends="Task">
+    <interface>
+        <field id="url" type="string" onChange="onUrlChange" />
+        <field id="listingsJson" type="string" value="" />
+        <field id="error" type="string" value="" />
+    </interface>
+    <script type="text/brightscript"><![CDATA[
+        sub init()
+            m.top.functionName = "fetchGuide"
+        end sub
+
+        sub onUrlChange()
+            m.top.control = "run"
+        end sub
+
+        sub fetchGuide()
+            if m.top.url = "" then return
+            transfer = CreateObject("roUrlTransfer")
+            transfer.SetUrl(m.top.url)
+            transfer.AddHeader("Accept", "application/json")
+            if Left(LCase(m.top.url), 6) = "https:"
+                transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
+                transfer.InitClientCertificates()
+            end if
+            response = transfer.GetToString()
+            if response = invalid or response = ""
+                m.top.error = "Live guide refresh returned no data."
+                return
+            end if
+            parsed = ParseJson(response)
+            if parsed = invalid or parsed.ok <> true or type(parsed.programmes) <> "roAssociativeArray"
+                detail = "Live guide response could not be parsed."
+                if parsed <> invalid and parsed.error <> invalid then detail = parsed.error
+                m.top.error = detail
+                return
+            end if
+            m.top.listingsJson = FormatJson(parsed)
+        end sub
+    ]]></script>
+</component>

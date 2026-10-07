@@ -156,9 +156,9 @@ class _Visitor(ast.NodeVisitor):
 #  File collection
 # ─────────────────────────────────────────────────────────────
 
-def _rel(path: Path) -> str:
+def _rel(path: Path, root: Path = WORKSPACE) -> str:
     try:
-        return path.relative_to(WORKSPACE).as_posix()
+        return path.relative_to(root).as_posix()
     except ValueError:
         return str(path)
 
@@ -167,14 +167,22 @@ def _rel(path: Path) -> str:
 _PACKAGE_MARKERS = {'pyvenv.cfg', 'pip', 'setuptools'}
 
 
+def _is_ignored_directory(name: str) -> bool:
+    normalized = name.casefold()
+    if normalized in {entry.casefold() for entry in SKIP_DIRS}:
+        return True
+    return bool(re.fullmatch(r'\.?venv(?:[-_.]?[a-z0-9]+)?', normalized))
+
+
 def _collect_files(root: Path = WORKSPACE) -> List[Dict]:
     results: List[Dict] = []
-    for dirpath, dirnames, filenames in os.walk(root):
+    root_path = Path(root).resolve()
+    for dirpath, dirnames, filenames in os.walk(root_path):
         dp = Path(dirpath)
         # Skip any directory that looks like a venv or installed-package tree
         dirnames[:] = [
             d for d in dirnames
-            if d not in SKIP_DIRS
+            if not _is_ignored_directory(d)
             and not (dp / d / 'pyvenv.cfg').exists()   # venv root
             and not (dp / d / 'site-packages').exists() # another venv pattern
         ]
@@ -185,7 +193,7 @@ def _collect_files(root: Path = WORKSPACE) -> List[Dict]:
                 ext  = fpath.suffix.lower()
                 results.append({
                     'abs_path': str(fpath),
-                    'rel_path': _rel(fpath),
+                    'rel_path': _rel(fpath, root_path),
                     'name':     fname,
                     'ext':      ext,
                     'size':     stat.st_size,
@@ -635,11 +643,10 @@ def get_cached_scan(force: bool = False) -> Dict[str, Any]:
         age = time.time() - _cache_ts
         if not force and _cache_result and age < _CACHE_TTL:
             return dict(_cache_result, _cached=True, _age=round(age, 1))
-    result = scan_workspace()
-    with _cache_lock:
+        result = scan_workspace()
         _cache_result = result
         _cache_ts = time.time()
-    return result
+        return result
 
 
 # ─────────────────────────────────────────────────────────────

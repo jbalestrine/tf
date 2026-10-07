@@ -57,7 +57,10 @@ def sys_api_file():
     if not _enabled():
         return jsonify({'error': 'diagnostics disabled by feature flag'}), 503
     rel_path = request.args.get('path', '')
-    line = int(request.args.get('line', 0) or 0)
+    try:
+        line = int(request.args.get('line', 0) or 0)
+    except ValueError:
+        return jsonify({'error': 'line must be a 1-based integer'}), 400
     if not rel_path:
         return jsonify({'error': 'path parameter required'}), 400
 

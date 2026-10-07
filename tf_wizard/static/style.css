@@ -52,10 +52,48 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 .form-row label{display:block;font-weight:600;color:var(--text);margin-bottom:6px;font-size:13px;}
 .form-row input,.form-row select,.form-row textarea{width:100%;padding:10px 12px;border-radius:4px;font-size:14px;}
 .form-row textarea{resize:vertical;}
+.field-help{display:block;color:var(--text3);font-size:11px;line-height:1.45;margin-top:6px;}
+.guided-wizard{border-color:var(--accent-dim);}
+.wizard-step-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:10px 0 14px;}
+.wizard-step-tab{padding:7px 5px;background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:4px;font-size:11px;}
+.wizard-step-tab.active{background:var(--accent-dim);border-color:var(--accent);color:#fff;}
+.wizard-step-panel{display:flex;flex-direction:column;gap:8px;}
+.wizard-step-panel[hidden]{display:none;}
+.wizard-step-panel>label,.guided-options legend{color:var(--text2);font-size:12px;font-weight:600;}
+.wizard-step-panel>input,.wizard-step-panel>select{width:100%;}
+.guided-component-grid{display:grid;grid-template-columns:1fr;gap:7px;}
+.guided-component-grid label,.guided-options label{display:flex;align-items:flex-start;gap:8px;color:var(--text2);font-size:12px;line-height:1.4;}
+.guided-component-grid input,.guided-options input{flex:0 0 auto;margin-top:2px;}
+.guided-options{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:5px;padding:10px;margin-top:6px;}
+.guided-review{padding:10px;background:var(--bg2);border-radius:5px;color:var(--text2);font-size:12px;line-height:1.55;margin-bottom:10px;}
+.wizard-step-controls{display:flex;justify-content:space-between;gap:8px;margin-top:14px;}
+.quick-add-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.quick-add-row input[type="search"]{min-width:100%;flex:1;}
+.quick-add-row select{min-width:0;flex:1;}
+.validation-help{color:var(--text2);font-size:12px;line-height:1.5;margin:8px 0 12px;}
+.btn.active{background:var(--accent-dim);color:#fff;border-color:var(--accent);}
+#architecture-preview{flex:1;min-height:0;overflow:auto;padding:14px;background:var(--bg);}
+.architecture-title{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:0 0 10px;color:var(--text);}
+.architecture-title span{color:var(--text3);font-size:12px;}
+.architecture-diagram{overflow:auto;border:1px solid var(--border);border-radius:8px;background:#f8fafc;}
+.architecture-diagram svg{display:block;width:100%;min-width:800px;height:auto;}
+#code-preview-pane{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
+#code-preview-pane[hidden],#architecture-preview[hidden]{display:none;}
+#infrastructure-validation{margin-top:10px;font-size:12px;line-height:1.5;}
+#infrastructure-validation ul{padding-left:20px;margin:6px 0;}
+#infrastructure-validation .validation-error{color:var(--danger);}
+#infrastructure-validation .validation-warning{color:var(--warn);}
+#infrastructure-validation .validation-success{color:var(--accent2);}
 
 /* ── Entry rows (providers, vars, resources, outputs) ────────────── */
 .entry-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
 .entry-row input,.entry-row select{flex:1;min-width:80px;padding:8px 10px;font-size:13px;}
+.entry-row.resource-row{align-items:flex-start;}
+.resource-row .res-type,.resource-row .res-type-custom,.resource-row .res-name{min-width:130px;}
+.resource-row .res-attributes{flex-basis:100%;width:100%;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:12px;resize:vertical;}
+.resource-row .res-attributes[aria-invalid="true"]{border-color:var(--danger);}
+.sensitive-toggle{display:flex;align-items:center;gap:5px;color:var(--text2);font-size:11px;white-space:nowrap;}
+.sensitive-toggle input{flex:0 0 auto;min-width:0;}
 
 /* ── Buttons ─────────────────────────────────────────────────────── */
 .btn{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s;}
@@ -132,4 +170,5 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
   #content{height:46vh;}
   .archetype-grid{grid-template-columns:1fr;}
   #topbar nav{overflow-x:auto;max-width:65vw;}
+  .quick-add-row{align-items:stretch;flex-direction:column;}
 }

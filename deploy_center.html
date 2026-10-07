@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Deployment Center - MasterChief</title>
+  <style>
+    :root{color-scheme:dark;font-family:Segoe UI,Arial,sans-serif;background:#0b1220;color:#e5edf7}
+    *{box-sizing:border-box}
+    body{margin:0}
+    main{max-width:960px;margin:32px auto;padding:0 20px 48px}
+    h1{margin:0 0 8px;color:#f8fafc;font-size:2rem}
+    p{color:#a7b4c8;line-height:1.55}
+    .card{margin:20px 0;padding:24px;border:1px solid #2d3c51;border-radius:16px;background:linear-gradient(145deg,#111d2d,#0f1725);box-shadow:0 14px 38px #0005}
+    label{display:block;margin:16px 0 7px;font-weight:650;color:#dbeafe}
+    select,input{width:100%;padding:12px 14px;border:1px solid #3b4b60;border-radius:10px;background:#0a1220;color:#f8fafc;font:inherit}
+    button,.button{display:inline-block;margin:10px 8px 0 0;padding:11px 16px;border:0;border-radius:10px;background:#18794e;color:white;font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .secondary{background:#334155}
+    .target-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:16px}
+    .target{padding:12px;border:1px solid #334155;border-radius:10px;background:#0b1422}
+    .target strong{display:block;color:#e2e8f0}
+    .target span{font-size:.88rem;color:#98a8bd}
+    .target.available{border-color:#26734d}
+    .target.future{opacity:.68}
+    .notice{padding:13px 15px;border-left:4px solid #38bdf8;border-radius:8px;background:#10243a;color:#c7e7ff}
+    .error{border-color:#ef4444;background:#35151a;color:#fecaca}
+    .result{white-space:pre-wrap;overflow-wrap:anywhere}
+    .confirm{display:flex;align-items:flex-start;gap:10px;margin-top:18px;color:#f1f5f9}
+    .confirm input{width:auto;margin-top:4px}
+    @media(max-width:600px){main{margin-top:20px;padding:0 14px 32px}.card{padding:18px}}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Deployment Center</h1>
+    <p>Preview and explicitly confirm creation of a source bundle. Supported targets stage a ZIP only; this page does not install or start the app, overwrite existing files, or deploy cloud infrastructure.</p>
+    <section class="card" aria-labelledby="plan-title">
+      <h2 id="plan-title">Plan a deployment bundle</h2>
+      <label for="target">Target</label>
+      <select id="target" disabled><option>Loading target capabilities…</option></select>
+      <label for="destination">Destination directory</label>
+      <input id="destination" autocomplete="off" placeholder="Absolute path, for example C:\Users\you\Desktop\MasterChief-bundles">
+      <div>
+        <button id="preview" type="button" disabled>Preview bundle</button>
+        <a class="button secondary" href="/pipelines">Back to pipelines</a>
+      </div>
+      <div id="previewResult" class="notice result" role="status" aria-live="polite" hidden></div>
+      <label id="confirmationRow" class="confirm" hidden>
+        <input id="confirmed" type="checkbox">
+        <span>I reviewed the target, destination, and file summary. Create this bundle now.</span>
+      </label>
+      <button id="execute" type="button" disabled hidden>Create confirmed bundle</button>
+    </section>
+    <section class="card" aria-labelledby="targets-title">
+      <h2 id="targets-title">Target availability</h2>
+      <p>Only local Windows/Linux, WSL, WSL2, and USB bundle staging are available now. Other destinations remain visible as future targets.</p>
+      <div id="targetList" class="target-list" aria-live="polite"></div>
+    </section>
+  </main>
+  <script>
+    (function() {
+      const targetSelect = document.getElementById('target');
+      const previewButton = document.getElementById('preview');
+      const executeButton = document.getElementById('execute');
+      const confirmationRow = document.getElementById('confirmationRow');
+      const confirmed = document.getElementById('confirmed');
+      const result = document.getElementById('previewResult');
+      const targetList = document.getElementById('targetList');
+      let currentPlan = null;
+
+      function showMessage(message, isError) {
+        result.textContent = message;
+        result.classList.toggle('error', !!isError);
+        result.hidden = false;
+      }
+
+      async function requestJson(url, options) {
+        const response = await fetch(url, options);
+        let data;
+        try {
+          data = await response.json();
+        } catch (error) {
+          throw new Error('The server returned an invalid response.');
+        }
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Request failed.');
+        return data;
+      }
+
+      async function loadCapabilities() {
+        try {
+          const data = await requestJson('/api/deployments/capabilities');
+          targetSelect.innerHTML = '';
+          targetList.innerHTML = '';
+          data.targets.forEach(function(target) {
+            const option = document.createElement('option');
+            option.value = target.id;
+            option.textContent = target.name + (target.available ? '' : ' — not executable yet');
+            option.disabled = !target.available;
+            targetSelect.appendChild(option);
+
+            const card = document.createElement('div');
+            card.className = 'target ' + (target.available ? 'available' : 'future');
+            const name = document.createElement('strong');
+            name.textContent = target.name;
+            const status = document.createElement('span');
+            status.textContent = target.operation;
+            card.append(name, status);
+            targetList.appendChild(card);
+          });
+          targetSelect.disabled = false;
+          previewButton.disabled = false;
+        } catch (error) {
+          showMessage(error.message, true);
+        }
+      }
+
+      previewButton.addEventListener('click', async function() {
+        currentPlan = null;
+        confirmationRow.hidden = true;
+        confirmed.checked = false;
+        executeButton.hidden = true;
+        executeButton.disabled = true;
+        try {
+          const data = await requestJson('/api/deployments/preview', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              target: targetSelect.value,
+              destination: document.getElementById('destination').value
+            })
+          });
+          currentPlan = data.plan;
+          showMessage(
+            'Target: ' + data.plan.target +
+            '\nDestination: ' + data.plan.destination +
+            '\nFiles: ' + data.plan.file_count +
+            '\nUncompressed size: ' + data.plan.size_bytes.toLocaleString() + ' bytes' +
+            '\nExcluded: ' + data.plan.exclusions.join(', ') +
+            '\nPreview expires in ' + data.plan.expires_in_seconds + ' seconds.',
+            false
+          );
+          confirmationRow.hidden = false;
+          executeButton.hidden = false;
+        } catch (error) {
+          showMessage(error.message, true);
+        }
+      });
+
+      confirmed.addEventListener('change', function() {
+        executeButton.disabled = !confirmed.checked || !currentPlan;
+      });
+
+      executeButton.addEventListener('click', async function() {
+        if (!confirmed.checked || !currentPlan) return;
+        executeButton.disabled = true;
+        try {
+          const data = await requestJson('/api/deployments/execute', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({plan_id: currentPlan.id, confirmed: true})
+          });
+          showMessage(
+            'Bundle created successfully.\nTarget: ' + data.result.target +
+            '\nFile: ' + data.result.bundle +
+            '\nFiles: ' + data.result.file_count +
+            '\n' + data.result.message,
+            false
+          );
+          currentPlan = null;
+          confirmationRow.hidden = true;
+          executeButton.hidden = true;
+        } catch (error) {
+          showMessage(error.message, true);
+          executeButton.disabled = false;
+        }
+      });
+
+      loadCapabilities();
+    })();
+  </script>
+</body>
+</html>

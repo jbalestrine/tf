@@ -1,0 +1,12 @@
+scrape_configs:
+  - job_name: masterchief-platform
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          # Replace with the host and port reachable from Prometheus.
+          - masterchief-host:8080
+    # If METRICS_TOKEN is configured in MasterChief, provide a protected file:
+    # authorization:
+    #   type: Bearer
+    #   credentials_file: /etc/prometheus/secrets/masterchief_metrics_token

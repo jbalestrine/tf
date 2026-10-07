@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 
 print("DEBUG: features/manager.py is being executed", file=sys.stderr)
@@ -19,10 +19,12 @@ with open('debug.log', 'a') as f:
 import json
 import importlib
 import inspect
+import re
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass, asdict
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, current_app
+from flask_login import current_user
 import threading
 import time
 from datetime import datetime
@@ -94,7 +96,7 @@ class FeatureManager:
         try:
             configs_dir = self.features_dir / "configs"
             print(f"DEBUG: Configs dir: {configs_dir}, exists: {configs_dir.exists()}", file=sys.stderr)
-            
+
             for config_file in configs_dir.glob("*.json"):
                 print(f"DEBUG: Processing config file: {config_file}", file=sys.stderr)
                 try:
@@ -106,7 +108,7 @@ class FeatureManager:
                         print(f"DEBUG: Added config: {config.name}, enabled: {config.enabled}", file=sys.stderr)
                 except Exception as e:
                     print(f"ERROR loading feature config {config_file}: {e}", file=sys.stderr)
-            
+
             print(f"DEBUG: Final config count: {len(self.feature_configs)}", file=sys.stderr)
         except Exception as e:
             print(f"ERROR in _load_feature_configs: {e}", file=sys.stderr)
@@ -121,7 +123,9 @@ class FeatureManager:
 
             # Register routes using add_url_rule
             self.app.add_url_rule('/api/features/test', 'test_route', self._test_route, methods=['GET'])
+            self.app.add_url_rule('/api/features', 'api_list_features', self._api_list_features, methods=['GET'])
             self.app.add_url_rule('/api/features/create', 'api_create_feature', self._api_create_feature, methods=['POST'])
+            self.app.add_url_rule('/api/features/<feature_name>/toggle', 'api_toggle_feature', self._api_toggle_feature, methods=['POST'])
             self.app.add_url_rule('/api/features/github', 'api_load_from_github', self._api_load_from_github, methods=['POST'])
             self.app.add_url_rule('/api/features/github/load', 'api_load_from_github_url', self._api_load_from_github_url, methods=['POST'])
             self.app.add_url_rule('/api/features/github/user/<username>/repos', 'api_get_user_repos', self._api_get_user_repos, methods=['GET'])
@@ -144,21 +148,66 @@ class FeatureManager:
         """Test route to verify routing is working"""
         return jsonify({'message': 'TEST ROUTE WORKING - FeatureManager routes are registered!', 'timestamp': str(datetime.now())})
 
+    def _is_admin_request(self):
+        try:
+            return bool(
+                current_user.is_authenticated
+                and current_user.provider == 'rbac'
+                and str(current_user.role or '').casefold() == 'admin'
+                and '*' in (current_user.permissions or [])
+            )
+        except (AttributeError, RuntimeError):
+            return False
+
+    def _is_same_origin_request(self):
+        from urllib.parse import urlparse
+
+        source = request.headers.get('Origin') or request.headers.get('Referer')
+        if not source:
+            return False
+        parsed = urlparse(source)
+        return bool(parsed.netloc and parsed.netloc.casefold() == request.host.casefold())
+
+    def _api_list_features(self):
+        return jsonify({
+            'success': True,
+            'features': [
+                asdict(config)
+                for _, config in sorted(self.feature_configs.items())
+            ],
+        })
+
     def _api_create_feature(self):
         """Create a new feature from template"""
-        data = request.get_json()
-        if not data:
+        if not self._is_admin_request():
+            return jsonify({'success': False, 'error': 'RBAC platform admin permission required'}), 403
+        if not self._is_same_origin_request():
+            return jsonify({'success': False, 'error': 'same-origin request required'}), 403
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
             return jsonify({'error': 'No data provided'}), 400
 
         try:
-            name = data.get('name')
-            display_name = data.get('display_name')
-            description = data.get('description')
+            name = str(data.get('name') or '').strip().lower()
+            display_name = str(data.get('display_name') or '').strip()
+            description = str(data.get('description') or '').strip()
             dependencies = data.get('dependencies', [])
             handler_code = data.get('handler_code', '')
+            if not re.fullmatch(r'[a-z][a-z0-9_-]{1,63}', name):
+                return jsonify({'success': False, 'error': 'Feature names must be 2-64 lowercase letters, numbers, underscores, or hyphens'}), 400
+            if not display_name or len(display_name) > 100 or len(description) > 500:
+                return jsonify({'success': False, 'error': 'Display name is required (max 100 characters); description is limited to 500 characters'}), 400
+            if not isinstance(dependencies, list) or any(not isinstance(item, str) for item in dependencies):
+                return jsonify({'success': False, 'error': 'Dependencies must be a list of package names'}), 400
+            if not isinstance(handler_code, str) or len(handler_code.encode('utf-8')) > 128 * 1024:
+                return jsonify({'success': False, 'error': 'Handler code must be text and no larger than 128 KiB'}), 400
+            try:
+                compile(handler_code, f'<feature:{name}>', 'exec')
+            except SyntaxError as exc:
+                return jsonify({'success': False, 'error': f'Handler code has a syntax error on line {exc.lineno}: {exc.msg}'}), 400
 
-            if not name or not display_name:
-                return jsonify({'error': 'Name and display_name are required'}), 400
+            if name in self.feature_configs:
+                return jsonify({'success': False, 'error': 'A feature with that name already exists'}), 409
 
             # Create feature config
             config = FeatureConfig(
@@ -169,18 +218,44 @@ class FeatureManager:
             )
 
             # Save handler code
-            handler_file = self.features_dir / "handlers" / f"{name}.py"
+            handler_file = self.features_dir / "handlers" / f"{name.replace('-', '_')}.py"
             handler_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(handler_file, 'w') as f:
-                f.write(handler_code)
+            if handler_file.exists():
+                return jsonify({'success': False, 'error': 'A feature handler with that name already exists'}), 409
+            handler_file.write_text(handler_code, encoding='utf-8')
 
             # Save config
-            self.feature_configs[name] = config
             self._save_feature_config(config)
+            self.feature_configs[name] = config
 
-            return jsonify({'success': True, 'feature': asdict(config)})
+            return jsonify({'success': True, 'feature': asdict(config)}), 201
         except Exception as e:
+            current_app.logger.exception('Failed to create feature %s', data.get('name'))
             return jsonify({'error': str(e)}), 500
+
+    def _api_toggle_feature(self, feature_name):
+        """Enable or disable a feature; enabling executes its admin-created handler."""
+        if not self._is_admin_request():
+            return jsonify({'success': False, 'error': 'RBAC platform admin permission required'}), 403
+        if not self._is_same_origin_request():
+            return jsonify({'success': False, 'error': 'same-origin request required'}), 403
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get('enabled'), bool):
+            return jsonify({'success': False, 'error': 'enabled must be a boolean'}), 400
+        if feature_name not in self.feature_configs:
+            return jsonify({'success': False, 'error': 'Feature not found'}), 404
+        try:
+            if data['enabled']:
+                self.enable_feature(feature_name)
+            else:
+                self.disable_feature(feature_name)
+            return jsonify({
+                'success': True,
+                'feature': asdict(self.feature_configs[feature_name]),
+            })
+        except Exception as exc:
+            current_app.logger.exception('Failed to change feature state for %s', feature_name)
+            return jsonify({'success': False, 'error': str(exc)}), 500
 
     def _api_load_from_github(self):
         """Load feature from GitHub repository"""
@@ -323,10 +398,10 @@ class FeatureManager:
             # Use PyGitHub to search repositories
             from github import Github
             g = Github(github_integration.token)
-            
+
             # Search for repositories
             repos = g.search_repositories(query, sort='stars', order='desc')
-            
+
             repo_list = []
             for repo in repos[:20]:  # Limit to 20 results
                 repo_list.append({
@@ -621,7 +696,7 @@ class FeatureHandler:
             handler_path = self.features_dir / "handlers" / f"{module_name}.py"
             with open('debug.log', 'a') as f:
                 f.write(f"DEBUG: Looking for handler at {handler_path}\n")
-            
+
             if handler_path.exists():
                 with open('debug.log', 'a') as f:
                     f.write(f"DEBUG: Handler file exists, importing {module_name}\n")
@@ -630,7 +705,7 @@ class FeatureHandler:
                 if spec and spec.loader:
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
-                    
+
                     # Call register_routes if it exists
                     if hasattr(module, 'register_routes'):
                         with open('debug.log', 'a') as f:
@@ -658,6 +733,7 @@ class FeatureHandler:
             print(f"Error loading feature {self.config.name}: {e}")
             import traceback
             traceback.print_exc()
+            raise RuntimeError(f"Unable to load feature {self.config.name}: {e}") from e
 
 
 # Global feature manager instance

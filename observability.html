@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Observability - MasterChief</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1220;--panel:#121d30;--panel2:#17253a;--line:#293a52;--text:#e7eef9;--muted:#91a3bb;--cyan:#41d7e7;--blue:#5b8cff;--green:#3ddc97;--amber:#ffbe55;--red:#ff6b7e}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at 15% -5%,#1a3453 0,transparent 34%),var(--bg);color:var(--text);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif}
+    .shell{max-width:1440px;margin:auto;padding:24px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:25px 28px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(120deg,#152842,#101a2b 70%);box-shadow:0 20px 55px #0004}
+    .eyebrow{color:var(--cyan);font-size:.78rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+    h1{margin:4px 0;font-size:clamp(1.8rem,3vw,2.7rem);letter-spacing:-.04em}
+    .subtitle{margin:0;color:var(--muted)}
+    .header-actions{display:flex;gap:10px;flex-wrap:wrap}
+    nav{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0 24px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#101a2b}
+    nav a,.button{color:var(--text);text-decoration:none;border:1px solid var(--line);border-radius:9px;padding:9px 13px;background:#18263a;cursor:pointer}
+    nav a:hover,nav a.active,.button.primary{border-color:#3878ff;background:#2455b8}
+    .button{font:inherit}
+    .button:hover{filter:brightness(1.12)}
+    .button:disabled{opacity:.45;cursor:not-allowed}
+    .section-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:24px 0 12px}
+    .section-heading h2{margin:0;font-size:1.2rem}
+    .section-heading p{margin:0;color:var(--muted);font-size:.9rem}
+    .service-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .service-card,.panel{border:1px solid var(--line);border-radius:15px;background:linear-gradient(155deg,var(--panel2),var(--panel));box-shadow:0 12px 36px #0002}
+    .service-card{padding:19px;min-height:180px;display:flex;flex-direction:column}
+    .service-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .service-title h3{margin:0;font-size:1.07rem}
+    .service-mark{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#253b59;color:var(--cyan);font-weight:900}
+    .service-state{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:.82rem;margin:12px 0 6px}
+    .dot{width:8px;height:8px;border-radius:50%;background:#62738a}
+    .service-state[data-state=connected] .dot{background:var(--green);box-shadow:0 0 12px #3ddc9777}
+    .service-state[data-state=unhealthy],.service-state[data-state=unreachable],.service-state[data-state=invalid_configuration]{color:var(--amber)}
+    .service-state[data-state=unhealthy] .dot,.service-state[data-state=unreachable] .dot,.service-state[data-state=invalid_configuration] .dot{background:var(--amber)}
+    .service-copy{color:var(--muted);font-size:.86rem;margin:0 0 14px;flex:1}
+    .service-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .service-link{color:#a9c5ff;text-decoration:none;font-size:.86rem;overflow-wrap:anywhere}
+    .service-error{color:var(--amber);font-size:.78rem;margin:7px 0 0;min-height:1.2em}
+    .integration-note{border:1px solid #294664;border-left:4px solid var(--cyan);border-radius:12px;padding:13px 16px;background:#11263b;color:#bfd2e9;margin-top:14px}
+    .integration-note code{color:#96f0f3}
+    .query-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .panel{padding:18px}
+    .panel h3{margin:0 0 12px}
+    label{display:block;color:#b9c9dd;font-size:.84rem;margin:10px 0 6px}
+    textarea{width:100%;min-height:74px;resize:vertical;border:1px solid var(--line);border-radius:9px;padding:11px;background:#0c1524;color:var(--text);font:13px/1.5 Consolas,monospace}
+    pre{white-space:pre-wrap;overflow:auto;max-height:310px;margin:12px 0 0;padding:12px;background:#09111d;border:1px solid var(--line);border-radius:9px;color:#bfd2e9;font:12px/1.5 Consolas,monospace}
+    .muted{color:var(--muted)}
+    @media(max-width:1050px){.service-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:680px){.shell{padding:12px}header{align-items:flex-start;flex-direction:column}.service-grid,.query-grid{grid-template-columns:1fr}.service-card{min-height:unset}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">Operations control plane</div>
+        <h1>Observability Center</h1>
+        <p class="subtitle">Prometheus metrics, Grafana dashboards, and Loki logs in one view.</p>
+      </div>
+      <div class="header-actions">
+        <button class="button" id="refreshStatus" type="button">Refresh status</button>
+        <a class="button primary" href="/pipelines">Open Pipeline Studio</a>
+      </div>
+    </header>
+
+    <nav aria-label="Main navigation">
+      <a href="/">Dashboard</a>
+      <a href="/pipelines">Pipelines</a>
+      <a href="/observability" class="active" aria-current="page">Observability</a>
+      <a href="/cloud">Cloud</a>
+      <a href="/sys/diagnostics">Diagnostics</a>
+      <a href="/about">About</a>
+    </nav>
+
+    <div class="section-heading">
+      <div>
+        <h2>Connected services</h2>
+        <p>Connections are read-only and use server-side environment settings.</p>
+      </div>
+      <span class="muted" id="lastChecked">Checking configured endpoints…</span>
+    </div>
+
+    <section class="service-grid" aria-label="Observability services">
+      <article class="service-card" data-service="prometheus">
+        <div class="service-title"><h3>Prometheus</h3><span class="service-mark">P</span></div>
+        <div class="service-state" data-state="loading"><span class="dot"></span><span class="state-label">Checking</span></div>
+        <p class="service-copy">Scrape and query time-series metrics. MasterChief exposes a low-cardinality <code>/metrics</code> endpoint.</p>
+        <div class="service-actions"><a class="service-link service-url" hidden></a><a class="service-link" href="/metrics" target="_blank" rel="noopener">View app metrics endpoint</a></div>
+        <p class="service-error"></p>
+      </article>
+      <article class="service-card" data-service="grafana">
+        <div class="service-title"><h3>Grafana</h3><span class="service-mark">G</span></div>
+        <div class="service-state" data-state="loading"><span class="dot"></span><span class="state-label">Checking</span></div>
+        <p class="service-copy">Open your configured dashboards and correlate metrics with pipeline activity.</p>
+        <div class="service-actions"><a class="service-link service-url" hidden></a><a class="service-link dashboard-url" hidden>Open MasterChief dashboard</a></div>
+        <p class="service-error"></p>
+      </article>
+      <article class="service-card" data-service="loki">
+        <div class="service-title"><h3>Loki</h3><span class="service-mark">L</span></div>
+        <div class="service-state" data-state="loading"><span class="dot"></span><span class="state-label">Checking</span></div>
+        <p class="service-copy">Query recent logs with LogQL. Results are limited to the last hour and 100 entries.</p>
+        <div class="service-actions"><a class="service-link service-url" hidden></a></div>
+        <p class="service-error"></p>
+      </article>
+      <article class="service-card" data-service="metrics">
+        <div class="service-title"><h3>MasterChief Metrics</h3><span class="service-mark">MC</span></div>
+        <div class="service-state" data-state="available"><span class="dot"></span><span class="state-label">Available</span></div>
+        <p class="service-copy">Request totals and response-time histograms are ready for Prometheus scraping.</p>
+        <div class="service-actions"><a class="service-link" href="/metrics" target="_blank" rel="noopener">Open /metrics</a></div>
+        <p class="service-error"></p>
+      </article>
+    </section>
+
+    <div class="integration-note">
+      Configure <code>PROMETHEUS_URL</code>, <code>GRAFANA_URL</code>, and <code>LOKI_URL</code> in the MasterChief server environment.
+      Optional server-side bearer tokens: <code>PROMETHEUS_TOKEN</code>, <code>GRAFANA_API_TOKEN</code>, and <code>LOKI_TOKEN</code>.
+      Set <code>METRICS_TOKEN</code> to require bearer authentication for scraping; otherwise <code>/metrics</code> is loopback-only.
+    </div>
+
+    <div class="section-heading">
+      <div><h2>Explore telemetry</h2><p>Queries pass through MasterChief to the configured service; tokens stay on the server.</p></div>
+    </div>
+    <section class="query-grid">
+      <article class="panel">
+        <h3>Prometheus query</h3>
+        <label for="promQuery">PromQL</label>
+        <textarea id="promQuery">up</textarea>
+        <button class="button primary" id="runPromQuery" type="button">Run query</button>
+        <pre id="promResult" aria-live="polite">Configure Prometheus to query metrics.</pre>
+      </article>
+      <article class="panel">
+        <h3>Loki log query</h3>
+        <label for="lokiQuery">LogQL</label>
+        <textarea id="lokiQuery">{job="masterchief"}</textarea>
+        <button class="button primary" id="runLokiQuery" type="button">Query last hour</button>
+        <pre id="lokiResult" aria-live="polite">Configure Loki and a log shipper to query logs.</pre>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const stateLabels = {
+      connected: 'Connected',
+      available: 'Available',
+      not_configured: 'Not configured',
+      invalid_configuration: 'Invalid configuration',
+      unreachable: 'Unreachable',
+      unhealthy: 'Unhealthy'
+    };
+
+    async function loadStatus() {
+      const checked = document.getElementById('lastChecked');
+      checked.textContent = 'Checking configured endpoints…';
+      try {
+        const response = await fetch('/api/observability/status');
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || 'Status check failed.');
+        Object.entries(payload.services).forEach(([name, service]) => {
+          const card = document.querySelector(`[data-service="${name}"]`);
+          if (!card) return;
+          const state = card.querySelector('.service-state');
+          state.dataset.state = service.status;
+          card.querySelector('.state-label').textContent = stateLabels[service.status] || service.status;
+          card.querySelector('.service-error').textContent = service.error || '';
+          const link = card.querySelector('.service-url');
+          if (service.url) {
+            link.href = service.url;
+            link.textContent = service.url;
+            link.hidden = false;
+          } else {
+            link.hidden = true;
+            link.removeAttribute('href');
+            link.textContent = '';
+          }
+        });
+        const dashboard = document.querySelector('.dashboard-url');
+        if (payload.grafana_dashboard_url) {
+          dashboard.href = payload.grafana_dashboard_url;
+          dashboard.target = '_blank';
+          dashboard.rel = 'noopener';
+          dashboard.hidden = false;
+        } else {
+          dashboard.hidden = true;
+          dashboard.removeAttribute('href');
+        }
+        checked.textContent = `Last checked ${new Date().toLocaleTimeString()}`;
+      } catch (error) {
+        checked.textContent = `Status check failed: ${error.message}`;
+      }
+    }
+
+    async function runQuery(kind, inputId, outputId) {
+      const output = document.getElementById(outputId);
+      const query = document.getElementById(inputId).value.trim();
+      output.textContent = 'Querying…';
+      try {
+        const response = await fetch(`/api/observability/${kind}/query`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({query})
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || `Query failed (${response.status}).`);
+        output.textContent = JSON.stringify(payload.result, null, 2);
+      } catch (error) {
+        output.textContent = `Query failed: ${error.message}`;
+      }
+    }
+
+    document.getElementById('refreshStatus').addEventListener('click', loadStatus);
+    document.getElementById('runPromQuery').addEventListener('click', () => runQuery('prometheus', 'promQuery', 'promResult'));
+    document.getElementById('runLokiQuery').addEventListener('click', () => runQuery('loki', 'lokiQuery', 'lokiResult'));
+    loadStatus();
+  </script>
+</body>
+</html>

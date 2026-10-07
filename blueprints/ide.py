@@ -16,8 +16,8 @@ def api_ide_scripts():
         for p in sorted(scripts_dir.glob('*')):
             if p.is_file():
                 files.append({
-                    'name': p.name, 
-                    'size': p.stat().st_size, 
+                    'name': p.name,
+                    'size': p.stat().st_size,
                     'modified': datetime.fromtimestamp(p.stat().st_mtime).isoformat()
                 })
     except Exception as e:
@@ -30,7 +30,7 @@ def api_ide_scripts():
 def api_ide_execute():
     try:
         data_in = request.get_json(silent=True) or {}
-        
+
         # Flexibly handle whatever path parameter key your frontend UI payload passes
         script_name = data_in.get('script_name') or data_in.get('path') or data_in.get('name')
         if not script_name:

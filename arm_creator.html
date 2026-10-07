@@ -76,6 +76,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 .file-tab{background:none;border:none;color:var(--text2);padding:10px 16px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
 .file-tab:hover{color:var(--text);}.file-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--bg3);}
 #code-preview{flex:1;overflow:auto;padding:0;}
+#arm-architecture-pane{flex:1;min-height:0;overflow:auto;padding:16px;background:var(--bg);}
+#arm-architecture-pane[hidden],#arm-code-pane[hidden]{display:none;}
+.architecture-caption{color:var(--text2);font-size:12px;margin-bottom:10px;}
+.architecture-diagram{overflow:auto;border:1px solid var(--border);border-radius:8px;background:#f8fafc;}
+.architecture-diagram svg{display:block;width:100%;min-width:800px;height:auto;}
 .code-content{margin:0;padding:16px;background:var(--bg);color:var(--text);font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:13px;line-height:1.6;overflow:auto;white-space:pre-wrap;word-wrap:break-word;height:100%;}
 
 /* ── Status bar ──────────────────────────────────────────────────── */
@@ -184,11 +189,21 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
       <div id="preview-header">
         <h2>Live ARM Template Preview</h2>
         <div class="btn-group">
+          <button class="btn secondary sm" type="button" onclick="showARMView('diagram')">Architecture</button>
+          <button class="btn secondary sm" type="button" onclick="showARMView('code')">Code</button>
+          <button class="btn secondary sm" type="button" onclick="downloadARMArchitecture('svg')">SVG</button>
+          <button class="btn secondary sm" type="button" onclick="downloadARMArchitecture('visio')">Visio</button>
           <span id="json-size" style="color:var(--text3);font-size:12px"></span>
         </div>
       </div>
+      <div id="arm-architecture-pane" class="architecture-pane">
+        <div class="architecture-caption">Live architecture · derived from ARM resources and declared dependencies</div>
+        <div id="arm-architecture-diagram" class="architecture-diagram" role="region" aria-label="ARM architecture diagram"></div>
+      </div>
+      <div id="arm-code-pane" hidden>
       <div id="code-preview">
         <pre class="code-content" id="preview-code"></pre>
+      </div>
       </div>
     </div>
   </div>
@@ -693,6 +708,8 @@ function refreshAll(){
   renderPreview();
 }
 
+let armArchitectureGraph = {title: 'ARM architecture', hub: 'Azure deployment', nodes: [], edges: []};
+
 function renderPreview(){
   const clean = JSON.parse(JSON.stringify(armTemplate));
   clean.resources.forEach(r=>{ delete r._id; delete r._display; });
@@ -701,6 +718,69 @@ function renderPreview(){
   const json = JSON.stringify(clean, null, 2);
   document.getElementById('preview-code').textContent = json;
   document.getElementById('json-size').textContent = `${json.length} chars | ${armTemplate.resources.length} resources`;
+  renderARMArchitecture();
+}
+
+function renderARMArchitecture(){
+  const nodes = armTemplate.resources.map((resource, index) => ({
+    id: `arm-resource-${resource._id || index + 1}`,
+    label: resource.name || `resource-${index + 1}`,
+    subtitle: resource.type || 'Azure resource',
+    kind: 'ARM resource'
+  }));
+  const idsByName = new Map(armTemplate.resources.map((resource, index) =>
+    [resource.name, nodes[index].id]));
+  const edges = [];
+  armTemplate.resources.forEach((resource, index) => {
+    (Array.isArray(resource.dependsOn) ? resource.dependsOn : []).forEach(dependency => {
+      const target = idsByName.get(dependency) || idsByName.get(String(dependency).split('/').pop());
+      if (target && target !== nodes[index].id) {
+        edges.push({from: target, to: nodes[index].id, label: 'depends on'});
+      }
+    });
+  });
+  armArchitectureGraph = {
+    title: 'Azure ARM deployment',
+    hub: `ARM template · ${armTemplate.parameters?.location?.defaultValue || 'configured location'}`,
+    nodes,
+    edges
+  };
+  window.renderArchitectureDiagram(document.getElementById('arm-architecture-diagram'), {
+    ...armArchitectureGraph,
+    subtitle: `${nodes.length} ARM resources · diagram and JSON update from the same template model`
+  });
+}
+
+function showARMView(view){
+  const showDiagram = view !== 'code';
+  document.getElementById('arm-architecture-pane').hidden = !showDiagram;
+  document.getElementById('arm-code-pane').hidden = showDiagram;
+}
+
+async function downloadARMArchitecture(format){
+  if (format === 'svg') {
+    window.downloadArchitectureSvg(document.getElementById('arm-architecture-diagram'), 'arm-architecture');
+    return;
+  }
+  try {
+    const response = await fetch('/api/architecture/visio', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(armArchitectureGraph)
+    });
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.error || `HTTP ${response.status}`);
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'arm-architecture.vsdx';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    setStatus(`Could not export Visio diagram: ${error.message}`, true);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════

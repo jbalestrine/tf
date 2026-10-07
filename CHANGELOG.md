@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-06
+
+### Added
+- Guided architecture-to-code workflow in the Terraform Wizard, with starter designs, component selection, live Terraform previews, and downloadable module packages.
+- Blueprint-style architecture diagrams with grouped virtual networks and subnets, labeled hub-and-spoke peerings, and SVG/Visio export.
+- Local Terraform validation scaffolding, optional storage-emulator guidance, isolated Azure sandbox instructions, and validate/plan CI/CD starter templates.
+- Code archetypes with architecture previews, code scaffolding, and explicit editor handoff.
+- Expanded Echo script-library and command-catalog workflows, Roku playlist/EPG support, and the associated navigation, diagnostics, and integration updates included in this milestone.
+- Local pipeline YAML/JSON import and export, parallel-stage execution, persisted run history, and manual approval gates; Terraform Apply stages require explicit approval.
+- An Observability Center for existing Prometheus, Grafana, and Loki installations, plus low-cardinality HTTP metrics, matching dashboards/alerts, and scrape guidance.
+- Admin-only, confirmation-gated source-bundle staging for local Windows/Linux, WSL/WSL2, and USB destinations, with unsupported destinations identified as future work.
+- A custom MasterChief Echo Starlite wordmark shown in the shared shell and on standalone HTML pages.
+- Fresh source-install instructions with a clear separation between base, optional, and development dependencies.
+
+### Changed
+- Terraform architecture previews use a legible blueprint layout rather than radial component placement and display CIDR ranges without object-string artifacts.
+- Architecture generation remains review-first: generated infrastructure is not automatically applied.
+- Observability service URLs and bearer tokens are configured on the server; no monitoring stack is installed or started automatically.
+- Deployment Center creates non-overwriting source archives only; it does not install or start the app, access cloud infrastructure, or implement the future targets.
+- Production database password configuration uses the existing Vault-reference pattern rather than a checked-in literal.
+- About and Feature Management pages describe the 4.0 milestone and distinguish available workflows from external services that still require credentials or configuration.
+
+### Notes
+- CI/CD templates validate and plan only; they do not include an automatic apply stage.
+- Local emulation is limited to the services explicitly provided by the selected emulator; it does not emulate Azure networking, SQL, AKS, identity, or ExpressRoute.
+- Azure resources are not deployed as part of this release.
+- Five legacy IRC voice-automation test modules are explicitly skipped when their corresponding source modules are absent from the checkout.
+
 ## [2.2.8] - 2026-10-01
 
 ### Added

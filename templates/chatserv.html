@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Echo ChatServ</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101019;--panel:#191925;--panel2:#202031;--line:#38384e;--text:#ededf5;--muted:#a5a5ba;--accent:#a78bfa;--green:#6fdaa1;--red:#ff7d7d}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Segoe UI,system-ui,sans-serif}
+    header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 20px;background:#1b1829;border-bottom:1px solid var(--line)}
+    header h1{font-size:20px;color:var(--accent);margin:0 auto 0 0}header a{color:var(--text);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:7px}
+    main{max-width:1500px;margin:16px auto;padding:0 14px;display:grid;grid-template-columns:220px minmax(0,1fr) 240px;gap:12px;min-height:calc(100vh - 95px)}
+    section,.chat{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px;min-width:0}
+    h2{font-size:15px;color:var(--accent);margin:0 0 10px}p{margin:7px 0;color:var(--muted)}button,input,textarea{font:inherit;color:var(--text);background:#101019;border:1px solid var(--line);border-radius:7px;padding:9px}
+    button{cursor:pointer;background:var(--panel2)}button:hover{border-color:var(--accent)}input,textarea{width:100%;margin:5px 0 9px}textarea{resize:vertical}
+    .stack{display:grid;gap:8px}.channel{width:100%;text-align:left}.channel.active{border-color:var(--accent);color:var(--accent)}
+    .channel-tabs{display:flex;gap:6px;overflow-x:auto;padding:9px 0;border-bottom:1px solid var(--line)}
+    .channel-tab{flex:0 0 auto;white-space:nowrap;border-radius:18px;padding:6px 12px}
+    .channel-tab.active{background:#382d53;border-color:var(--accent);color:var(--accent)}
+    .chat{display:flex;flex-direction:column;min-height:70vh}.chat-top{border-bottom:1px solid var(--line);padding-bottom:10px}.chat-top h2{margin:0}
+    #messages{flex:1;overflow:auto;min-height:300px;max-height:60vh;padding:8px 2px}.message{padding:8px;border-bottom:1px solid #28283a;overflow-wrap:anywhere;white-space:pre-wrap}.message strong{color:var(--accent)}.message.echo strong{color:var(--green)}.message.system{color:var(--muted)}
+    #composer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}#composer input{margin:0}.notice{display:none;padding:9px;margin:8px 0;border-radius:7px;background:#252539}.notice.error{color:var(--red)}.notice.success{color:var(--green)}
+    .member{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #28283a}.small{font-size:12px;color:var(--muted)}#adminTools[hidden]{display:none}
+    .side-option{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+    .side-option summary{cursor:pointer;color:var(--accent);font-weight:600;padding:4px 0}
+    .side-option label{display:block;margin-top:8px;color:var(--muted);font-size:12px}
+    @media(max-width:950px){main{grid-template-columns:180px minmax(0,1fr)}main>section:last-child{grid-column:1/-1}.chat{min-height:65vh}}
+    @media(max-width:650px){main{grid-template-columns:1fr}.chat{grid-row:1;min-height:65vh}.channels{grid-row:2}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Echo ChatServ</h1>
+    <a href="/echo-chat">Echo Chat</a>
+    <a href="/echo-commands">Command Center</a>
+    <a href="/masterchief_code_ui">Project Code UI</a>
+  </header>
+  <main>
+    <section class="channels">
+      <h2>Rooms</h2>
+      <div id="channels" class="stack"></div>
+      <p class="small">Join or create a room with <code>!join + #room</code>; the creator becomes its owner.</p>
+      <div id="account">
+        <h2>NickServ account</h2>
+        <label for="nick">Nickname</label><input id="nick" autocomplete="username" maxlength="24">
+        <label for="password">Password (12+ characters)</label><input id="password" type="password" autocomplete="current-password">
+        <div class="stack">
+          <button id="register">Register and join</button>
+          <button id="identify">Identify</button>
+        </div>
+      </div>
+      <div id="signedIn" hidden>
+        <p>Signed in as <strong id="currentNick"></strong></p>
+        <button id="logout">Sign out</button>
+      </div>
+    </section>
+
+    <section class="chat">
+      <div class="chat-top">
+        <h2 id="roomName">#lobby</h2>
+        <p id="topic"></p>
+        <p id="motd" class="small"></p>
+      </div>
+      <nav id="channelTabs" class="channel-tabs" aria-label="Joined channel tabs"></nav>
+      <div id="notice" class="notice" role="status"></div>
+      <div id="messages" aria-live="polite"></div>
+      <form id="composer">
+        <input id="message" placeholder="Message the room or enter !help" maxlength="2200" autocomplete="off">
+        <button type="submit">Send</button>
+      </form>
+      <p class="small">Use <code>!ask &lt;prompt&gt;</code> to ask Echo. Chat messages are stored in the local ChatServ database. Scripts are never run from ordinary chat.</p>
+    </section>
+
+    <section>
+      <h2>Online users <span id="memberCount" class="small"></span></h2>
+      <div id="members"></div>
+      <h2 style="margin-top:18px">Room bots</h2>
+      <div id="bots"></div>
+      <p class="small">Bots use Echo's currently configured model; their persona is a room prompt, not a separately loaded model.</p>
+      <details class="side-option" id="discussionOptions">
+        <summary>Discussion and topic</summary>
+        <label for="topicInput">Channel topic</label>
+        <input id="topicInput" maxlength="240" placeholder="Set the room topic">
+        <button id="saveTopic" type="button">Update topic</button>
+        <label for="rolePromptInput">Echo discussion focus</label>
+        <textarea id="rolePromptInput" rows="3" maxlength="600" placeholder="Tell Echo what role or discussion focus to use"></textarea>
+        <button id="saveRolePrompt" type="button">Update Echo focus</button>
+        <button id="clearTopic" type="button">Clear topic</button>
+      </details>
+      <details class="side-option" id="memberOptions">
+        <summary>Member roles</summary>
+        <select id="memberTarget" aria-label="Channel member"></select>
+        <div class="stack">
+          <button id="promoteMember" type="button">Make OP</button>
+          <button id="demoteMember" type="button">Deop</button>
+        </div>
+      </details>
+      <details class="side-option" id="botOptions">
+        <summary>Bot management</summary>
+        <label for="botName">New bot name</label><input id="botName" maxlength="32" placeholder="helper-bot">
+        <label for="botPersona">Persona</label><textarea id="botPersona" rows="3" maxlength="500" placeholder="Describe how this room bot should respond"></textarea>
+        <button id="createBot" type="button">Create room bot</button>
+        <label for="botTarget">Ask a room bot</label><select id="botTarget" aria-label="Room bot"></select>
+        <input id="botMessage" maxlength="1200" placeholder="Message for the selected bot">
+        <button id="askBot" type="button">Send to bot</button>
+      </details>
+      <details class="side-option" id="pageOptions">
+        <summary>Page transfer</summary>
+        <label for="transferTarget">Send to user</label><select id="transferTarget" aria-label="Transfer recipient"></select>
+        <label for="transferPage">MasterChief page</label>
+        <select id="transferPage">
+          <option value="echo-chat">Echo Chat</option><option value="commands">Command Center</option>
+          <option value="code">Project Code UI</option><option value="pipelines">Pipeline Studio</option>
+          <option value="about">About</option><option value="observability">Observability</option>
+        </select>
+        <input id="transferNote" maxlength="180" placeholder="Optional message">
+        <button id="sendTransfer" type="button">Transfer user</button>
+      </details>
+      <div id="adminTools" hidden>
+        <h2 style="margin-top:18px">Admin model controls</h2>
+        <p class="small">Place GGUF files in the app's models directory, then load one here. Loading affects subsequent Echo replies.</p>
+        <select id="models" aria-label="GGUF model"></select>
+        <button id="loadModel">Load selected model</button>
+      </div>
+      <details style="margin-top:16px">
+        <summary>Command reference</summary>
+        <p class="small">!join #room · !join + #new-room · !topic [text] · !role [room instructions] · !op nick · !deop nick · !bot create name persona · !bot say name message · !sendpage nick page · !page page</p>
+      </details>
+    </section>
+  </main>
+  <script src="/static/chatserv_controls.js"></script>
+  <script>
+    const byId=id=>document.getElementById(id);
+    let activeChannel='#lobby', lastMessageId=0, knownIds=new Set(), refreshBusy=false;
+    function showNotice(text,type='success'){const n=byId('notice');n.textContent=text;n.className='notice '+type;n.style.display='block';setTimeout(()=>{n.style.display='none'},6000)}
+    async function api(url,options={}){const response=await fetch(url,{credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);return data}
+    function appendMessage(item){if(knownIds.has(item.id))return;knownIds.add(item.id);lastMessageId=Math.max(lastMessageId,item.id);const row=document.createElement('div');row.className='message '+item.kind;const nick=document.createElement('strong');nick.textContent=item.nick+': ';const text=document.createElement('span');text.textContent=item.content;row.append(nick,text);byId('messages').appendChild(row);byId('messages').scrollTop=byId('messages').scrollHeight}
+    function renderChannels(items){const list=byId('channels');list.replaceChildren();for(const channel of items){const button=document.createElement('button');button.className='channel'+(channel.name.toLowerCase()===activeChannel.toLowerCase()?' active':'');button.textContent=`${channel.name} (${channel.members})`;button.title=(channel.joined?'Joined · ':'')+(channel.topic||'');button.addEventListener('click',()=>join(channel.name));list.appendChild(button)}}
+    function renderTabs(items){const tabs=byId('channelTabs');tabs.replaceChildren();for(const channel of items){const button=document.createElement('button');button.className='channel-tab'+(channel.name.toLowerCase()===activeChannel.toLowerCase()?' active':'');button.textContent=channel.name;button.setAttribute('aria-current',channel.name.toLowerCase()===activeChannel.toLowerCase()?'page':'false');button.addEventListener('click',()=>join(channel.name));tabs.appendChild(button)}}
+    async function refresh(initial=false){if(refreshBusy)return;refreshBusy=true;try{const data=await api(`/api/chatserv/state?channel=${encodeURIComponent(activeChannel)}&after_id=${initial?0:lastMessageId}`,{method:'GET',headers:{}});renderChannels(data.channels);renderTabs(data.joined_channels||[]);byId('roomName').textContent=data.channel.name;byId('topic').textContent=data.channel.topic||'No channel topic set';byId('motd').textContent=`MOTD: ${data.motd}`;for(const item of data.messages)appendMessage(item);const members=byId('members');members.replaceChildren();for(const item of data.members){const row=document.createElement('div');row.className='member';const nick=document.createElement('span');nick.textContent=item.nick;const role=document.createElement('span');role.className='small';role.textContent=item.role;row.append(nick,role);members.appendChild(row)}const bots=byId('bots');bots.replaceChildren();for(const item of data.bots){const row=document.createElement('div');row.className='member';row.textContent='@'+item.name;bots.appendChild(row)}const signedIn=Boolean(data.user);byId('account').hidden=signedIn;byId('signedIn').hidden=!signedIn;if(signedIn)byId('currentNick').textContent=data.user.nick;byId('adminTools').hidden=!data.platform_admin;if(data.platform_admin)await loadModels()}catch(error){if(initial)showNotice(error.message,'error')}finally{refreshBusy=false}}
+    async function send(text,channel=activeChannel){try{const data=await api('/api/chatserv/message',{method:'POST',body:JSON.stringify({text,channel})});if(data.message)appendMessage(data.message);if(data.redirect){window.location.assign(data.redirect);return}if(data.response)showNotice(data.response);if(data.channel)activeChannel=data.channel;lastMessageId=0;knownIds.clear();byId('messages').replaceChildren();await refresh(true)}catch(error){showNotice(error.message,'error')}}
+    async function join(channel){activeChannel=channel;lastMessageId=0;knownIds.clear();byId('messages').replaceChildren();if(byId('signedIn').hidden)await refresh(true);else await send('!join '+channel,channel)}
+    async function accountCommand(command){const nick=byId('nick').value.trim(),password=byId('password').value;if(!nick||!password){showNotice('Enter a nickname and password.','error');return}await send(`!${command} ${nick} ${password}`,'#lobby');byId('password').value=''}
+    byId('register').addEventListener('click',()=>accountCommand('register'));
+    byId('identify').addEventListener('click',()=>accountCommand('identify'));
+    byId('logout').addEventListener('click',()=>send('!logout'));
+    byId('composer').addEventListener('submit',event=>{event.preventDefault();const input=byId('message');const text=input.value.trim();if(!text)return;input.value='';send(text)});
+    byId('loadModel').addEventListener('click',async()=>{const model=byId('models').value;if(!model)return;try{const data=await api('/api/echo/select_model',{method:'POST',body:JSON.stringify({model})});showNotice('Model selected: '+data.model)}catch(error){showNotice(error.message,'error')}});
+    async function loadModels(){try{const data=await api('/api/echo/models',{method:'GET',headers:{}});const select=byId('models');const previous=select.value;select.replaceChildren();for(const model of data.models){const option=document.createElement('option');option.value=model;option.textContent=model;select.appendChild(option)}if(previous)select.value=previous}catch(error){showNotice('Could not list GGUF models: '+error.message,'error')}}
+    activeChannel=new URLSearchParams(location.search).get('channel')||'#lobby';
+    refresh(true);
+    setInterval(()=>refresh(false),2500);
+  </script>
+</body>
+</html>

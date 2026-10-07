@@ -1,4 +1,4 @@
-name: PyPI Package Validation
+pp. name: PyPI Release
 
 on:
   release:
@@ -34,3 +34,24 @@ jobs:
         with:
           name: pypi-dist
           path: dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/masterchief
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: pypi-dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

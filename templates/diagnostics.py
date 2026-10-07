@@ -594,7 +594,9 @@ async function startScan() {
   const statusEl = document.getElementById('scan-status');
   try {
     const res = await fetch('/sys/api/scan');
-    _data = await res.json();
+    const payload = await res.json();
+    if (!res.ok) throw new Error(payload.error || `HTTP ${res.status}`);
+    _data = payload;
     if (_data.error) {
       hideOverlay();
       if (statusEl) statusEl.textContent = '⚠ Scan error: ' + _data.error;

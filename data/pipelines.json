@@ -78,6 +78,69 @@
       "id": "39b42395-d993-482e-9b0c-44cfbd0042a7",
       "created": "2026-09-22T02:33:07.664654",
       "updated": "2026-09-22T02:33:07.664665"
+    },
+    {
+      "id": "869eaa49-3038-47d3-9f51-7c258c3dd9b0",
+      "name": "j",
+      "description": "n",
+      "stages": [
+        {
+          "id": "stage-q1p7ssyk",
+          "name": "Build",
+          "order": 0,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-t5ua0o7h",
+              "name": "Build application package",
+              "type": "custom_command",
+              "config": {
+                "command": "python -m build",
+                "working_dir": "."
+              }
+            }
+          ]
+        },
+        {
+          "id": "stage-b8qlip6e",
+          "name": "Test",
+          "order": 1,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-7m66ey7n",
+              "name": "Run test suite",
+              "type": "test_run",
+              "config": {
+                "test_command": "python -m pytest -q",
+                "working_dir": "."
+              }
+            }
+          ]
+        },
+        {
+          "id": "stage-ityce59h",
+          "name": "Release gate",
+          "order": 2,
+          "parallel": false,
+          "approval_required": true,
+          "steps": [
+            {
+              "id": "step-cfbegqn1",
+              "name": "Confirm release readiness",
+              "type": "deploy",
+              "config": {
+                "target": "configured release target",
+                "strategy": "rolling"
+              }
+            }
+          ]
+        }
+      ],
+      "created": "2026-10-06T17:42:58.045381",
+      "updated": "2026-10-06T17:42:58.083399"
     }
   ]
 }

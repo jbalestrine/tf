@@ -1,4 +1,4 @@
-!/usr/bin/env python
+
 """
 Echo Starlite Demonstration Script
 ==================================

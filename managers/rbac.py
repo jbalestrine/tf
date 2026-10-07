@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 
 from pathlib import Path
-import json, hashlib, uuid
+import json, hashlib, uuid, hmac
 from datetime import datetime
 from flask import request, jsonify
 
@@ -122,10 +122,18 @@ class RBACManager:
         self._save(d)
 
     def authenticate(self, username, password):
+        if not isinstance(username, str) or not username.strip() or not isinstance(password, str) or not password:
+            return None
         d = self._load()
         pw_hash = hashlib.sha256(password.encode()).hexdigest()
         for u in d['users']:
-            if u['username'] == username and u['password_hash'] == pw_hash and u.get('active', True):
+            stored_hash = u.get('password_hash', '')
+            if (
+                u.get('username') == username.strip()
+                and isinstance(stored_hash, str)
+                and hmac.compare_digest(stored_hash, pw_hash)
+                and u.get('active', True)
+            ):
                 sess = {
                     'id': str(uuid.uuid4()), 'user_id': u['id'], 'username': username,
                     'created': datetime.now().isoformat(), 'last_active': datetime.now().isoformat(),
@@ -178,6 +186,19 @@ class RBACManager:
 
 def register_rbac_module(app, db_path='data/rbac.json'):
     rbac_mgr = RBACManager(db_path)
+
+    @app.before_request
+    def protect_rbac_management_api():
+        if not request.path.startswith('/api/rbac/') or request.path == '/api/rbac/login' or request.method == 'OPTIONS':
+            return None
+        from flask_login import current_user
+
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Sign in is required.'}), 401
+        permissions = getattr(current_user, 'permissions', [])
+        if '*' not in permissions and 'rbac' not in permissions:
+            return jsonify({'ok': False, 'error': 'RBAC administrator permission is required.'}), 403
+        return None
 
     @app.route('/api/rbac/users', methods=['GET'])
     def api_rbac_users_list():
@@ -260,6 +281,17 @@ def register_rbac_module(app, db_path='data/rbac.json'):
         except Exception as e:
             return jsonify({'ok': False, 'error': str(e)}), 500
 
+    @app.route('/api/rbac/sessions/all', methods=['DELETE'])
+    def api_rbac_sessions_delete_all():
+        try:
+            d = rbac_mgr._load()
+            d['sessions'] = []
+            rbac_mgr._audit(d, 'system', 'sessions_revoked', 'All RBAC sessions were revoked')
+            rbac_mgr._save(d)
+            return jsonify({'ok': True})
+        except Exception as e:
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
     @app.route('/api/rbac/audit', methods=['GET'])
     def api_rbac_audit():
         try:
@@ -291,7 +323,28 @@ def register_rbac_module(app, db_path='data/rbac.json'):
             d = request.get_json(silent=True) or {}
             sess = rbac_mgr.authenticate(d.get('username', ''), d.get('password', ''))
             if sess:
-                return jsonify({'ok': True, 'result': sess})
+                from auth_module import User
+                from flask_login import login_user
+
+                user = next((item for item in rbac_mgr.get_users() if item['id'] == sess['user_id']), None)
+                if user is None:
+                    return jsonify({'ok': False, 'error': 'The authenticated account could not be loaded.'}), 500
+                role = next((item for item in rbac_mgr.get_roles() if item['name'] == user.get('role')), None)
+                login_user(User(
+                    user_id=user['id'],
+                    username=user['username'],
+                    email=f"{user['username']}@localhost",
+                    provider='rbac',
+                    role=user.get('role'),
+                    permissions=role.get('permissions', []) if role else [],
+                ))
+                return jsonify({
+                    'ok': True,
+                    'result': {
+                        'username': user['username'],
+                        'role': user.get('role'),
+                    },
+                })
             return jsonify({'ok': False, 'error': 'Invalid credentials'}), 401
         except Exception as e:
             return jsonify({'ok': False, 'error': str(e)}), 500

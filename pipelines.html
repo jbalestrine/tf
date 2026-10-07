@@ -168,6 +168,53 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
   .pipeline-sidebar{width:100%;}
   .pipeline-list{max-height:200px;}
 }
+
+/* ADO-inspired delivery workspace */
+body{background:radial-gradient(ellipse at 82% -15%,#263e6b 0,transparent 42%),#0b1220;color:#e7eef9;}
+header{background:linear-gradient(118deg,#172b4d,#111a2b 72%);border-bottom:1px solid #30466a;box-shadow:0 16px 45px #0003;}
+h1,.card h3,.stage-card-name{color:#8fb5ff!important;}
+.subtitle{color:#a2b3cc;}
+nav{background:#111c2e;border:1px solid #293b56;box-shadow:0 8px 22px #0002;}
+nav a{color:#b6c8e4;}
+nav a:hover,nav a.active{background:#295db9;}
+.card,.pipeline-item,.stage-card{background:linear-gradient(150deg,#17253a,#121d30);border-color:#2a3d59;box-shadow:0 10px 28px #0002;}
+.pipeline-item:hover,.pipeline-item.selected{background:#1a2e49;border-left-color:#61a2ff;}
+.pipeline-list::-webkit-scrollbar-thumb,.stages-container::-webkit-scrollbar-thumb{background:#4d83d4;}
+.btn{background:#2864c5;}
+.btn:hover{background:#3477dc;}
+.btn-warning{background:#b56b18;}
+.btn-info{background:#206b91;}
+.btn-danger{background:#a9384d;}
+.sub-tab.active{color:#8fb5ff;border-bottom-color:#4e8fe8;}
+.stage-arrow{color:#5793e6;}
+.stage-arrow::after{background:#5793e6;}
+.stage-arrow::before{border-left-color:#5793e6;}
+.pipeline-command-bar{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:22px 25px;margin:0 0 16px;border:1px solid #2c4262;border-radius:15px;background:linear-gradient(110deg,#1a3151,#14243a 65%,#18233a);box-shadow:0 14px 36px #0003;}
+.pipeline-command-bar h2{margin:2px 0;font-size:1.55rem;color:#f1f6ff;}
+.pipeline-command-bar p{margin:0;color:#a6b7cf;}
+.pipeline-kicker{color:#70d6e6;font-size:.72rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase;}
+.pipeline-command-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.pipeline-command-actions a{color:#c4dcff;text-decoration:none;border:1px solid #3c5680;border-radius:8px;padding:9px 12px;}
+.pipeline-command-actions a:hover{background:#203858;}
+.pipeline-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px;}
+.pipeline-kpi{padding:15px 18px;border:1px solid #293d5a;border-radius:12px;background:#121e30;}
+.pipeline-kpi span{display:block;color:#94a7c0;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;}
+.pipeline-kpi strong{display:block;color:#eff5ff;font-size:1.55rem;margin-top:3px;}
+.pipeline-search{margin:0 0 12px!important;}
+.pipeline-search input{padding:9px 11px;background:#0c1626;border-color:#304563;}
+.template-picker{margin-bottom:16px;}
+.template-picker small{display:block;color:#9aacc5;margin-top:5px;}
+.stage-approval-badge{display:inline-block;background:#8e5a21;color:#ffe0a6;border-radius:8px;padding:2px 7px;margin:4px 0;font-size:.7rem;font-weight:700;}
+.approval-panel{margin:12px 0;padding:16px;border:1px solid #d59b44;border-left:4px solid #ffbe55;border-radius:10px;background:#382b17;color:#ffe6b8;}
+.approval-panel p{margin:4px 0 12px;}
+.approval-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.no-pipeline-selected{border:1px dashed #395273;border-radius:14px;background:#111c2e;}
+.no-pipeline-selected h2{color:#e5efff;}
+.empty-state{color:#9aacc5;}
+.empty-state h3{color:#c3d2e8!important;}
+.pipeline-error{color:#ffb3bd;padding:10px 12px;border:1px solid #8c3d4a;border-radius:8px;background:#351e27;margin-bottom:12px;}
+@media(max-width:900px){.pipeline-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:640px){.pipeline-command-bar{align-items:flex-start;flex-direction:column;}.pipeline-kpis{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -189,6 +236,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     <a href="/addons">Addons</a>
     <a href="/echo-train">Training</a>
     <a href="/pipelines" class="active">Pipelines</a>
+    <a href="/observability">Observability</a>
     <a href="/cloud">Cloud</a>
     <a href="/secrets">Secrets</a>
     <a href="/echo-memory">Memory</a>
@@ -196,6 +244,26 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     <a href="/notifications">Alerts</a>
     <a href="/rbac">Access</a>
   </nav>
+
+  <section class="pipeline-command-bar" aria-label="Pipeline workspace">
+    <div>
+      <div class="pipeline-kicker">Local CI/CD workspace</div>
+      <h2>Pipeline Studio</h2>
+      <p>Design stages, run jobs, review logs, and gate infrastructure changes.</p>
+    </div>
+    <div class="pipeline-command-actions">
+      <a href="/observability">Prometheus · Grafana · Loki</a>
+      <button class="btn btn-warning" id="adminDeployBtn" type="button" onclick="window.location.href='/deploy-center'" hidden>Deploy App · Admin</button>
+      <button class="btn" type="button" onclick="openNewPipelineModal()">Create pipeline</button>
+    </div>
+  </section>
+
+  <section class="pipeline-kpis" aria-label="Pipeline summary">
+    <div class="pipeline-kpi"><span>Definitions</span><strong id="pipelineCount">—</strong></div>
+    <div class="pipeline-kpi"><span>Configured stages</span><strong id="stageCount">—</strong></div>
+    <div class="pipeline-kpi"><span>Successful runs</span><strong id="successfulRunCount">—</strong></div>
+    <div class="pipeline-kpi"><span>Failed / active</span><strong id="runStateCount">—</strong></div>
+  </section>
 
   <div class="pipeline-layout">
     <!-- Left Sidebar -->
@@ -206,9 +274,14 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
           <button class="btn btn-sm" onclick="openNewPipelineModal()">+ New</button>
         </div>
         <div class="import-export-bar">
-          <button class="btn btn-info btn-sm" onclick="importPipeline()" title="Import Pipeline">Import</button>
-          <button class="btn btn-sm" id="exportBtn" onclick="exportPipeline()" title="Export Selected" style="display:none;">Export</button>
+          <button class="btn btn-info btn-sm" onclick="importPipeline()" title="Import JSON or YAML pipeline">Import</button>
+          <button class="btn btn-sm" id="exportBtn" onclick="exportPipeline()" title="Export selected as JSON" style="display:none;">JSON</button>
+          <button class="btn btn-sm" id="exportYamlBtn" onclick="exportPipelineYaml()" title="Export selected as YAML" style="display:none;">YAML</button>
         </div>
+        <div class="form-group pipeline-search">
+          <input type="search" id="pipelineSearch" placeholder="Filter pipelines…" aria-label="Filter pipelines">
+        </div>
+        <div class="pipeline-error" id="pipelineLoadError" role="alert" hidden></div>
         <div class="pipeline-list" id="pipelineList">
           <div class="empty-state" id="emptyPipelineList">
             <p>No pipelines yet</p>
@@ -222,8 +295,12 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     <div class="pipeline-main">
       <div id="noPipelineSelected" class="no-pipeline-selected">
         <div>
-          <h2>Select or create a pipeline</h2>
-          <p>Choose a pipeline from the sidebar or create a new one.</p>
+          <h2>Your delivery workspace</h2>
+          <p>Start with a template, import a pipeline-as-code definition, or build stages from scratch.</p>
+          <div class="approval-actions" style="justify-content:center;margin-top:16px;">
+            <button class="btn" type="button" onclick="openNewPipelineModal()">Create from template</button>
+            <button class="btn btn-info" type="button" onclick="importPipeline()">Import JSON / YAML</button>
+          </div>
         </div>
       </div>
 
@@ -294,6 +371,16 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
       <label>Description</label>
       <textarea id="newPipelineDescription" rows="3" placeholder="What does this pipeline do?"></textarea>
     </div>
+    <div class="form-group template-picker">
+      <label for="newPipelineTemplate">Starter template</label>
+      <select id="newPipelineTemplate">
+        <option value="blank">Blank pipeline</option>
+        <option value="ci">Build and test</option>
+        <option value="terraform">Terraform validate and plan (no apply)</option>
+        <option value="release">Build, test, and approval-gated release</option>
+      </select>
+      <small>Templates create editable definitions; nothing runs until you press Run.</small>
+    </div>
     <button class="btn" onclick="createPipeline()">Create Pipeline</button>
     <button class="btn btn-danger" onclick="closeModal('newPipelineModal')">Cancel</button>
   </div>
@@ -312,6 +399,10 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     <div class="form-group" style="display:flex;align-items:center;gap:10px;">
       <input type="checkbox" id="stageParallel" style="width:auto;" />
       <label for="stageParallel" style="margin-bottom:0;cursor:pointer;">Enable parallel execution of steps</label>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+      <input type="checkbox" id="stageApprovalRequired" style="width:auto;" />
+      <label for="stageApprovalRequired" style="margin-bottom:0;cursor:pointer;">Require manual approval before this stage</label>
     </div>
     <button class="btn" onclick="saveStage()">Save Stage</button>
     <button class="btn btn-danger" onclick="closeModal('stageModal')">Cancel</button>
@@ -353,8 +444,10 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     <span class="close" onclick="closeModal('importModal')">&times;</span>
     <h3 style="color:#4CAF50;margin-bottom:20px;">Import Pipeline</h3>
     <div class="form-group">
-      <label>Paste Pipeline JSON</label>
-      <textarea id="importJson" rows="12" placeholder='{"name":"...","description":"...","stages":[...]}'></textarea>
+      <label for="importFormat">Definition format</label>
+      <select id="importFormat"><option value="yaml">MasterChief YAML</option><option value="json">JSON</option></select>
+      <label for="importJson">Paste pipeline definition</label>
+      <textarea id="importJson" rows="12" placeholder="name: Build and test&#10;stages: []"></textarea>
     </div>
     <button class="btn" onclick="submitImport()">Import</button>
     <button class="btn btn-danger" onclick="closeModal('importModal')">Cancel</button>
@@ -397,32 +490,72 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
 
   // ==================== Pipeline CRUD ====================
   async function loadPipelines() {
+    const loadError = document.getElementById('pipelineLoadError');
     try {
       pipelines = await api('GET', '/api/pipelines');
+      loadError.hidden = true;
+      loadError.textContent = '';
     } catch (e) {
-      pipelines = [];
+      loadError.hidden = false;
+      loadError.textContent = 'Could not load pipeline definitions: ' + e.message;
     }
     renderPipelineList();
+    await loadOverview();
+  }
+
+  async function loadOverview() {
+    const setValue = function(id, value) {
+      document.getElementById(id).textContent = String(value);
+    };
+    setValue('pipelineCount', pipelines.length);
+    setValue('stageCount', pipelines.reduce(function(total, pipeline) {
+      return total + (pipeline.stages || []).length;
+    }, 0));
+    try {
+      const runs = await api('GET', '/api/pipelines/runs');
+      const completed = runs.filter(function(run) { return run.status === 'completed' || run.status === 'success'; }).length;
+      const failed = runs.filter(function(run) { return run.status === 'failed'; }).length;
+      const active = runs.filter(function(run) {
+        return ['running', 'pending', 'waiting_for_approval'].includes(run.status);
+      }).length;
+      setValue('successfulRunCount', completed);
+      setValue('runStateCount', failed + ' failed · ' + active + ' active');
+    } catch (e) {
+      setValue('successfulRunCount', '—');
+      setValue('runStateCount', 'Unavailable');
+    }
   }
 
   function renderPipelineList() {
     const list = document.getElementById('pipelineList');
     const empty = document.getElementById('emptyPipelineList');
     const exportBtn = document.getElementById('exportBtn');
+    const exportYamlBtn = document.getElementById('exportYamlBtn');
+    const query = document.getElementById('pipelineSearch').value.trim().toLowerCase();
+    const filtered = (pipelines || []).filter(function(pipeline) {
+      return !query || (pipeline.name + ' ' + (pipeline.description || '')).toLowerCase().includes(query);
+    });
 
     if (!pipelines || pipelines.length === 0) {
       list.innerHTML = '';
       list.appendChild(empty);
       empty.style.display = 'block';
       exportBtn.style.display = 'none';
+      exportYamlBtn.style.display = 'none';
       return;
     }
 
     empty.style.display = 'none';
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p>No pipelines match that filter.</p></div>';
+      exportBtn.style.display = 'none';
+      exportYamlBtn.style.display = 'none';
+      return;
+    }
     let html = '';
-    pipelines.forEach(function(p) {
-      const statusClass = getStatusBadgeClass(p.last_run_status || 'never');
+    filtered.forEach(function(p) {
       const statusLabel = p.last_run_status || 'never';
+      const statusClass = getStatusBadgeClass(statusLabel);
       const stageCount = (p.stages || []).length;
       const created = p.created ? new Date(p.created).toLocaleDateString() : 'N/A';
       const selected = p.id === selectedPipelineId ? ' selected' : '';
@@ -432,7 +565,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
         '<div class="pipeline-item-name">' + escapeHtml(p.name) + '</div>' +
         '<div class="pipeline-item-stages">' + stageCount + ' stage' + (stageCount !== 1 ? 's' : '') + '</div>' +
         '<div class="pipeline-item-meta">' +
-          '<span class="status-badge status-badge-' + statusLabel + '">' + statusLabel + '</span>' +
+          '<span class="status-badge status-badge-' + statusClass + '">' + escapeHtml(statusLabel) + '</span>' +
           '<span>' + created + '</span>' +
         '</div>' +
       '</div>';
@@ -440,10 +573,20 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     list.innerHTML = html;
 
     exportBtn.style.display = selectedPipelineId ? 'inline-block' : 'none';
+    exportYamlBtn.style.display = selectedPipelineId ? 'inline-block' : 'none';
   }
 
   function getStatusBadgeClass(status) {
-    const map = { success: 'success', failed: 'failed', running: 'running', never: 'never' };
+    const map = {
+      success: 'success',
+      completed: 'success',
+      failed: 'failed',
+      running: 'running',
+      pending: 'running',
+      waiting_for_approval: 'running',
+      cancelled: 'failed',
+      never: 'never'
+    };
     return map[status] || 'never';
   }
 
@@ -483,15 +626,73 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
   window.openNewPipelineModal = function() {
     document.getElementById('newPipelineName').value = '';
     document.getElementById('newPipelineDescription').value = '';
+    document.getElementById('newPipelineTemplate').value = 'blank';
     openModal('newPipelineModal');
   };
+
+  function getStarterStages(template) {
+    const stage = function(name, steps, approvalRequired) {
+      return {
+        id: 'stage-' + Math.random().toString(36).slice(2, 10),
+        name: name,
+        order: 0,
+        parallel: false,
+        approval_required: !!approvalRequired,
+        steps: steps
+      };
+    };
+    const step = function(name, type, config) {
+      return {
+        id: 'step-' + Math.random().toString(36).slice(2, 10),
+        name: name,
+        type: type,
+        config: config
+      };
+    };
+    if (template === 'ci') {
+      return orderedStages([
+        stage('Build', [step('Check Python syntax', 'custom_command', {command: 'python -m compileall -q core echo managers'})]),
+        stage('Test', [step('Run test suite', 'test_run', {test_command: 'python -m pytest -q', working_dir: '.'})])
+      ]);
+    }
+    if (template === 'terraform') {
+      return orderedStages([
+        stage('Validate', [step('Format and validate', 'custom_command', {command: 'terraform fmt -check && terraform validate', working_dir: '.'})]),
+        stage('Plan', [step('Review infrastructure plan', 'terraform_plan', {working_dir: '.', var_file: ''})])
+      ]);
+    }
+    if (template === 'release') {
+      return orderedStages([
+        stage('Build', [step('Build application package', 'custom_command', {command: 'python -m build', working_dir: '.'})]),
+        stage('Test', [step('Run test suite', 'test_run', {test_command: 'python -m pytest -q', working_dir: '.'})]),
+        stage('Release gate', [step('Confirm release readiness', 'deploy', {target: 'configured release target', strategy: 'rolling'})], true)
+      ]);
+    }
+    return [];
+  }
+
+  function orderedStages(stages) {
+    return stages.map(function(stage, index) {
+      stage.order = index;
+      return stage;
+    });
+  }
 
   window.createPipeline = async function() {
     const name = document.getElementById('newPipelineName').value.trim();
     const description = document.getElementById('newPipelineDescription').value.trim();
+    const template = document.getElementById('newPipelineTemplate').value;
     if (!name) { alert('Pipeline name is required.'); return; }
     try {
       const p = await api('POST', '/api/pipelines', { name: name, description: description });
+      const stages = getStarterStages(template);
+      if (stages.length) {
+        await api('PUT', '/api/pipelines/' + p.id, {
+          name: name,
+          description: description,
+          stages: stages
+        });
+      }
       closeModal('newPipelineModal');
       await loadPipelines();
       window._selectPipeline(p.id || p);
@@ -554,6 +755,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
             '<div>' +
               '<span class="stage-card-name">' + escapeHtml(stage.name) + '</span>' +
               (stage.parallel ? '<span class="stage-parallel-badge">parallel</span>' : '') +
+              (stage.approval_required || (stage.steps || []).some(function(step) { return step.type === 'terraform_apply'; })
+                ? '<span class="stage-approval-badge">approval gate</span>' : '') +
             '</div>' +
             '<div class="stage-card-actions">' +
               '<button onclick="window._editStage(' + si + ')" title="Edit Stage">&#9998;</button>' +
@@ -630,6 +833,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
         const stages = pipeline.stages;
         const moved = stages.splice(dragSrcIndex, 1)[0];
         stages.splice(destIndex, 0, moved);
+        stages.forEach(function(stage, index) { stage.order = index; });
         renderStages(stages);
         dragSrcIndex = null;
       });
@@ -647,9 +851,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
       const stage = pipeline.stages[editIndex];
       document.getElementById('stageName').value = stage.name || '';
       document.getElementById('stageParallel').checked = !!stage.parallel;
+      document.getElementById('stageApprovalRequired').checked = !!stage.approval_required;
     } else {
       document.getElementById('stageName').value = '';
       document.getElementById('stageParallel').checked = false;
+      document.getElementById('stageApprovalRequired').checked = false;
     }
     openModal('stageModal');
   };
@@ -679,8 +885,17 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     if (editIndex >= 0) {
       pipeline.stages[editIndex].name = name;
       pipeline.stages[editIndex].parallel = parallel;
+      pipeline.stages[editIndex].approval_required =
+        document.getElementById('stageApprovalRequired').checked;
     } else {
-      pipeline.stages.push({ name: name, parallel: parallel, steps: [] });
+      pipeline.stages.push({
+        id: 'stage-' + Math.random().toString(36).slice(2, 10),
+        name: name,
+        order: pipeline.stages.length,
+        parallel: parallel,
+        approval_required: document.getElementById('stageApprovalRequired').checked,
+        steps: []
+      });
     }
 
     renderStages(pipeline.stages);
@@ -806,7 +1021,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
         const run = await api('GET', '/api/pipelines/runs/' + runId);
         currentRun = run;
         renderExecution(run);
-        if (run.status === 'success' || run.status === 'failed' || run.status === 'cancelled') {
+        if (run.status === 'success' || run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
           stopPolling();
           loadPipelines();
         }
@@ -830,7 +1045,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
       return;
     }
 
-    const isActive = run.status === 'running' || run.status === 'pending';
+    const isActive = ['running', 'pending', 'waiting_for_approval'].includes(run.status);
     let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
       '<div>' +
         '<h3 style="color:#4CAF50;margin-bottom:5px;">Run: ' + escapeHtml((run.id || run.run_id || '').substring(0, 12)) + '</h3>' +
@@ -841,6 +1056,17 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
       html += '<button class="btn btn-danger" onclick="window._cancelRun(\'' + (run.id || run.run_id) + '\')">Cancel</button>';
     }
     html += '</div>';
+
+    if (run.status === 'waiting_for_approval' && run.approval) {
+      html += '<div class="approval-panel">' +
+        '<strong>Manual approval required</strong>' +
+        '<p>Review stage <strong>' + escapeHtml(run.approval.stage_name) + '</strong> before execution continues. Terraform Apply stages always pause here.</p>' +
+        '<div class="approval-actions">' +
+          '<button class="btn" onclick="window._resolveApproval(\'' + run.id + '\',\'approved\')">Approve stage</button>' +
+          '<button class="btn btn-danger" onclick="window._resolveApproval(\'' + run.id + '\',\'rejected\')">Reject stage</button>' +
+        '</div>' +
+      '</div>';
+    }
 
     html += '<div class="exec-stages">';
     const stages = run.stages || [];
@@ -884,10 +1110,27 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     switch (status) {
       case 'running': return '<span class="exec-status-icon"><span class="spinner"></span></span>';
       case 'success': return '<span class="exec-status-icon" style="color:#4CAF50;">&#10004;</span>';
+      case 'completed': return '<span class="exec-status-icon" style="color:#4CAF50;">&#10004;</span>';
       case 'failed': return '<span class="exec-status-icon" style="color:#f44336;">&#10008;</span>';
+      case 'waiting_for_approval': return '<span class="exec-status-icon" style="color:#ffbe55;">&#9203;</span>';
       default: return '<span class="exec-status-icon" style="color:#666;">&#9679;</span>';
     }
   }
+
+  window._resolveApproval = async function(runId, decision) {
+    const comment = decision === 'rejected'
+      ? (prompt('Why is this stage being rejected?') || '')
+      : '';
+    try {
+      currentRun = await api('POST', '/api/pipelines/runs/' + runId + '/approval', {
+        decision: decision,
+        comment: comment
+      });
+      renderExecution(currentRun);
+    } catch (e) {
+      alert('Approval update failed: ' + e.message);
+    }
+  };
 
   window._toggleLog = function(stepId) {
     const log = document.getElementById('log-' + stepId);
@@ -998,15 +1241,21 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
   // ==================== Import / Export ====================
   window.importPipeline = function() {
     document.getElementById('importJson').value = '';
+    document.getElementById('importFormat').value = 'yaml';
     openModal('importModal');
   };
 
   window.submitImport = async function() {
     const raw = document.getElementById('importJson').value.trim();
-    if (!raw) { alert('Please paste a pipeline JSON.'); return; }
+    const format = document.getElementById('importFormat').value;
+    if (!raw) { alert('Please paste a pipeline definition.'); return; }
     try {
-      const data = JSON.parse(raw);
-      await api('POST', '/api/pipelines/import', data);
+      if (format === 'yaml') {
+        await api('POST', '/api/pipelines/import-yaml', {yaml: raw});
+      } else {
+        const data = JSON.parse(raw);
+        await api('POST', '/api/pipelines/import', data);
+      }
       closeModal('importModal');
       await loadPipelines();
       alert('Pipeline imported successfully.');
@@ -1032,6 +1281,25 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
     }
   };
 
+  window.exportPipelineYaml = async function() {
+    if (!selectedPipelineId) return;
+    try {
+      const response = await fetch('/api/pipelines/' + selectedPipelineId + '/export.yaml');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'YAML export failed.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'masterchief-pipeline.yaml';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('YAML export failed: ' + e.message);
+    }
+  };
   // ==================== Sub Tab Switching ====================
   window.switchSubTab = function(tab) {
     document.querySelectorAll('.sub-tab').forEach(function(t) {
@@ -1098,6 +1366,15 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#4CAF50;}
   }
 
   // ==================== Init ====================
+  document.getElementById('pipelineSearch').addEventListener('input', renderPipelineList);
+  fetch('/api/deployments/capabilities')
+    .then(function(response) {
+      if (response.ok) document.getElementById('adminDeployBtn').hidden = false;
+      else if (response.status !== 401 && response.status !== 403) {
+        console.warn('Could not check deployment-center permissions. HTTP ' + response.status);
+      }
+    })
+    .catch(function(error) { console.error('Could not check deployment-center permissions.', error); });
   loadPipelines();
 
 })();

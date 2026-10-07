@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 112" role="img" aria-labelledby="title description">
+  <title id="title">MasterChief</title>
+  <desc id="description">MasterChief Echo Starlite DevOps Suite</desc>
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#22c55e"/>
+    </linearGradient>
+    <linearGradient id="wordmark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#86efac"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(8 8)">
+    <path d="M48 2 86 16v27c0 25-16 43-38 57C26 86 10 68 10 43V16L48 2Z" fill="#101827" stroke="url(#shield)" stroke-width="4"/>
+    <path d="m48 18 5.9 17.4 18.4.2-14.8 10.8 5.6 17.5L48 53.2 32.9 63.9l5.6-17.5-14.8-10.8 18.4-.2L48 18Z" fill="url(#shield)"/>
+    <path d="M19 29h9M68 29h9M19 57h9M68 57h9" stroke="#c7f9d4" stroke-linecap="round" stroke-width="3" opacity=".8"/>
+  </g>
+  <text x="112" y="55" fill="url(#wordmark)" font-family="Segoe UI,Arial,sans-serif" font-size="34" font-weight="800" letter-spacing="1.2">MASTERCHIEF</text>
+  <text x="114" y="82" fill="#93a4b8" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="600" letter-spacing="3.1">ECHO STARLITE  |  DEVOPS SUITE</text>
+</svg>

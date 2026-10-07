@@ -231,7 +231,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
         </div>
       </div>
       <div id="sidebar-filter">
-        <input type="text" id="file-search" placeholder="Search files..." oninput="filterFiles()">
+        <input type="text" id="file-search" placeholder="Filter here; Enter searches project" oninput="filterFiles()" onkeydown="if(event.key==='Enter')searchProjectFiles()">
         <div class="filter-tags">
           <span class="filter-tag active" data-lang="all" onclick="setLangFilter('all')">All</span>
           <span class="filter-tag" data-lang="python" onclick="setLangFilter('python')">Python</span>
@@ -1119,8 +1119,8 @@ function renderTree() {
   // filter
   if (search || langF !== 'all') {
     nodes = nodes.filter(n => {
-      if (n.type === 'dir') return !search || n.name.toLowerCase().includes(search);
-      const matchSearch = !search || n.name.toLowerCase().includes(search);
+      if (n.type === 'dir') return !search || (n.path || n.name).toLowerCase().includes(search);
+      const matchSearch = !search || (n.path || n.name).toLowerCase().includes(search);
       const matchLang = langF === 'all' || detectLang(n.name) === langF;
       return matchSearch && matchLang;
     });
@@ -1182,6 +1182,33 @@ function renderTree() {
 function filterFiles() {
   state.searchFilter = document.getElementById('file-search').value;
   renderTree();
+}
+
+async function searchProjectFiles() {
+  const query = document.getElementById('file-search').value.trim();
+  if (!query) {
+    refreshTree(state.currentPath);
+    return;
+  }
+
+  const el = document.getElementById('file-tree');
+  el.innerHTML = '<div style="padding:12px;color:var(--text3);">Searching project...</div>';
+  try {
+    const response = await fetch('/api/ide/search?q=' + encodeURIComponent(query));
+    const result = await response.json();
+    if (!result.ok) {
+      el.textContent = 'Search failed: ' + (result.error || 'Unknown error');
+      return;
+    }
+    state.treeData = result.nodes || [];
+    state.currentPath = '';
+    renderTree();
+    if (result.truncated) {
+      appendOutput(`[info] Showing first ${state.treeData.length} of ${result.total} project matches.\n`, 'out-info');
+    }
+  } catch (error) {
+    el.textContent = 'Search failed: ' + error;
+  }
 }
 
 function setLangFilter(lang) {
@@ -1419,14 +1446,15 @@ async function pollJob(execId) {
       const r = await fetch('/api/ide/exec_status?exec_id=' + execId);
       const j = await r.json();
       if (!j.ok) return;
+      const result = j.job || j;
       const job = state.asyncJobs.find(jb => jb.id === execId);
       if (!job) return;
-      if (j.status === 'done' || j.status === 'error') {
-        job.status = j.status === 'done' ? 'done' : 'failed';
+      if (result.status === 'done' || result.status === 'finished' || result.status === 'error') {
+        job.status = result.status === 'done' || result.status === 'finished' ? 'done' : 'failed';
         renderJobs();
-        if (j.stdout) appendOutput(`[job ${execId.slice(0,8)}] ${j.stdout}\n`, 'out-stdout');
-        if (j.stderr) appendOutput(`[job ${execId.slice(0,8)}] ${j.stderr}\n`, 'out-error');
-        appendOutput(`[async] Job ${execId.slice(0,8)} finished (exit: ${j.returncode})\n`, j.returncode === 0 ? 'out-success' : 'out-error');
+        if (result.stdout) appendOutput(`[job ${execId.slice(0,8)}] ${result.stdout}\n`, 'out-stdout');
+        if (result.stderr) appendOutput(`[job ${execId.slice(0,8)}] ${result.stderr}\n`, 'out-error');
+        appendOutput(`[async] Job ${execId.slice(0,8)} finished (exit: ${result.returncode})\n`, result.returncode === 0 ? 'out-success' : 'out-error');
         return;
       }
       setTimeout(check, 2000);

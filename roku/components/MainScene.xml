@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <component name="MainScene" extends="Scene">
   <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
   <children>
@@ -9,13 +9,52 @@
       visible="true"
     />
 
+    <Rectangle
+      id="channelPreviewBackground"
+      translation="[900, 426]"
+      width="350"
+      height="164"
+      color="0x05080DEE"
+      visible="false" />
+    <Video
+      id="channelPreview"
+      translation="[906, 432]"
+      width="338"
+      height="152"
+      visible="false" />
+    <Label
+      id="channelPreviewLabel"
+      translation="[908, 438]"
+      width="334"
+      height="36"
+      text="CHANNEL PREVIEW"
+      color="0xFFFFFFFF"
+      font="font:SmallBoldSystemFont"
+      visible="false" />
+
     <!-- The native streaming player layer -->
-    <Video 
+    <Video
       id="iptvPlayer"
       translation="[0, 0]"
       width="1280"
       height="720"
       visible="false"
     />
+    <Rectangle
+      id="playerStatusBackground"
+      translation="[80, 604]"
+      width="1120"
+      height="72"
+      color="0x0D1117EE"
+      visible="false">
+      <Label
+        id="playerStatus"
+        translation="[18, 12]"
+        width="1084"
+        height="48"
+        color="0xFFFFFFFF"
+        font="font:SmallSystemFont"
+        wrap="true" />
+    </Rectangle>
   </children>
 </component>

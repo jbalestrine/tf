@@ -5,8 +5,6 @@ include requirements.txt
 include MasterchiefRun.ps1
 include MASTER_SETUP.ps1
 include CHOCO_PYPI_DEPLOY.ps1
-include api_settings.json
-include cert_audit.json
 include config.yml
 
 # Templates & static assets for web packages
@@ -15,8 +13,10 @@ recursive-include tf_wizard/static *
 recursive-include echo/data *.json *.yaml *.txt
 recursive-include modules *.tf *.yaml *.yml *.j2 *.json
 recursive-include scripts *.sh *.ps1 *.py
+recursive-include commands *.txt
 recursive-include addons/scripts/templates *
 recursive-include config *.yaml *.yml *.json
+exclude config/environments/prod.yaml
 recursive-include gui *.html *.css *.js
 recursive-include templates *.html
 recursive-include features/templates *.html

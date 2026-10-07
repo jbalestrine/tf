@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Archetypes - MasterChief</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#10151d;color:#e5e7eb;font:15px/1.5 "Segoe UI",Arial,sans-serif}
+    main{max-width:1400px;margin:0 auto;padding:24px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+    h1{color:#8ae2a0;margin:0}
+    h2{margin:0 0 10px;font-size:1.2rem;color:#b9e7c3}
+    a{color:#8ae2a0}
+    button,select,input,textarea{font:inherit}
+    button{border:1px solid #376b4b;background:#173321;color:#d9fbe1;border-radius:7px;padding:9px 13px;cursor:pointer}
+    button:hover{background:#245037}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    input,select,textarea{width:100%;background:#0b1016;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:9px}
+    textarea{font-family:Consolas,monospace;resize:vertical}
+    label{display:block;color:#9ca3af;font-size:.85rem;margin:11px 0 5px}
+    .intro,.panel{background:#1b2430;border:1px solid #303c4a;border-radius:10px;padding:16px;margin:18px 0}
+    .layout{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:18px;align-items:start}
+    .list{display:grid;gap:9px}
+    .item{width:100%;text-align:left;background:#18212b;border-color:#364553}
+    .item.active{border-color:#72c98c;background:#20352a}
+    .item strong{display:block;color:#f3f4f6}
+    .item small{display:block;color:#9ca3af;margin-top:4px}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    #filter{max-width:260px;margin-left:auto}
+    .tags{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+    .tag{font-size:.78rem;border-radius:20px;background:#293445;color:#b8cbe1;padding:3px 9px}
+    .diagram-shell{overflow:auto;border:1px solid #344657;border-radius:9px;background:#f8fafc;margin:10px 0 18px}
+    .diagram-shell svg{display:block;width:100%;min-width:700px;height:auto}
+    pre{margin:0;max-height:410px;overflow:auto;background:#0b1016;border:1px solid #26313c;border-radius:7px;padding:15px;white-space:pre-wrap;overflow-wrap:anywhere;color:#dce6ee}
+    .editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .status{min-height:1.5rem;color:#a7d8b1;margin:8px 0}
+    @media(max-width:850px){.layout{grid-template-columns:1fr}.editor-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>Code Archetypes</h1><div style="color:#9ca3af">Explore a component diagram, preview the starter code, then explicitly load it into a developer editor.</div></div>
+    <a href="/">Back to MasterChief</a>
+  </header>
+  <section class="intro">
+    <strong>Using an archetype</strong>
+    <p>Choose a starter to see its flow and source. “Load into editor” returns to the page that opened this gallery. Existing editor code is only replaced after confirmation. Generator-only pages that have no code editor hand the template to MasterChief Code UI instead.</p>
+  </section>
+  <div class="layout">
+    <aside class="panel">
+      <div class="toolbar">
+        <h2 style="margin:0">Library</h2>
+        <input id="filter" type="search" placeholder="Filter archetypes" aria-label="Filter archetypes">
+      </div>
+      <div id="library" class="list">Loading archetypes…</div>
+    </aside>
+    <section>
+      <div class="panel">
+        <div class="toolbar">
+          <h2 id="detail-title">Select an archetype</h2>
+          <button id="load-button" disabled>Load into editor</button>
+        </div>
+        <div id="detail-description" style="color:#9ca3af"></div>
+        <div id="tags" class="tags"></div>
+        <div class="toolbar">
+          <h2 style="margin:0">Live architecture diagram</h2>
+          <button id="svg-button" disabled>Download SVG</button>
+          <button id="visio-button" disabled>Download Visio (.vsdx)</button>
+        </div>
+        <div id="diagram" class="diagram-shell" aria-label="Live archetype architecture diagram"></div>
+        <p style="color:#9ca3af;font-size:.85rem">The diagram and code preview are generated from the same archetype definition. In custom archetypes, generate starter code directly from your component graph.</p>
+        <h2>Code preview</h2>
+        <pre><code id="code-preview"></code></pre>
+        <div id="status" class="status" role="status"></div>
+      </div>
+      <details class="panel">
+        <summary style="cursor:pointer;color:#b9e7c3;font-weight:700">Create a custom archetype</summary>
+        <form id="create-form">
+          <div class="editor-grid">
+            <div><label for="new-title">Name</label><input id="new-title" maxlength="80" required placeholder="Python service worker"></div>
+            <div><label for="new-category">Category</label><input id="new-category" maxlength="40" value="Custom"></div>
+            <div><label for="new-language">Language</label><input id="new-language" maxlength="24" required placeholder="python"></div>
+            <div><label for="new-nodes">Diagram components (comma-separated)</label><input id="new-nodes" required placeholder="Input, Validate, Process, Output"></div>
+            <div><label for="new-hub">Architecture hub</label><input id="new-hub" maxlength="80" placeholder="Service or system at the center"></div>
+          </div>
+          <label for="new-edges">Connections (one per line: Component A -&gt; Component B | optional label)</label>
+          <textarea id="new-edges" rows="4" placeholder="Input -> Validate\nValidate -> Process\nProcess -> Output"></textarea>
+          <label for="new-description">Description</label><input id="new-description" maxlength="500">
+          <label for="new-code">Starter code</label><textarea id="new-code" rows="12" required></textarea>
+          <button type="button" id="generate-code-button" style="margin-top:10px">Generate code from diagram</button>
+          <button type="submit" style="margin-top:10px">Save custom archetype</button>
+          <div id="create-status" class="status" role="status"></div>
+        </form>
+      </details>
+    </section>
+  </div>
+</main>
+<script src="/static/architecture_diagram.js"></script>
+<script>
+(() => {
+  let archetypes = [];
+  let selected = null;
+  let customGraphActive = false;
+  const params = new URLSearchParams(location.search);
+  const returnPath = params.get('return') || '/masterchief_code_ui';
+  const safeReturnPath = returnPath.startsWith('/') && !returnPath.startsWith('//') ? returnPath : '/masterchief_code_ui';
+  const byId = id => document.getElementById(id);
+
+  function renderLibrary() {
+    const query = byId('filter').value.trim().toLowerCase();
+    const visible = archetypes.filter(item =>
+      `${item.title} ${item.category} ${item.language} ${item.description}`.toLowerCase().includes(query)
+    );
+    const host = byId('library');
+    host.replaceChildren();
+    if (!visible.length) {
+      host.textContent = 'No archetypes match this filter.';
+      return;
+    }
+    visible.forEach(item => {
+      const button = document.createElement('button');
+      button.className = 'item' + (selected && selected.id === item.id ? ' active' : '');
+      const name = document.createElement('strong');
+      name.textContent = item.title;
+      const meta = document.createElement('small');
+      meta.textContent = `${item.category} · ${item.language}`;
+      button.append(name, meta);
+      button.addEventListener('click', () => selectArchetype(item));
+      host.append(button);
+    });
+  }
+
+  function selectArchetype(item) {
+    selected = item;
+    customGraphActive = false;
+    byId('detail-title').textContent = item.title;
+    byId('detail-description').textContent = item.description || '';
+    byId('code-preview').textContent = item.code;
+    byId('load-button').disabled = false;
+    byId('status').textContent = '';
+    const tags = byId('tags');
+    tags.replaceChildren();
+    [item.category, item.language, item.id.startsWith('custom-') ? 'Custom' : 'Built-in'].forEach(value => {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = value;
+      tags.append(tag);
+    });
+    const diagram = byId('diagram');
+    const componentEdges = item.edges && item.edges.length
+      ? item.edges
+      : (item.nodes || []).slice(0, -1).map((label, index) => ({
+        from: label, to: item.nodes[index + 1]
+      }));
+    window.renderArchitectureDiagram(diagram, {
+      title: item.title,
+      subtitle: `${item.category} · ${item.language}`,
+      hub: item.hub || item.title,
+      nodes: item.nodes || [],
+      edges: componentEdges
+    });
+    byId('svg-button').disabled = false;
+    byId('visio-button').disabled = false;
+    renderLibrary();
+  }
+
+  function getCustomGraph() {
+    const title = byId('new-title').value.trim() || 'New architecture';
+    const hub = byId('new-hub').value.trim() || title;
+    const nodes = byId('new-nodes').value.split(',').map(value => value.trim()).filter(Boolean);
+    const edgeLines = byId('new-edges').value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const edges = edgeLines.map(line => {
+      const [connection, label = ''] = line.split('|');
+      const parts = connection.split('->').map(value => value.trim());
+      return parts.length === 2 && parts[0] && parts[1]
+        ? { from: parts[0], to: parts[1], label: label.trim() }
+        : null;
+    });
+    return { title, hub, nodes, edges: edges.filter(Boolean), edgeError: edges.some(edge => !edge) };
+  }
+
+  function renderCustomGraph() {
+    customGraphActive = true;
+    const graph = getCustomGraph();
+    if (graph.nodes.length < 2 || graph.edgeError) return;
+    window.renderArchitectureDiagram(byId('diagram'), {
+      ...graph, subtitle: `${byId('new-category').value || 'Custom'} · ${byId('new-language').value || 'code'}`
+    });
+  }
+
+  function generateArchitectureCode() {
+    const graph = getCustomGraph();
+    if (graph.nodes.length < 2) {
+      byId('create-status').textContent = 'Add at least two components before generating code.';
+      return;
+    }
+    if (graph.edgeError) {
+      byId('create-status').textContent = 'Each connection must use “Component A -> Component B | optional label”.';
+      return;
+    }
+    if (new Set(graph.nodes).size !== graph.nodes.length) {
+      byId('create-status').textContent = 'Component names must be unique.';
+      return;
+    }
+    const language = byId('new-language').value.trim().toLowerCase();
+    const ids = graph.nodes.map((_, index) => `component_${index + 1}`);
+    const architecture = {
+      title: graph.title,
+      hub: graph.hub,
+      nodes: graph.nodes.map((label, index) => ({ id: ids[index], label })),
+      edges: graph.edges.map(edge => ({
+        from: graph.nodes.includes(edge.from) ? ids[graph.nodes.indexOf(edge.from)] : 'hub',
+        to: graph.nodes.includes(edge.to) ? ids[graph.nodes.indexOf(edge.to)] : 'hub',
+        label: edge.label
+      }))
+    };
+    const json = JSON.stringify(architecture, null, 2);
+    if (['json', 'jsonc'].includes(language)) {
+      byId('new-code').value = json;
+    } else if (['javascript', 'js', 'typescript', 'ts'].includes(language)) {
+      byId('new-code').value = `// Generated architecture manifest; implement each component in its own module.\nexport const architecture = ${json};\n`;
+    } else if (['terraform', 'hcl'].includes(language)) {
+      byId('new-code').value = `# Architecture metadata scaffold. Add provider resources for deployable infrastructure.\nterraform {\n  required_version = ">= 1.4.0"\n}\n\nlocals {\n  architecture = ${hclLiteral(architecture)}\n}\n\nresource "terraform_data" "architecture" {\n  input = local.architecture\n}\n\noutput "architecture_manifest" {\n  value       = terraform_data.architecture.output\n  description = "Component and connection manifest; this does not provision cloud services."\n}\n`;
+    } else if (language === 'bicep') {
+      byId('new-code').value = `// Architecture metadata scaffold; add Azure resources to provision services.\nvar architecture = ${bicepLiteral(architecture)}\noutput architecture object = architecture\n`;
+    } else if (['powershell', 'ps1'].includes(language)) {
+      byId('new-code').value = `$Architecture = ConvertFrom-Json -AsHashtable '${JSON.stringify(architecture).replace(/'/g, "''")}'\n$Architecture.nodes | ForEach-Object { Write-Output "Component: $($_.label)" }\n$Architecture.edges | ForEach-Object { Write-Output "Connection: $($_.from) -> $($_.to)" }\n`;
+    } else {
+      byId('new-code').value = `"""Generated architecture manifest; implement service behavior in the component functions."""\nARCHITECTURE = ${pythonLiteral(architecture)}\n\n\ndef main() -> None:\n    for component in ARCHITECTURE["nodes"]:\n        print(f"Component: {component['label']}")\n    for connection in ARCHITECTURE["edges"]:\n        print(f"Connection: {connection['from']} -> {connection['to']}")\n\n\nif __name__ == "__main__":\n    main()\n`;
+    }
+    byId('create-status').textContent = 'Generated a code scaffold from the diagram. Review it and add implementation-specific details.';
+  }
+
+  function pythonLiteral(value) {
+    if (value === null) return 'None';
+    if (value === true) return 'True';
+    if (value === false) return 'False';
+    if (typeof value === 'string') return JSON.stringify(value);
+    if (Array.isArray(value)) return `[${value.map(pythonLiteral).join(', ')}]`;
+    if (typeof value === 'object') {
+      return `{${Object.entries(value).map(([key, child]) =>
+        `${pythonLiteral(key)}: ${pythonLiteral(child)}`).join(', ')}}`;
+    }
+    return String(value);
+  }
+
+  function hclLiteral(value) {
+    if (typeof value === 'string') return JSON.stringify(value).replace(/\$\{/g, '$${');
+    if (value === null || typeof value === 'boolean' || typeof value === 'number') return String(value);
+    if (Array.isArray(value)) return `[${value.map(hclLiteral).join(', ')}]`;
+    return `{ ${Object.entries(value).map(([key, child]) =>
+      `${/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) ? key : JSON.stringify(key)} = ${hclLiteral(child)}`).join(', ')} }`;
+  }
+
+  function bicepLiteral(value) {
+    if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
+    if (value === null || typeof value === 'boolean' || typeof value === 'number') return String(value);
+    if (Array.isArray(value)) return `[${value.map(bicepLiteral).join(', ')}]`;
+    return `{ ${Object.entries(value).map(([key, child]) =>
+      `${/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) ? key : `'${key.replace(/'/g, "''")}'`}: ${bicepLiteral(child)}`).join(', ')} }`;
+  }
+
+  function downloadCurrentSvg() {
+    const container = byId('diagram');
+    const title = customGraphActive ? getCustomGraph().title : (selected ? selected.title : 'architecture');
+    window.downloadArchitectureSvg(container, title);
+  }
+
+  async function downloadCurrentVisio() {
+    const item = customGraphActive ? getCustomGraph() : (selected || getCustomGraph());
+    const graph = !customGraphActive && selected ? {
+      title: item.title, hub: item.hub || item.title,
+      nodes: item.nodes || [], edges: item.edges || []
+    } : item;
+    if (graph.edgeError) {
+      byId('status').textContent = 'Fix malformed architecture connections before exporting.';
+      return;
+    }
+    try {
+      const response = await fetch('/api/architecture/visio', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(graph)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${graph.title.replace(/[^a-z0-9_-]+/gi, '_')}.vsdx`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      byId('status').textContent = `Could not export Visio diagram: ${error.message}`;
+    }
+  }
+
+  async function loadLibrary() {
+    const response = await fetch('/api/code-archetypes');
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    archetypes = result.archetypes;
+    renderLibrary();
+    if (archetypes.length) selectArchetype(archetypes[0]);
+  }
+
+  byId('filter').addEventListener('input', renderLibrary);
+  byId('load-button').addEventListener('click', () => {
+    if (!selected) return;
+    localStorage.setItem('masterchief.pendingArchetype', JSON.stringify(selected));
+    location.href = safeReturnPath;
+  });
+  byId('create-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const status = byId('create-status');
+    status.textContent = 'Saving…';
+    const graph = getCustomGraph();
+    if (graph.edgeError) {
+      status.textContent = 'Each connection must use “Component A -> Component B | optional label”.';
+      return;
+    }
+    if (new Set(graph.nodes).size !== graph.nodes.length) {
+      status.textContent = 'Component names must be unique.';
+      return;
+    }
+    const payload = {
+      title: byId('new-title').value,
+      category: byId('new-category').value,
+      language: byId('new-language').value,
+      description: byId('new-description').value,
+      nodes: graph.nodes,
+      hub: graph.hub,
+      edges: graph.edges,
+      code: byId('new-code').value,
+    };
+    try {
+      const response = await fetch('/api/code-archetypes', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      ['new-title', 'new-hub', 'new-nodes', 'new-edges', 'new-language', 'new-category'].forEach(id =>
+        byId(id).addEventListener('input', renderCustomGraph));
+      byId('generate-code-button').addEventListener('click', generateArchitectureCode);
+      byId('svg-button').addEventListener('click', downloadCurrentSvg);
+      byId('visio-button').addEventListener('click', downloadCurrentVisio);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+      archetypes.push(result.archetype);
+      renderLibrary();
+      selectArchetype(result.archetype);
+      status.textContent = 'Custom archetype saved.';
+      byId('create-form').reset();
+      customGraphActive = false;
+    } catch (error) {
+      status.textContent = `Could not save archetype: ${error.message}`;
+    }
+  });
+  loadLibrary().catch(error => {
+    byId('library').textContent = `Could not load archetypes: ${error.message}`;
+  });
+})();
+</script>
+</body>
+</html>

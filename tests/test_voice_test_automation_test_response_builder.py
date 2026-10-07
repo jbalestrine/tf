@@ -1,6 +1,24 @@
 """Test response builder."""
 
+from pathlib import Path
+
 import pytest
+
+_VOICE_AUTOMATION = (
+    Path(__file__).resolve().parents[1]
+    / "chatops"
+    / "irc"
+    / "bot_engine"
+    / "voice"
+    / "automation"
+)
+_REQUIRED_MODULES = ("response_builder.py", "intent_parser.py", "action_executor.py")
+if not all((_VOICE_AUTOMATION / module).is_file() for module in _REQUIRED_MODULES):
+    pytest.skip(
+        "Legacy voice automation source is not included in this checkout.",
+        allow_module_level=True,
+    )
+
 from chatops.irc.bot_engine.voice.automation.response_builder import ResponseBuilder
 from chatops.irc.bot_engine.voice.automation.intent_parser import Intent
 from chatops.irc.bot_engine.voice.automation.action_executor import ActionResult

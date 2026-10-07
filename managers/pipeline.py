@@ -1,13 +1,27 @@
-from flask import request, jsonify
-import json
-import uuid
-import threading
-import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
+import json
+import threading
+import uuid
+
+import yaml
+from flask import jsonify, make_response, request
+from werkzeug.utils import secure_filename
+import subprocess
 
 
 PIPELINE_RUNS = {}
+PIPELINE_APPROVAL_EVENTS = {}
+_ALLOWED_STEP_TYPES = {
+    "script",
+    "docker_build",
+    "terraform_apply",
+    "terraform_plan",
+    "test_run",
+    "deploy",
+    "custom_command",
+}
 
 class PipelineManager:
     def __init__(self, db_path, runs_path):
@@ -59,6 +73,62 @@ class PipelineManager:
         self._save(d)
         return pipeline
 
+    def import_pipeline(self, definition):
+        if not isinstance(definition, dict):
+            raise ValueError("Pipeline definition must be a YAML or JSON object.")
+        name = definition.get("name")
+        description = definition.get("description", "")
+        stages = definition.get("stages", [])
+        if not isinstance(name, str) or not name.strip() or len(name) > 120:
+            raise ValueError("Pipeline name must contain 1 to 120 characters.")
+        if not isinstance(description, str) or len(description) > 2000:
+            raise ValueError("Pipeline description must be 2000 characters or fewer.")
+        if not isinstance(stages, list) or len(stages) > 50:
+            raise ValueError("Pipeline stages must be a list of at most 50 stages.")
+
+        normalized_stages = []
+        for stage_index, stage in enumerate(stages):
+            if not isinstance(stage, dict):
+                raise ValueError(f"Stage {stage_index + 1} must be an object.")
+            stage_name = stage.get("name", f"Stage {stage_index + 1}")
+            steps = stage.get("steps", [])
+            if not isinstance(stage_name, str) or not stage_name.strip() or len(stage_name) > 120:
+                raise ValueError(f"Stage {stage_index + 1} needs a name of 1 to 120 characters.")
+            if not isinstance(steps, list) or len(steps) > 100:
+                raise ValueError(f"Stage {stage_index + 1} must have at most 100 steps.")
+
+            normalized_steps = []
+            for step_index, step in enumerate(steps):
+                if not isinstance(step, dict):
+                    raise ValueError(f"Step {step_index + 1} in stage {stage_index + 1} must be an object.")
+                step_type = step.get("type", "custom_command")
+                step_name = step.get("name", f"Step {step_index + 1}")
+                config = step.get("config", {})
+                if not isinstance(step_type, str) or step_type not in _ALLOWED_STEP_TYPES:
+                    raise ValueError(f"Unsupported step type in stage {stage_index + 1}: {step_type}.")
+                if not isinstance(step_name, str) or not step_name.strip() or len(step_name) > 120:
+                    raise ValueError(f"Step {step_index + 1} in stage {stage_index + 1} needs a valid name.")
+                if not isinstance(config, dict):
+                    raise ValueError(f"Step {step_index + 1} in stage {stage_index + 1} config must be an object.")
+                normalized_steps.append({
+                    "id": str(uuid.uuid4()),
+                    "name": step_name.strip(),
+                    "type": step_type,
+                    "config": config,
+                })
+
+            normalized_stages.append({
+                "id": str(uuid.uuid4()),
+                "name": stage_name.strip(),
+                "order": stage_index,
+                "parallel": bool(stage.get("parallel", False)),
+                "approval_required": bool(stage.get("approval_required", False)),
+                "steps": normalized_steps,
+            })
+
+        pipeline = self.create_pipeline(name.strip(), description)
+        return self.update_pipeline(pipeline["id"], {"stages": normalized_stages})
+
     def update_pipeline(self, pid, updates):
         d = self._load()
         for p in d.get('pipelines', []):
@@ -92,24 +162,78 @@ class PipelineManager:
     def _run_pipeline(self, run, pipeline):
         try:
             for stage in sorted(pipeline.get('stages', []), key=lambda s: s.get('order', 0)):
+                if run.get("status") == "cancelled":
+                    self._persist_run(run)
+                    return
+                stage_name = stage.get("name", "Stage")
+                stage_id = stage.get("id") or str(uuid.uuid4())
                 stage_run = {
-                    'stage_id': stage['id'], 'name': stage.get('name', 'Stage'),
-                    'status': 'running', 'started': datetime.now().isoformat(),
+                    'stage_id': stage_id, 'name': stage_name,
+                    'status': 'pending', 'started': None,
                     'finished': None, 'steps': []
                 }
                 run['stages'].append(stage_run)
-                run['log'].append(f"[{datetime.now().isoformat()}] Starting stage: {stage.get('name')}")
-                for step in stage.get('steps', []):
-                    step_run = self._execute_step(step, run)
-                    stage_run['steps'].append(step_run)
-                    if step_run['status'] == 'failed':
-                        stage_run['status'] = 'failed'
-                        stage_run['finished'] = datetime.now().isoformat()
-                        run['status'] = 'failed'
-                        run['finished'] = datetime.now().isoformat()
-                        run['log'].append(f"[{datetime.now().isoformat()}] Pipeline FAILED at stage: {stage.get('name')}")
+                run['log'].append(f"[{datetime.now().isoformat()}] Starting stage: {stage_name}")
+                steps = stage.get('steps', [])
+                requires_approval = stage.get("approval_required") or any(
+                    step.get("type") == "terraform_apply" for step in steps
+                )
+                if requires_approval:
+                    approval_event = threading.Event()
+                    PIPELINE_APPROVAL_EVENTS[run["id"]] = approval_event
+                    stage_run["status"] = "waiting_for_approval"
+                    run["status"] = "waiting_for_approval"
+                    run["approval"] = {
+                        "stage_id": stage_id,
+                        "stage_name": stage_name,
+                        "decision": None,
+                        "requested_at": datetime.now().isoformat(),
+                    }
+                    run["log"].append(
+                        f"[{datetime.now().isoformat()}] Approval required before stage: {stage_name}"
+                    )
+                    self._persist_run(run)
+                    if not approval_event.wait(timeout=24 * 60 * 60):
+                        run["approval"]["decision"] = "timed_out"
+                    PIPELINE_APPROVAL_EVENTS.pop(run["id"], None)
+                    if run.get("status") == "cancelled":
                         self._persist_run(run)
                         return
+                    if run["approval"].get("decision") != "approved":
+                        stage_run["status"] = "failed"
+                        stage_run["finished"] = datetime.now().isoformat()
+                        run["status"] = "failed"
+                        run["finished"] = datetime.now().isoformat()
+                        run["log"].append(
+                            f"[{datetime.now().isoformat()}] Approval was not granted for stage: {stage_name}"
+                        )
+                        self._persist_run(run)
+                        return
+
+                stage_run["status"] = "running"
+                stage_run["started"] = datetime.now().isoformat()
+                run["status"] = "running"
+                if stage.get("parallel") and len(steps) > 1:
+                    with ThreadPoolExecutor(max_workers=min(len(steps), 8)) as executor:
+                        step_runs = list(executor.map(lambda step: self._execute_step(step, run), steps))
+                else:
+                    step_runs = [self._execute_step(step, run) for step in steps]
+
+                stage_run["steps"].extend(step_runs)
+                failed_step = next((step for step in step_runs if step["status"] == "failed"), None)
+                if failed_step:
+                    stage_run['status'] = 'failed'
+                    stage_run['finished'] = datetime.now().isoformat()
+                    run['status'] = 'failed'
+                    run['finished'] = datetime.now().isoformat()
+                    run['log'].append(f"[{datetime.now().isoformat()}] Pipeline FAILED at stage: {stage_name}")
+                    self._persist_run(run)
+                    return
+                if run.get("status") == "cancelled":
+                    stage_run["status"] = "cancelled"
+                    stage_run["finished"] = datetime.now().isoformat()
+                    self._persist_run(run)
+                    return
                 stage_run['status'] = 'completed'
                 stage_run['finished'] = datetime.now().isoformat()
             run['status'] = 'completed'
@@ -119,6 +243,8 @@ class PipelineManager:
             run['status'] = 'failed'
             run['finished'] = datetime.now().isoformat()
             run['log'].append(f"[{datetime.now().isoformat()}] Pipeline error: {str(e)}")
+        finally:
+            PIPELINE_APPROVAL_EVENTS.pop(run["id"], None)
         self._persist_run(run)
 
     def _execute_step(self, step, run):
@@ -170,9 +296,15 @@ class PipelineManager:
 
     def _persist_run(self, run):
         d = self._load_runs()
-        d.setdefault('runs', []).insert(0, run)
-        if len(d['runs']) > 100:
-            d['runs'] = d['runs'][:100]
+        runs = d.setdefault('runs', [])
+        for index, existing in enumerate(runs):
+            if existing.get("id") == run.get("id"):
+                runs[index] = run
+                break
+        else:
+            runs.insert(0, run)
+        if len(runs) > 100:
+            d['runs'] = runs[:100]
         self._save_runs(d)
 
     def get_run(self, rid):
@@ -197,10 +329,36 @@ class PipelineManager:
 
     def cancel_run(self, rid):
         if rid in PIPELINE_RUNS:
-            PIPELINE_RUNS[rid]['status'] = 'cancelled'
-            PIPELINE_RUNS[rid]['finished'] = datetime.now().isoformat()
-            return PIPELINE_RUNS[rid]
+            run = PIPELINE_RUNS[rid]
+            if run.get("status") not in {"running", "waiting_for_approval"}:
+                raise ValueError("Run is not active.")
+            run['status'] = 'cancelled'
+            run['finished'] = datetime.now().isoformat()
+            approval_event = PIPELINE_APPROVAL_EVENTS.get(rid)
+            if approval_event:
+                approval_event.set()
+            self._persist_run(run)
+            return run
         raise ValueError('Run not found or already finished')
+
+    def resolve_approval(self, rid, decision, comment=""):
+        if decision not in {"approved", "rejected"}:
+            raise ValueError("Decision must be approved or rejected.")
+        run = PIPELINE_RUNS.get(rid)
+        if not run or run.get("status") != "waiting_for_approval":
+            raise ValueError("Run is not waiting for approval.")
+        approval_event = PIPELINE_APPROVAL_EVENTS.get(rid)
+        if not approval_event:
+            raise ValueError("The approval request is no longer active.")
+
+        run["approval"]["decision"] = decision
+        run["approval"]["comment"] = comment.strip()[:500] if isinstance(comment, str) else ""
+        run["approval"]["decided_at"] = datetime.now().isoformat()
+        run["log"].append(
+            f"[{datetime.now().isoformat()}] Stage {decision}: {run['approval']['stage_name']}"
+        )
+        approval_event.set()
+        return run
 
 
 def register_pipeline_module(app, db_path='data/pipelines.json', runs_path='data/pipeline_runs.json'):
@@ -277,25 +435,59 @@ def register_pipeline_module(app, db_path='data/pipelines.json', runs_path='data
         except Exception as e:
             return jsonify({'ok': False, 'error': str(e)}), 400
 
+    @app.route('/api/pipelines/runs/<rid>/approval', methods=['POST'])
+    def api_pipeline_runs_approval(rid):
+        try:
+            d = request.get_json(silent=True) or {}
+            run = pipeline_mgr.resolve_approval(
+                rid,
+                d.get("decision"),
+                d.get("comment", ""),
+            )
+            return jsonify({'ok': True, 'result': run})
+        except Exception as e:
+            return jsonify({'ok': False, 'error': str(e)}), 400
+
     @app.route('/api/pipelines/import', methods=['POST'])
     def api_pipelines_import():
         try:
             d = request.get_json(silent=True) or {}
-            d.pop('id', None)
-            d['id'] = str(uuid.uuid4())
-            d['created'] = datetime.now().isoformat()
-            d['updated'] = datetime.now().isoformat()
-            data = pipeline_mgr._load()
-            data.setdefault('pipelines', []).append(d)
-            pipeline_mgr._save(data)
-            return jsonify({'ok': True, 'result': d})
+            pipeline = pipeline_mgr.import_pipeline(d)
+            return jsonify({'ok': True, 'result': pipeline})
         except Exception as e:
+            return jsonify({'ok': False, 'error': str(e)}), 400
+
+    @app.route('/api/pipelines/import-yaml', methods=['POST'])
+    def api_pipelines_import_yaml():
+        body = request.get_json(silent=True) or {}
+        raw_yaml = body.get("yaml")
+        if not isinstance(raw_yaml, str) or not raw_yaml.strip():
+            return jsonify({'ok': False, 'error': 'Provide a MasterChief pipeline YAML definition.'}), 400
+        if len(raw_yaml) > 200_000:
+            return jsonify({'ok': False, 'error': 'Pipeline YAML must be 200 KB or smaller.'}), 413
+        try:
+            definition = yaml.safe_load(raw_yaml)
+            pipeline = pipeline_mgr.import_pipeline(definition)
+            return jsonify({'ok': True, 'result': pipeline})
+        except (yaml.YAMLError, ValueError) as e:
             return jsonify({'ok': False, 'error': str(e)}), 400
 
     @app.route('/api/pipelines/<pid>/export', methods=['GET'])
     def api_pipelines_export(pid):
         try:
             return jsonify({'ok': True, 'result': pipeline_mgr.get_pipeline(pid)})
+        except Exception as e:
+            return jsonify({'ok': False, 'error': str(e)}), 404
+
+    @app.route('/api/pipelines/<pid>/export.yaml', methods=['GET'])
+    def api_pipelines_export_yaml(pid):
+        try:
+            pipeline = pipeline_mgr.get_pipeline(pid)
+            response = make_response(yaml.safe_dump(pipeline, sort_keys=False, allow_unicode=True))
+            response.headers["Content-Type"] = "application/yaml; charset=utf-8"
+            filename = secure_filename(pipeline.get("name", "pipeline")) or "pipeline"
+            response.headers["Content-Disposition"] = f'attachment; filename="{filename}.yaml"'
+            return response
         except Exception as e:
             return jsonify({'ok': False, 'error': str(e)}), 404
 

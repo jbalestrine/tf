@@ -1,0 +1,5 @@
+Welcome to MasterChief Echo ChatServ.
+
+Create an account with !register <nick> <password> using a password of at least 12 characters.
+Register a room with !register #channel <your-nick>, then invite others with !join #channel.
+Use !ask <prompt> to talk with Echo. Generated drafts are not executed automatically.
