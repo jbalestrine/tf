@@ -1030,6 +1030,8 @@ def register_ui(app):
                     ${deps || routes ? `<details class="fm-details"><summary>Dependencies &amp; routes</summary>${deps ? `<ul>${deps}</ul>` : ''}${routes ? `<ul>${routes}</ul>` : ''}</details>` : ''}
                     ${uiActions ? `<div class="feature-actions">${uiActions}</div>` : ''}
                     <div class="feature-actions">
+                        ${(h.dependencies || []).some(d => !d.installed) ? `<button class="btn btn-primary" data-act="install-deps" data-name="${esc(feature.name)}">Install missing packages</button>` : ''}
+                        ${h.handler_exists === false ? `<button class="btn btn-primary" data-act="gen-handler" data-name="${esc(feature.name)}">Generate handler</button>` : ''}
                         <button class="btn btn-secondary" data-act="edit" data-name="${esc(feature.name)}">Edit</button>
                         <button class="btn btn-secondary" data-act="duplicate" data-name="${esc(feature.name)}">Duplicate</button>
                         <button class="btn btn-secondary" data-act="export" data-name="${esc(feature.name)}">Export</button>
@@ -1037,6 +1039,20 @@ def register_ui(app):
                     </div>
                 </div>`;
             }).join('');
+        }
+
+        async function installDeps(name, btn) {
+            btn.disabled = true;
+            btn.textContent = 'Installing...';
+            const d = await api('/api/features/' + encodeURIComponent(name) + '/install-deps', 'POST');
+            showAlert(d.success ? 'Installed: ' + ((d.installed || []).join(', ') || 'nothing to do') : (d.error || 'Install failed') + (d.output ? ' - ' + d.output.slice(-300) : ''), d.success ? 'success' : 'error');
+            loadFeatures();
+        }
+
+        async function generateHandler(name) {
+            const d = await api('/api/features/' + encodeURIComponent(name) + '/generate-handler', 'POST');
+            showAlert(d.success ? 'Starter handler created.' : (d.error || 'Failed'), d.success ? 'success' : 'error');
+            loadFeatures();
         }
 
         async function api(url, method, body) {
@@ -1052,6 +1068,8 @@ def register_ui(app):
             if (!el || el.dataset.act === 'toggle') return;
             const name = el.dataset.name;
             switch (el.dataset.act) {
+                case 'install-deps': installDeps(name, el); break;
+                case 'gen-handler': generateHandler(name); break;
                 case 'edit': editFeature(name); break;
                 case 'delete': deleteFeature(name); break;
                 case 'duplicate': duplicateFeature(name); break;

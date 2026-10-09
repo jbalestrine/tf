@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import subprocess
+import sys
 import time
 from dataclasses import asdict
 from importlib import metadata
@@ -15,6 +17,13 @@ NAME_RE = re.compile(r"[a-z][a-z0-9_-]{1,63}")
 VERSION_RE = re.compile(r"^\d+(\.\d+){0,3}([.\-+][0-9A-Za-z.]+)?$")
 MAX_CODE = 128 * 1024
 MAX_ACTIVITY = 200
+PIP_SPEC_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(\[[A-Za-z0-9,._-]+\])?((==|>=|<=|~=|!=|>|<)[A-Za-z0-9.*+!_-]+(,(==|>=|<=|~=|!=|>|<)[A-Za-z0-9.*+!_-]+)*)?$")
+HANDLER_STUB = '''"""Handler for the {name} feature."""
+
+
+def register_routes(app):
+    pass
+'''
 
 
 def _dep_name(spec: str) -> str:
@@ -268,6 +277,46 @@ class FeatureManagement:
         self._log("import", name)
         return jsonify({"success": True, "feature": self._detail(cfg)}), 201
 
+    def install_deps(self, feature_name):
+        denied = self._guard()
+        if denied:
+            return denied
+        cfg = self.m.feature_configs.get(feature_name)
+        if not cfg:
+            return jsonify({"success": False, "error": "Feature not found"}), 404
+        todo = [d.strip() for d in cfg.dependencies if not _dep_status(d)["installed"]]
+        bad = [d for d in todo if not PIP_SPEC_RE.match(d)]
+        if bad:
+            return jsonify({"success": False, "error": "Invalid package spec: " + ", ".join(bad)}), 400
+        if not todo:
+            return jsonify({"success": True, "installed": [], "message": "All packages already installed"})
+        try:
+            proc = subprocess.run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", *todo],
+                                  capture_output=True, text=True, timeout=600)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return jsonify({"success": False, "error": f"pip failed: {exc}"}), 500
+        ok = proc.returncode == 0
+        self._log("install-deps", feature_name, ", ".join(todo) + ("" if ok else " (failed)"))
+        output = (proc.stdout + proc.stderr)[-2000:]
+        status = 200 if ok else 500
+        return jsonify({"success": ok, "installed": todo if ok else [], "output": output,
+                        "error": None if ok else "pip install failed"}), status
+
+    def generate_handler(self, feature_name):
+        denied = self._guard()
+        if denied:
+            return denied
+        cfg = self.m.feature_configs.get(feature_name)
+        if not cfg:
+            return jsonify({"success": False, "error": "Feature not found"}), 404
+        path = self._handler_path(feature_name)
+        if path.exists():
+            return jsonify({"success": False, "error": "Handler already exists"}), 409
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(HANDLER_STUB.format(name=cfg.name), encoding="utf-8")
+        self._log("generate-handler", feature_name)
+        return jsonify({"success": True, "restart_required": cfg.enabled})
+
     def activity(self):
         try:
             items = json.loads(self.activity_file.read_text(encoding="utf-8")) if self.activity_file.exists() else []
@@ -286,5 +335,7 @@ def register(manager) -> FeatureManagement:
     add("/api/features/<feature_name>", "api_features_update", fm.update, methods=["PUT"])
     add("/api/features/<feature_name>", "api_features_delete", fm.delete, methods=["DELETE"])
     add("/api/features/<feature_name>/duplicate", "api_features_duplicate", fm.duplicate, methods=["POST"])
+    add("/api/features/<feature_name>/install-deps", "api_features_install_deps", fm.install_deps, methods=["POST"])
+    add("/api/features/<feature_name>/generate-handler", "api_features_generate_handler", fm.generate_handler, methods=["POST"])
     add("/api/features/<feature_name>/export", "api_features_export", fm.export, methods=["GET"])
     return fm
