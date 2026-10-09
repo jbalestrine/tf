@@ -765,7 +765,7 @@ class EchoChatBot:
         )
         generated = None
         try:
-            generated = self._generate_with_local_llm(prompt, max_tokens=max_tokens, temperature=temperature)
+            generated = self._generate_with_local_llm(prompt, max_tokens=max_tokens, temperature=temperature, n_ctx=4096, timeout=int(os.environ.get('ECHO_SCRIPT_TIMEOUT', '600')))
             ollama_url = os.environ.get('ECHO_OLLAMA_URL', 'http://127.0.0.1:11434/api/generate')
             if not generated and urlparse(ollama_url).hostname in {'localhost', '127.0.0.1', '::1'}:
                 generated = self._generate_with_ollama(prompt, max_tokens=max_tokens, temperature=temperature)
@@ -1775,7 +1775,7 @@ class EchoChatBot:
         self._llama_python = found
         return found
 
-    def _generate_with_local_llm(self, prompt: str, max_tokens: int = 256, temperature: float = 0.7, _retry: bool = False) -> Optional[str]:
+    def _generate_with_local_llm(self, prompt: str, max_tokens: int = 256, temperature: float = 0.7, _retry: bool = False, n_ctx: Optional[int] = None, timeout: Optional[int] = None) -> Optional[str]:
         """Generate text using the bundled `echo/llm_worker.py` subprocess.
 
         This avoids importing native bindings into the web process and keeps
@@ -1853,7 +1853,10 @@ class EchoChatBot:
             return None
 
         # Allow configurable timeout via env var, default to 45s to avoid long UI stalls.
-        timeout = int(os.environ.get('ECHO_LLM_TIMEOUT', '45'))
+        timeout = int(timeout or os.environ.get('ECHO_LLM_TIMEOUT', '120'))
+        worker_env = dict(os.environ)
+        if n_ctx:
+            worker_env['ECHO_LLM_CTX'] = str(int(n_ctx))
         try:
             worker_python = (os.environ.get('ECHO_LLM_WORKER_PYTHON') or self._find_llama_python()).strip()
             if not worker_python:
@@ -1889,6 +1892,7 @@ class EchoChatBot:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
+                env=worker_env,
             )
             try:
                 stdout, stderr = proc.communicate(worker_input, timeout=timeout)
