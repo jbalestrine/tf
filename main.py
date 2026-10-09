@@ -16646,6 +16646,111 @@ def api_download_backup(name):
     return send_file(path, as_attachment=True, download_name=path.name)
 
 
+def _cicd_center():
+    from managers.cicd_center import CICDCenter
+
+    return CICDCenter(Path(__file__).resolve().parent)
+
+
+def _cicd_call(fn):
+    from managers.cicd_center import CICDError
+
+    try:
+        return jsonify({'ok': True, **fn()})
+    except CICDError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except Exception:
+        app.logger.exception('CI/CD operation failed')
+        return jsonify({'ok': False, 'error': 'The CI/CD operation failed.'}), 500
+
+
+@app.route('/cicd')
+def cicd_page():
+    denied = _admin_page_or_error(False)
+    if denied is not None:
+        return denied
+    return _render_admin_fragment('cicd.html')
+
+
+@app.route('/api/cicd/overview', methods=['GET'])
+def api_cicd_overview():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _cicd_call(lambda: _cicd_center().overview())
+
+
+@app.route('/api/cicd/explain', methods=['GET'])
+def api_cicd_explain():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    event = request.args.get('event', 'push')
+    if event not in ('push', 'pull_request', 'release'):
+        return jsonify({'ok': False, 'error': 'Unsupported event.'}), 400
+    return _cicd_call(lambda: {'results': _cicd_center().explain(event, request.args.get('ref', ''))})
+
+
+@app.route('/api/cicd/runs', methods=['GET'])
+def api_cicd_runs():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return jsonify(_cicd_center().recent_runs())
+
+
+@app.route('/api/cicd/config', methods=['POST'])
+def api_cicd_config():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    payload = request.get_json(silent=True) or {}
+    return _cicd_call(lambda: {'config': _cicd_center().save_config(payload)})
+
+
+@app.route('/api/cicd/test/<provider>', methods=['POST'])
+def api_cicd_test(provider):
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    return _cicd_call(lambda: {'result': _cicd_center().test_provider(provider)})
+
+
+@app.route('/api/cicd/run', methods=['POST'])
+def api_cicd_run():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    payload = request.get_json(silent=True) or {}
+    dry_run = payload.get('dry_run', True) is not False
+    if not dry_run and payload.get('confirm') is not True:
+        return jsonify({'ok': False, 'error': 'Confirm the real run first.'}), 400
+    selected = payload.get('selected')
+    if not isinstance(selected, list) or not selected:
+        return jsonify({'ok': False, 'error': 'Choose at least one target.'}), 400
+
+    def work():
+        result = _cicd_center().run([str(x) for x in selected], payload.get('ref', ''), dry_run=dry_run)
+        if not dry_run:
+            _echo_operator_audit('cicd_run', targets=[x for x in selected], ref=result['ref'])
+        return result
+
+    return _cicd_call(work)
+
+
+@app.route('/api/cicd/gitlab-template', methods=['GET', 'POST'])
+def api_cicd_gitlab_template():
+    if request.method == 'POST':
+        denied = _admin_post_guard()
+        if denied is not None:
+            return denied
+        return _cicd_call(lambda: {'written': _cicd_center().write_gitlab_ci()})
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _cicd_call(lambda: {'template': _cicd_center().gitlab_ci_template()})
+
+
 @app.route('/api/echo/models', methods=['GET'])
 def api_echo_models():
     try:

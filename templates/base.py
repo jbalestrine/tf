@@ -91,7 +91,7 @@ code{color:#4CAF50;}
   <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
   <label class="nav-search"><span class="sr-only">Search pages</span><input id="nav-search" type="search" placeholder="Find a page…  Ctrl+K" autocomplete="off" aria-label="Find a page"><span id="nav-search-status" class="nav-search-status" aria-live="polite"></span></label>
 
-  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') or request.path.startswith('/chaos-monkey') or request.path.startswith('/backups') else '' }}">
+  <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') or request.path.startswith('/chaos-monkey') or request.path.startswith('/backups') or request.path.startswith('/cicd') else '' }}">
     <summary class="dropbtn">Operate</summary>
     <div class="nav-group-content">
       <a href="/master-menu" class="{{ 'active' if '/master-menu' in request.path else '' }}">🧭 Master Menu</a>
@@ -104,6 +104,7 @@ code{color:#4CAF50;}
       <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
       <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
       <a href="/chaos-monkey" class="{{ 'active' if request.path.startswith('/chaos-monkey') else '' }}">🐒 Chaos Monkey Area</a>
+      <a href="/cicd" class="{{ 'active' if '/cicd' in request.path else '' }}">🚀 CI/CD Center</a>
       <a href="/backups" class="{{ 'active' if '/backups' in request.path else '' }}">💾 Data Backups</a>
       <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
       <a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">🛠 Services</a>

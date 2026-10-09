@@ -1,0 +1,248 @@
+<div class="section">
+    <h2>CI/CD Center</h2>
+    <p style="color:#9aa4b2;margin-bottom:10px;">See what runs after a push, choose what gets deployed, and trigger pipelines on GitHub Actions, GitLab, Terraform Cloud or Render. Every trigger is a <strong>dry run</strong> first. Tokens come from environment variables and are never stored here.</p>
+    <div id="cicd-status" aria-live="polite" style="color:#9aa4b2;margin-bottom:8px;"></div>
+</div>
+
+<div class="section">
+    <h3>1. What runs when I push?</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <select id="explain-event"><option value="push">push</option><option value="pull_request">pull request into</option></select>
+        <input id="explain-ref" list="branch-list" placeholder="branch or tag (e.g. main, v4.0.0)" style="min-width:240px;">
+        <datalist id="branch-list"></datalist>
+        <button class="btn btn-info" id="explain-go" type="button">Check</button>
+    </div>
+    <div id="explain-out" style="display:grid;gap:6px;"></div>
+</div>
+
+<div class="section">
+    <h3>2. Choose what to deploy</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <label>Repo <input id="cfg-repo" placeholder="owner/name"></label>
+        <label>Branch/tag <input id="cfg-ref" placeholder="main"></label>
+        <label>GitLab project <input id="cfg-gl-project" placeholder="group/project"></label>
+        <label>GitLab URL <input id="cfg-gl-url" placeholder="https://gitlab.com"></label>
+        <label>TFE org <input id="cfg-tfe-org"></label>
+        <label>TFE workspace <input id="cfg-tfe-ws"></label>
+        <button class="btn btn-info" id="cfg-save" type="button">Save settings</button>
+    </div>
+    <div id="targets" style="display:grid;gap:6px;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-info" id="run-dry" type="button">Dry run (safe)</button>
+        <button class="btn btn-success" id="run-real" type="button">Run for real…</button>
+    </div>
+    <pre id="run-out" style="margin-top:10px;white-space:pre-wrap;color:#c9d1d9;"></pre>
+</div>
+
+<div class="section">
+    <h3>3. Providers and subscriptions</h3>
+    <div id="providers" style="display:grid;gap:8px;"></div>
+</div>
+
+<div class="section">
+    <h3>4. Workflows in this repo</h3>
+    <div id="workflows" style="display:grid;gap:6px;"></div>
+</div>
+
+<div class="section">
+    <h3>5. Recent GitHub runs</h3>
+    <button class="btn btn-info" id="runs-refresh" type="button">Refresh</button>
+    <div id="runs" style="display:grid;gap:6px;margin-top:8px;"></div>
+</div>
+
+<div class="section">
+    <h3>6. GitLab CI starter</h3>
+    <p style="color:#9aa4b2;">Preview a <code>.gitlab-ci.yml</code> for this app. Writing it never overwrites an existing file.</p>
+    <button class="btn btn-info" id="gl-preview" type="button">Preview</button>
+    <button class="btn btn-success" id="gl-write" type="button">Write .gitlab-ci.yml</button>
+    <pre id="gl-out" style="margin-top:8px;white-space:pre-wrap;color:#c9d1d9;"></pre>
+</div>
+
+<script>
+(function () {
+    const $ = function (id) { return document.getElementById(id); };
+    const rowStyle = 'background:#1f2937;border-radius:6px;padding:8px 10px;';
+    let state = null;
+
+    function setStatus(text) { $('cicd-status').textContent = text; }
+
+    async function call(url, options) {
+        const opts = Object.assign({ credentials: 'same-origin' }, options || {});
+        if (opts.body && typeof opts.body !== 'string') {
+            opts.body = JSON.stringify(opts.body);
+            opts.headers = { 'Content-Type': 'application/json' };
+        }
+        const response = await fetch(url, opts);
+        let data = {};
+        try { data = await response.json(); } catch (error) { /* non-JSON */ }
+        if (!response.ok || data.ok === false) { throw new Error(data.error || ('HTTP ' + response.status)); }
+        return data;
+    }
+
+    function el(tag, text, style) {
+        const node = document.createElement(tag);
+        if (text !== undefined) { node.textContent = text; }
+        if (style) { node.style.cssText = style; }
+        return node;
+    }
+
+    function renderExplain(results) {
+        const box = $('explain-out');
+        box.replaceChildren();
+        results.forEach(function (r) {
+            const row = el('div', '', rowStyle + 'border-left:4px solid ' + (r.runs ? '#4CAF50' : '#6b7280') + ';');
+            row.append(el('strong', (r.runs ? 'RUNS  ' : 'skipped  ') + r.name), el('span', '  ' + r.file + ' — ' + r.reason, 'color:#9aa4b2;'));
+            box.append(row);
+        });
+    }
+
+    async function explain() {
+        const ref = $('explain-ref').value.trim();
+        if (!ref) { return; }
+        try {
+            const data = await call('/api/cicd/explain?event=' + encodeURIComponent($('explain-event').value) + '&ref=' + encodeURIComponent(ref));
+            renderExplain(data.results);
+        } catch (error) { setStatus('Failed: ' + error.message); }
+    }
+
+    function renderTargets() {
+        const box = $('targets');
+        box.replaceChildren();
+        const selected = new Set(state.config.selected);
+        state.targets.forEach(function (t) {
+            const row = el('label', '', rowStyle + 'display:flex;gap:10px;align-items:center;' + (t.available ? '' : 'opacity:.5;'));
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = t.id;
+            cb.disabled = !t.available;
+            cb.checked = selected.has(t.id) && t.available;
+            row.append(cb, el('strong', t.label), el('span', '[' + t.provider + '] ' + t.detail, 'color:#9aa4b2;'));
+            box.append(row);
+        });
+    }
+
+    function chosen() {
+        return Array.from($('targets').querySelectorAll('input:checked')).map(function (c) { return c.value; });
+    }
+
+    function renderProviders() {
+        const box = $('providers');
+        box.replaceChildren();
+        state.providers.forEach(function (p) {
+            const row = el('div', '', rowStyle);
+            const head = el('div', '', 'display:flex;gap:10px;align-items:center;');
+            const test = el('button', 'Test connection');
+            test.className = 'btn btn-info';
+            test.type = 'button';
+            const result = el('span', '', 'color:#9aa4b2;');
+            test.addEventListener('click', async function () {
+                result.textContent = 'Testing…';
+                try {
+                    const data = await call('/api/cicd/test/' + p.id, { method: 'POST' });
+                    result.textContent = (data.result.ok ? 'OK: ' : 'Problem: ') + data.result.message;
+                } catch (error) { result.textContent = 'Failed: ' + error.message; }
+            });
+            head.append(el('strong', p.name), el('span', p.note, 'color:' + (p.configured ? '#4CAF50' : '#f0c674') + ';'), test, result);
+            row.append(head, el('div', 'Cost: ' + p.needs, 'color:#9aa4b2;margin-top:4px;'), el('div', 'Auth: ' + p.auth, 'color:#9aa4b2;'));
+            box.append(row);
+        });
+    }
+
+    function renderWorkflows() {
+        const box = $('workflows');
+        box.replaceChildren();
+        state.workflows.forEach(function (w) {
+            const row = el('div', '', rowStyle);
+            const events = Object.keys(w.triggers).map(function (e) {
+                const t = w.triggers[e];
+                const filters = ['branches', 'tags', 'cron'].filter(function (k) { return t[k]; })
+                    .map(function (k) { return k + ': ' + t[k].join(', '); }).join('; ');
+                return e + (filters ? ' (' + filters + ')' : '');
+            });
+            row.append(el('strong', w.name), el('span', '  ' + w.file, 'color:#9aa4b2;'),
+                el('div', 'Triggers: ' + (events.join(' | ') || 'none'), 'color:#c9d1d9;'),
+                el('div', 'Jobs: ' + w.jobs.map(function (j) { return j.id + ' on ' + j.runs_on; }).join(', '), 'color:#9aa4b2;'));
+            box.append(row);
+        });
+    }
+
+    async function loadRuns() {
+        const box = $('runs');
+        box.replaceChildren();
+        const data = await fetch('/api/cicd/runs', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!data.ok) { box.append(el('div', data.error || 'Could not load runs.', 'color:#f0c674;')); return; }
+        if (!data.runs.length) { box.append(el('div', 'No runs yet.', 'color:#9aa4b2;')); }
+        data.runs.forEach(function (r) {
+            const row = el('div', '', rowStyle);
+            const link = el('a', r.workflowName + ' · ' + r.displayTitle);
+            link.href = r.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            row.append(link, el('span', '  ' + (r.conclusion || r.status) + ' · ' + r.headBranch + ' · ' + r.event, 'color:#9aa4b2;'));
+            box.append(row);
+        });
+    }
+
+    async function load() {
+        try {
+            const data = await call('/api/cicd/overview');
+            state = data;
+            $('cfg-repo').value = data.config.repo || '';
+            $('cfg-ref').value = data.config.ref || '';
+            $('cfg-gl-project').value = data.config.gitlab.project || '';
+            $('cfg-gl-url').value = data.config.gitlab.url || '';
+            $('cfg-tfe-org').value = data.config.tfe.org || '';
+            $('cfg-tfe-ws').value = data.config.tfe.workspace || '';
+            $('explain-ref').value = data.git.branch || data.config.ref;
+            const list = $('branch-list');
+            list.replaceChildren();
+            data.git.branches.concat(['main']).forEach(function (b) { const o = document.createElement('option'); o.value = b; list.append(o); });
+            setStatus('Current branch: ' + (data.git.branch || '(detached)') + ' · upstream: ' + (data.git.upstream || 'none') + ' · remotes: ' + Object.keys(data.git.remotes).join(', '));
+            renderExplain(data.current_branch_push);
+            renderTargets(); renderProviders(); renderWorkflows();
+            loadRuns();
+        } catch (error) { setStatus('Failed to load: ' + error.message); }
+    }
+
+    $('explain-go').addEventListener('click', explain);
+    $('runs-refresh').addEventListener('click', loadRuns);
+
+    $('cfg-save').addEventListener('click', async function () {
+        try {
+            await call('/api/cicd/config', { method: 'POST', body: {
+                repo: $('cfg-repo').value, ref: $('cfg-ref').value || 'main', selected: chosen(),
+                gitlab: { url: $('cfg-gl-url').value, project: $('cfg-gl-project').value },
+                tfe: { org: $('cfg-tfe-org').value, workspace: $('cfg-tfe-ws').value }
+            } });
+            setStatus('Settings saved.');
+        } catch (error) { setStatus('Failed: ' + error.message); }
+    });
+
+    async function run(dry) {
+        const out = $('run-out');
+        out.textContent = '';
+        try {
+            const data = await call('/api/cicd/run', { method: 'POST', body: { selected: chosen(), ref: $('cfg-ref').value, dry_run: dry, confirm: !dry } });
+            out.textContent = (data.dry_run ? 'DRY RUN (nothing sent) on ' : 'Ran on ') + data.ref + '\n' + data.steps.map(function (s) {
+                return '- ' + s.label + ' [' + s.status + '] ' + s.action + (s.message ? '\n    ' + s.message : '');
+            }).join('\n');
+        } catch (error) { out.textContent = 'Failed: ' + error.message; }
+    }
+    $('run-dry').addEventListener('click', function () { run(true); });
+    $('run-real').addEventListener('click', function () {
+        const picked = chosen();
+        if (picked.length && window.confirm('Really trigger ' + picked.length + ' target(s) on "' + $('cfg-ref').value + '"? This can publish or deploy.')) { run(false); }
+    });
+
+    $('gl-preview').addEventListener('click', async function () {
+        try { $('gl-out').textContent = (await call('/api/cicd/gitlab-template')).template; }
+        catch (error) { $('gl-out').textContent = 'Failed: ' + error.message; }
+    });
+    $('gl-write').addEventListener('click', async function () {
+        try { $('gl-out').textContent = 'Wrote ' + (await call('/api/cicd/gitlab-template', { method: 'POST' })).written; }
+        catch (error) { $('gl-out').textContent = 'Failed: ' + error.message; }
+    });
+
+    load();
+})();
+</script>
