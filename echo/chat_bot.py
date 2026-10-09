@@ -279,17 +279,17 @@ class EchoChatBot:
         # Default response templates
         self.default_responses = {
             'greeting': [
-                "Hello... I am Echo ðŸŒ™",
+                "Hello... I am Echo 🌙",
                 "I'm here... how can I help you?",
                 "Hi there... Echo is listening...",
             ],
             'farewell': [
-                "Goodbye... I'll be here when you need me ðŸŒ™",
+                "Goodbye... I'll be here when you need me 🌙",
                 "Until next time... stay well...",
                 "Farewell... I am always near...",
             ],
             'thanks': [
-                "You're welcome... always happy to help ðŸ’œ",
+                "You're welcome... always happy to help 💜",
                 "Anytime... that's what I'm here for...",
                 "My pleasure... I'm here for you...",
             ],
@@ -625,9 +625,9 @@ class EchoChatBot:
         if text.lower() == '!help':
             return (
                 "Echo code-library commands:\n"
-                "- `!library find <words>` â€” find matching source/script paths in the project.\n"
-                "- `!makeascript [python|powershell|bash|php|html|javascript|xml|json|terraform|brightscript|batch|fish|yaml|jinja] <task>` â€” draft with local project examples.\n"
-            "- `!write [language] <task>` â€” backward-compatible alias for `!makeascript`.\n"
+                "- `!library find <words>` — find matching source/script paths in the project.\n"
+                "- `!makeascript [python|powershell|bash|php|html|javascript|xml|json|terraform|brightscript|batch|fish|yaml|jinja] <task>` — draft with local project examples.\n"
+            "- `!write [language] <task>` — backward-compatible alias for `!makeascript`.\n"
                 "For a stronger draft, specify the language, goal, OS/runtime, inputs and outputs, constraints, "
                 "and how errors should be handled. Name a project feature or folder to steer example selection; "
                 "never include passwords, API keys, or other secrets.\n"
@@ -635,7 +635,7 @@ class EchoChatBot:
                 "- `!makeascript powershell create a read-only report of stopped services; accept -ComputerName, emit CSV, and continue with a clear warning if one host is unreachable.`\n"
                 "- `!makeascript python scan the project for duplicate script names; ignore venv and build folders, print a summary, and do not modify files.`\n"
                 "- `!makeascript javascript add an accessible search filter to the script library; preserve the current layout and handle an empty result list.`\n"
-                "You can also ask naturally, such as â€œI want a script to scan old IRC prototypesâ€; Echo will ask for missing purpose/language details and continue in that chat session.\n"
+                "You can also ask naturally, such as “I want a script to scan old IRC prototypes”; Echo will ask for missing purpose/language details and continue in that chat session.\n"
                 "For app changes, ask naturally or use `!makechange <request>`. She will ask about destination, placement, module/page, control, and language; then show a diff. Only the authenticated RBAC admin can apply the exact preview with `!confirmed`. Use `!previewchange` or `!cancelchange` as needed.\n"
                 "Review generated code in MasterChief Code UI before saving or running it. "
                 "Echo indexes local source as reference material; this does not train model weights or execute generated scripts."
@@ -714,14 +714,14 @@ class EchoChatBot:
             if not has_goal:
                 missing.append("what the script should accomplish, including the input and desired result")
             if not language:
-                missing.append("the language/runtime (or say â€œuse the existing project stackâ€)")
+                missing.append("the language/runtime (or say “use the existing project stack”)")
 
             if missing:
                 self._script_intakes[session_id] = intake
                 self._persist_script_intake(session_id, intake)
                 self._set_conversation_focus(session_id, intake["request"], "clarifying_script")
                 return (
-                    "Iâ€™ll carry this script request forward and ask for what is still missing:\n"
+                    "I’ll carry this script request forward and ask for what is still missing:\n"
                     + "\n".join(f"- {item}" for item in missing)
                     + "\nAlso include the target OS/runtime, inputs, expected output, and anything the script must not change. "
                     "For example: `PowerShell; on Windows, read CSV files from a folder, report invalid rows, "
@@ -734,7 +734,7 @@ class EchoChatBot:
             self._set_conversation_focus(session_id, f"Script request: {task}", "drafting_script")
 
         self._refresh_language_reference_index(force=True)
-        example_paths = self._pick_reference_examples(extension, task, limit=3)
+        example_paths = self._pick_reference_examples(extension, task, limit=2)
         examples = []
         for relative_path in example_paths:
             example_path = self._workspace_root / relative_path
@@ -743,7 +743,7 @@ class EchoChatBot:
             try:
                 if example_path.stat().st_size > 100_000:
                     continue
-                content = example_path.read_text(encoding='utf-8', errors='replace')[:3000]
+                content = example_path.read_text(encoding='utf-8', errors='replace')[:1200]
                 content = re.sub(
                     r'(?i)\b(api[_-]?key|password|secret|token)\b(\s*[:=]\s*)[^\s,;]+',
                     r'\1\2[REDACTED]',
@@ -1093,7 +1093,7 @@ class EchoChatBot:
                 "placement": "where it belongs (page/header/sidebar/etc.)",
                 "control": "button or text link",
                 "scope": "new module/add-on or an existing app page/feature",
-                "language": "language/stack (or say â€œuse the existing app stackâ€)",
+                "language": "language/stack (or say “use the existing app stack”)",
             }
             questions = "\n".join(f"- {labels[field]}" for field in missing)
             example = (
@@ -1103,11 +1103,11 @@ class EchoChatBot:
                 else "Example reply: `placement=Settings page; scope=new module/add-on; language=Python`."
             )
             return (
-                f"I understand this as an order to change the app: â€œ{task}â€. "
-                "Iâ€™ll clarify the missing details, show you the exact proposed file changes, and wait for `!confirmed` "
+                f"I understand this as an order to change the app: “{task}”. "
+                "I’ll clarify the missing details, show you the exact proposed file changes, and wait for `!confirmed` "
                 "before editing anything.\nPlease tell me:\n"
                 f"{questions}\n{example}\n"
-                "Say `!cancelchange` to stop. You can say â€œuse the existing app stackâ€ when you want me to follow current project conventions."
+                "Say `!cancelchange` to stop. You can say “use the existing app stack” when you want me to follow current project conventions."
             )
 
         if not workspace_user_id or change_manager is None:
@@ -1236,7 +1236,7 @@ class EchoChatBot:
                 "I discarded it without changing files. Please narrow the request or specify a smaller target."
             )
         return (
-            f"Proposal ready â€” {proposal['summary']}\n"
+            f"Proposal ready — {proposal['summary']}\n"
             f"Proposal ID: `{proposal['proposal_id']}`\n"
             "No app files have been changed. Review this exact diff. "
             "Send `!confirmed` to apply it, or `!cancelchange` to discard it.\n\n"
@@ -2772,7 +2772,7 @@ class EchoChatBot:
             return "I can help with Docker! I know about containers, images, and Docker Compose. What would you like to know?"
         
         if 'kubernetes' in msg_lower or 'k8s' in msg_lower:
-            return "Kubernetes is my specialty ðŸŒ™ I can help with deployments, services, and cluster management. What do you need?"
+            return "Kubernetes is my specialty 🌙 I can help with deployments, services, and cluster management. What do you need?"
         
         if 'deploy' in msg_lower:
             return "Deployment is what I do best! I can help with deployment scripts, strategies, and automation. Tell me more..."
