@@ -126,7 +126,7 @@
 
   function blueprints(data) {
     var rows = data.blueprints;
-    var h = '<p style="color:#9aa4b2">Every file in <code>blueprints/</code>. <b>Linking</b> registers it at startup after a dry run. If it serves a URL that <code>main.py</code> also defines, <b>the blueprint's version takes over</b>. Once a blueprint is live, <b>Move from main.py</b> previews, then removes, the matching code from <code>main.py</code> (backed up and archived, auto-rolled back if any route goes missing).</p><table><tr><th>File</th><th>Type</th><th>Status</th><th>Routes</th><th></th></tr>';
+    var h = '<p style="color:#9aa4b2">Every file in <code>blueprints/</code>. <b>Linking</b> registers it at startup after a dry run. If it serves a URL that <code>main.py</code> also defines, <b>the blueprint version takes over</b>. Once a blueprint is live, <b>Move from main.py</b> previews, then removes, the matching code from <code>main.py</code> (backed up and archived, auto-rolled back if any route goes missing).</p><table><tr><th>File</th><th>Type</th><th>Status</th><th>Routes</th><th></th></tr>';
     rows.forEach(function (b) {
       var status = b.registered ? '<span class="cm-pill cm-easy">live</span>' : b.linked ? '<span class="cm-pill cm-medium">linked, restart</span>' : '<span class="cm-pill">not loaded</span>';
       var act = '';
