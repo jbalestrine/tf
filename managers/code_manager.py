@@ -408,6 +408,7 @@ class CodeManager:
 
     # ---------- move whole pages (route + template) into a blueprint ----------
     PAGE_MARKER = "{% block content %}{% endblock %}"
+    STRIPS = {('{% extends "base.html" %}', ""), ("{% block content %}", ""), ("{% endblock %}", "")}
 
     def _page_candidates(self) -> list[dict]:
         text = self.main_path.read_text(encoding="utf-8", errors="replace")
@@ -426,9 +427,10 @@ class CodeManager:
             if not infos:
                 continue
             others = [d for d in fn.decorator_list if not _route_info(d)]
-            name = self._page_template_name(fn)
-            if not name or name not in consts:
+            found = self._page_template_name(fn)
+            if not found or found[0] not in consts:
                 continue
+            name, chain = found
             perm = None
             ok = True
             for d in others:
@@ -444,11 +446,12 @@ class CodeManager:
                 "start": min(d.lineno for d in fn.decorator_list), "end": fn.end_lineno,
                 "tpl_start": node.lineno, "tpl_end": node.end_lineno, "tpl_value": node.value.value,
                 "routes": [(u, m) for u, ms in infos for m in ms],
+                "chain": chain,
             })
         return rows
 
     @staticmethod
-    def _page_template_name(fn: ast.FunctionDef) -> str | None:
+    def _page_template_name(fn: ast.FunctionDef) -> tuple[str, bool] | None:
         """Matches: return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', NAME), request=request, get_flashed_messages=get_flashed_messages)"""
         body = [s for s in fn.body if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))]
         if len(body) != 1 or not isinstance(body[0], ast.Return) or not isinstance(body[0].value, ast.Call):
@@ -463,9 +466,17 @@ class CodeManager:
                 and isinstance(rep.func.value, ast.Name) and rep.func.value.id == "HTML_TEMPLATE" and len(rep.args) == 2):
             return None
         first, second = rep.args
-        if not (isinstance(first, ast.Constant) and first.value == CodeManager.PAGE_MARKER and isinstance(second, ast.Name)):
+        if not (isinstance(first, ast.Constant) and first.value == CodeManager.PAGE_MARKER):
             return None
-        return second.id
+        chain = False
+        while isinstance(second, ast.Call) and isinstance(second.func, ast.Attribute) and second.func.attr == "replace":
+            if len(second.args) != 2 or not all(isinstance(a, ast.Constant) for a in second.args):
+                return None
+            if (second.args[0].value, second.args[1].value) not in CodeManager.STRIPS:
+                return None
+            second = second.func.value
+            chain = True
+        return (second.id, chain) if isinstance(second, ast.Name) else None
 
     def pages(self) -> list[dict]:
         """Pages still defined in main.py that can be moved whole into a blueprint."""
@@ -564,7 +575,11 @@ class CodeManager:
             ast.parse(new_bp)
         except SyntaxError as exc:
             raise CodeManagerError(f"Edit would produce invalid code ({exc}); nothing was changed.") from exc
-        tpl_path.write_text(cand["tpl_value"], encoding="utf-8", newline="\n")
+        tpl_text = cand["tpl_value"]
+        if cand["chain"]:
+            for old, new_ in sorted(self.STRIPS):
+                tpl_text = tpl_text.replace(old, new_)
+        tpl_path.write_text(tpl_text, encoding="utf-8", newline="\n")
         bp_path.write_text(new_bp, encoding="utf-8")
         self.main_path.write_bytes((new_main.replace("\n", "\r\n") if crlf else new_main).encode("utf-8"))
         failure = self._verify_fresh_app()
