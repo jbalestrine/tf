@@ -1,10 +1,42 @@
 import json
 import re
 
-from flask import Blueprint, current_app, jsonify, request
+from pathlib import Path
+
+from flask import Blueprint, current_app, get_flashed_messages, jsonify, render_template_string, request
+from flask_login import current_user
+
+from auth_module import requires_permission
 
 
 okta_bp = Blueprint('okta_routes', __name__)
+
+
+_CONTENT_MARKER = '{% block content %}{% endblock %}'
+
+
+@okta_bp.route('/okta')
+@requires_permission('dashboard')
+def okta_page():
+    """Okta page. Markup: templates/okta.html. The site layout comes from main.py via the feature loader."""
+    try:
+        from auth_config import auth_config
+        configured = bool(auth_config.is_configured('okta'))
+    except Exception:
+        configured = False
+    authenticated = bool(
+        current_user.is_authenticated and getattr(current_user, 'provider', None) == 'okta'
+    )
+    content = (Path(current_app.root_path) / 'templates' / 'okta.html').read_text(encoding='utf-8')
+    layout = current_app.config.get('_layout_template', _CONTENT_MARKER)
+    return render_template_string(
+        layout.replace(_CONTENT_MARKER, content),
+        request=request,
+        get_flashed_messages=get_flashed_messages,
+        okta_oidc_configured=configured,
+        okta_oidc_authenticated=authenticated,
+        okta_oidc_username=getattr(current_user, 'username', '') if authenticated else '',
+    )
 
 
 @okta_bp.route('/api/okta/signin', methods=['POST'])
