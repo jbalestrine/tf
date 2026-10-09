@@ -99,6 +99,42 @@ def init(app, ctx):
             ctx.audit("retire_main_routes", module=report["module"], lines=report["lines_removed"])
         return jsonify({"ok": True, "report": report})
 
+    @bp.route("/api/pages")
+    def pages():
+        denied = guarded()
+        if denied is not None:
+            return denied
+        live = [b["module"] for b in manager.blueprints() if b["registered"] and b["kind"] == "blueprint"]
+        return jsonify({"ok": True, "pages": manager.pages(), "blueprints": live})
+
+    @bp.route("/api/pages/isolate", methods=["POST"])
+    def isolate():
+        denied = guarded(True)
+        if denied is not None:
+            return denied
+        data = body()
+        try:
+            report = manager.isolate_page(str(data.get("func", "")), str(data.get("module", "")), dry_run=not data.get("apply"))
+        except CodeManagerError as exc:
+            return failure(exc)
+        if report.get("error"):
+            return jsonify({"ok": False, "error": report["error"], "report": report}), 500
+        if report["applied"]:
+            ctx.audit("isolate_page", func=report["func"], module=report["module"])
+        return jsonify({"ok": True, "report": report})
+
+    @bp.route("/api/blueprints/create", methods=["POST"])
+    def create_bp():
+        denied = guarded(True)
+        if denied is not None:
+            return denied
+        try:
+            result = manager.create_blueprint(str(body().get("slug", "")))
+        except CodeManagerError as exc:
+            return failure(exc)
+        ctx.audit("create_blueprint", module=result["module"])
+        return jsonify({"ok": True, "blueprint": result, "message": "Created and linked. Restart MasterChief, then it appears as live and you can move pages into it."})
+
     @bp.route("/api/features")
     def features():
         denied = guarded()

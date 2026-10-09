@@ -1,9 +1,9 @@
-import json
+﻿import json
 import shutil
 from pathlib import Path
 
 import pytest
-from flask import Flask
+from flask import Blueprint, Flask
 
 from managers import feature_loader as fl
 from managers.code_manager import CodeManager
@@ -140,3 +140,60 @@ def test_blueprint_probe_link_and_unlink(tmp_path):
     assert client.get("/taken").data == b"main"
     fl.unlink_blueprint(tmp_path, "blueprints.demo_routes")
     assert fl.read_linked(tmp_path) == []
+
+MAIN_WITH_PAGE = (
+    "from flask import render_template_string, request, get_flashed_messages\n"
+    "HTML_TEMPLATE = '<html>{% block content %}{% endblock %}</html>'\n"
+    "DEMO_TEMPLATE = \"\"\"\n<h1>Demo {{ 1 + 1 }}</h1>\n\"\"\"\n\n"
+    "@app.route('/demo')\n@requires_permission('dashboard')\n"
+    "def demo_page():\n    return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', DEMO_TEMPLATE), request=request, get_flashed_messages=get_flashed_messages)\n\n"
+    "@app.route('/keep')\ndef keep():\n    return 'k'\n"
+)
+
+
+def _page_project(tmp_path):
+    (tmp_path / "main.py").write_text(MAIN_WITH_PAGE, encoding="utf-8")
+    (tmp_path / "templates").mkdir()
+    (tmp_path / "blueprints").mkdir()
+    (tmp_path / "blueprints" / "demo_routes.py").write_text(
+        "from flask import Blueprint\ndemo_bp = Blueprint('demo_routes', 'blueprints.demo_routes')\n", encoding="utf-8")
+    app = _app()
+    app.register_blueprint(Blueprint("demo_routes", "blueprints.demo_routes"))
+    return app, CodeManager(app, tmp_path)
+
+
+def test_pages_detects_movable_page(tmp_path):
+    _, cm = _page_project(tmp_path)
+    pages = cm.pages()
+    assert [(p["func"], p["template"], p["eligible"]) for p in pages] == [("demo_page", "DEMO_TEMPLATE", True)]
+
+
+def test_isolate_page_moves_and_rolls_back(tmp_path):
+    app, cm = _page_project(tmp_path)
+    assert cm.isolate_page("demo_page", "blueprints.demo_routes")["applied"] is False
+    assert "DEMO_TEMPLATE" in (tmp_path / "main.py").read_text(encoding="utf-8")
+    cm._verify_fresh_app = lambda timeout=240: "1 routes would go missing"
+    result = cm.isolate_page("demo_page", "blueprints.demo_routes", dry_run=False)
+    assert "restored" in result["error"].lower()
+    assert (tmp_path / "main.py").read_text(encoding="utf-8") == MAIN_WITH_PAGE
+    assert not (tmp_path / "templates" / "demo.html").exists()
+    assert "demo_page" not in (tmp_path / "blueprints" / "demo_routes.py").read_text(encoding="utf-8")
+    cm._verify_fresh_app = lambda timeout=240: ""
+    result = cm.isolate_page("demo_page", "blueprints.demo_routes", dry_run=False)
+    assert result["applied"]
+    main_after = (tmp_path / "main.py").read_text(encoding="utf-8")
+    assert "DEMO_TEMPLATE" not in main_after and "demo_page" not in main_after and "def keep" in main_after
+    assert "Demo" in (tmp_path / "templates" / "demo.html").read_text(encoding="utf-8")
+    bp_text = (tmp_path / "blueprints" / "demo_routes.py").read_text(encoding="utf-8")
+    assert "def demo_page" in bp_text and "requires_permission" in bp_text
+
+
+def test_create_blueprint(tmp_path):
+    (tmp_path / "blueprints").mkdir()
+    cm = CodeManager(_app(), tmp_path)
+    info = cm.create_blueprint("okta")
+    assert (tmp_path / info["file"]).is_file() and fl.read_linked(tmp_path)[0]["module"] == "blueprints.okta_routes"
+    with pytest.raises(Exception):
+        cm.create_blueprint("okta")
+    with pytest.raises(Exception):
+        cm.create_blueprint("../evil")

@@ -406,6 +406,191 @@ class CodeManager:
         report.update(applied=True, backup=backup.relative_to(self.root).as_posix(), archive=archive.relative_to(self.root).as_posix())
         return report
 
+    # ---------- move whole pages (route + template) into a blueprint ----------
+    PAGE_MARKER = "{% block content %}{% endblock %}"
+
+    def _page_candidates(self) -> list[dict]:
+        text = self.main_path.read_text(encoding="utf-8", errors="replace")
+        tree = ast.parse(text)
+        consts = {}
+        for n in tree.body:
+            if isinstance(n, ast.Assign) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str):
+                for tg in n.targets:
+                    if isinstance(tg, ast.Name):
+                        consts[tg.id] = n
+        rows = []
+        for fn in tree.body:
+            if not isinstance(fn, ast.FunctionDef):
+                continue
+            infos = [i for i in (_route_info(d) for d in fn.decorator_list) if i]
+            if not infos:
+                continue
+            others = [d for d in fn.decorator_list if not _route_info(d)]
+            name = self._page_template_name(fn)
+            if not name or name not in consts:
+                continue
+            perm = None
+            ok = True
+            for d in others:
+                if (isinstance(d, ast.Call) and isinstance(d.func, ast.Name) and d.func.id == "requires_permission"
+                        and len(d.args) == 1 and isinstance(d.args[0], ast.Constant)):
+                    perm = d.args[0].value
+                else:
+                    ok = False
+            node = consts[name]
+            rows.append({
+                "func": fn.name, "url": infos[0][0], "template": name, "template_lines": node.end_lineno - node.lineno + 1,
+                "permission": perm, "eligible": ok, "reason": "" if ok else "has decorators other than requires_permission",
+                "start": min(d.lineno for d in fn.decorator_list), "end": fn.end_lineno,
+                "tpl_start": node.lineno, "tpl_end": node.end_lineno, "tpl_value": node.value.value,
+                "routes": [(u, m) for u, ms in infos for m in ms],
+            })
+        return rows
+
+    @staticmethod
+    def _page_template_name(fn: ast.FunctionDef) -> str | None:
+        """Matches: return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', NAME), request=request, get_flashed_messages=get_flashed_messages)"""
+        body = [s for s in fn.body if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))]
+        if len(body) != 1 or not isinstance(body[0], ast.Return) or not isinstance(body[0].value, ast.Call):
+            return None
+        call = body[0].value
+        if not (isinstance(call.func, ast.Name) and call.func.id == "render_template_string" and len(call.args) == 1):
+            return None
+        if {k.arg for k in call.keywords} - {"request", "get_flashed_messages"}:
+            return None
+        rep = call.args[0]
+        if not (isinstance(rep, ast.Call) and isinstance(rep.func, ast.Attribute) and rep.func.attr == "replace"
+                and isinstance(rep.func.value, ast.Name) and rep.func.value.id == "HTML_TEMPLATE" and len(rep.args) == 2):
+            return None
+        first, second = rep.args
+        if not (isinstance(first, ast.Constant) and first.value == CodeManager.PAGE_MARKER and isinstance(second, ast.Name)):
+            return None
+        return second.id
+
+    def pages(self) -> list[dict]:
+        """Pages still defined in main.py that can be moved whole into a blueprint."""
+        out = []
+        for r in self._page_candidates():
+            out.append({k: r[k] for k in ("func", "url", "template", "template_lines", "permission", "eligible", "reason")})
+        return sorted(out, key=lambda r: -r["template_lines"])
+
+    def _verify_fresh_app(self, timeout: int = 240) -> str:
+        """Start a fresh interpreter, import main and compare against the baseline. Returns '' when OK."""
+        import subprocess
+        import sys
+        script = ("import json;from pathlib import Path;import main;"
+                  "from managers.code_manager import CodeManager;"
+                  "r=CodeManager(main.app,Path('.').resolve()).compare_baseline();"
+                  "print('RESULT:'+json.dumps({'missing':r['missing']}))")
+        try:
+            proc = subprocess.run([sys.executable, "-c", script], cwd=self.root, capture_output=True, text=True, timeout=timeout)
+            line = next((l for l in proc.stdout.splitlines() if l.startswith("RESULT:")), "")
+            missing = json.loads(line[7:])["missing"] if line else None
+        except Exception as exc:
+            return f"verification failed: {exc}"
+        if missing is None:
+            return "the app failed to start: " + (proc.stderr or proc.stdout)[-400:]
+        if missing:
+            return f"{len(missing)} routes would go missing, e.g. {missing[0]['rule']}"
+        return ""
+
+    def isolate_page(self, func: str, module: str, dry_run: bool = True) -> dict:
+        """Move a page route and its HTML template out of main.py into a blueprint and templates/<name>.html."""
+        import shutil
+        if not MODULE_RE.match(module or ""):
+            raise CodeManagerError("Choose a blueprint from the list.")
+        bp_path = self.root / "blueprints" / (module.split(".", 1)[1] + ".py")
+        if not bp_path.is_file():
+            raise CodeManagerError("That blueprint file does not exist.")
+        if not any(getattr(b, "import_name", "") == module for b in self.app.blueprints.values()):
+            raise CodeManagerError("That blueprint is not live yet. Link it and restart first.")
+        cand = next((c for c in self._page_candidates() if c["func"] == func), None)
+        if cand is None:
+            raise CodeManagerError("That page is not in main.py in a movable form.")
+        if not cand["eligible"]:
+            raise CodeManagerError("Not moved: " + cand["reason"] + ".")
+        raw = self.main_path.read_bytes().decode("utf-8")
+        crlf = "\r\n" in raw
+        main_text = raw.replace("\r\n", "\n")
+        lines = main_text.split("\n")
+        outside = "\n".join(l for i, l in enumerate(lines, 1)
+                           if not (cand["start"] <= i <= cand["end"] or cand["tpl_start"] <= i <= cand["tpl_end"]))
+        for name in (cand["func"], cand["template"]):
+            if re.search(r"\b" + re.escape(name) + r"\b", outside):
+                raise CodeManagerError(f"Not moved: {name} is still referenced elsewhere in main.py.")
+        slug = re.sub(r"(_template|_html|_page)$", "", cand["template"].lower())
+        tpl_rel = f"templates/{slug}.html"
+        tpl_path = self.root / tpl_rel
+        bp_text = bp_path.read_text(encoding="utf-8")
+        bp_tree = ast.parse(bp_text)
+        bp_var = next((tg.id for n in bp_tree.body if isinstance(n, ast.Assign) and isinstance(n.value, ast.Call)
+                       and getattr(n.value.func, "id", getattr(n.value.func, "attr", "")) == "Blueprint"
+                       for tg in n.targets if isinstance(tg, ast.Name)), None)
+        if not bp_var:
+            raise CodeManagerError("Could not find the Blueprint object in that file.")
+        if tpl_path.exists():
+            raise CodeManagerError(f"{tpl_rel} already exists; nothing was changed.")
+        if any(isinstance(n, ast.FunctionDef) and n.name == cand["func"] for n in ast.walk(bp_tree)):
+            raise CodeManagerError(f"{cand['func']} already exists in {module}.")
+        report = {"func": func, "url": cand["url"], "module": module, "template_file": tpl_rel, "template_lines": cand["template_lines"],
+                  "lines_removed": (cand["end"] - cand["start"] + 1) + (cand["tpl_end"] - cand["tpl_start"] + 1),
+                  "dry_run": dry_run, "applied": False, "backup": ""}
+        if dry_run:
+            return report
+        perm_dec = f"@requires_permission({cand['permission']!r})\n" if cand["permission"] else ""
+        block = (f"\n\n# Moved from main.py by Code Manager. Markup: {tpl_rel}\n"
+                 f"@{bp_var}.route({cand['url']!r})\n{perm_dec}def {cand['func']}():\n"
+                 "    from pathlib import Path as _P\n"
+                 "    from flask import current_app as _app, get_flashed_messages as _flash, render_template_string as _render, request as _req\n"
+                 f"    content = (_P(_app.root_path) / {tpl_rel!r}).read_text(encoding='utf-8')\n"
+                 "    marker = '{% block content %}{% endblock %}'\n"
+                 "    layout = _app.config.get('_layout_template', marker)\n"
+                 "    return _render(layout.replace(marker, content), request=_req, get_flashed_messages=_flash)\n")
+        header = "from auth_module import requires_permission\n" if cand["permission"] and "requires_permission" not in bp_text else ""
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        backup_dir = self.root / "data" / "main_py_backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup = backup_dir / f"main.py.{stamp}.before-page-{cand['func']}"
+        bp_backup = backup_dir / f"{bp_path.name}.{stamp}.before-page-{cand['func']}"
+        shutil.copy2(self.main_path, backup)
+        shutil.copy2(bp_path, bp_backup)
+        drop = set(range(cand["start"], cand["end"] + 1)) | set(range(cand["tpl_start"], cand["tpl_end"] + 1))
+        new_main = re.sub(r"\n{4,}", "\n\n\n", "\n".join(l for i, l in enumerate(lines, 1) if i not in drop))
+        new_bp = bp_text.rstrip("\n") + "\n" + block
+        if header:
+            new_bp = header + new_bp
+        try:
+            ast.parse(new_main)
+            ast.parse(new_bp)
+        except SyntaxError as exc:
+            raise CodeManagerError(f"Edit would produce invalid code ({exc}); nothing was changed.") from exc
+        tpl_path.write_text(cand["tpl_value"], encoding="utf-8", newline="\n")
+        bp_path.write_text(new_bp, encoding="utf-8")
+        self.main_path.write_bytes((new_main.replace("\n", "\r\n") if crlf else new_main).encode("utf-8"))
+        failure = self._verify_fresh_app()
+        if failure:
+            shutil.copy2(backup, self.main_path)
+            shutil.copy2(bp_backup, bp_path)
+            tpl_path.unlink(missing_ok=True)
+            report["error"] = failure + ". Everything was restored from backup."
+            return report
+        self._cache = None
+        report.update(applied=True, backup=backup.relative_to(self.root).as_posix())
+        return report
+
+    def create_blueprint(self, slug: str) -> dict:
+        """Create an empty blueprint file and link it so pages and routes can be moved into it."""
+        from managers.feature_loader import link_blueprint
+        slug = str(slug or "").strip().lower()
+        if not re.fullmatch(r"[a-z][a-z0-9_]{1,40}", slug):
+            raise CodeManagerError("Use lowercase letters, digits and underscores (e.g. okta).")
+        path = self.root / "blueprints" / f"{slug}_routes.py"
+        if path.exists():
+            raise CodeManagerError(f"blueprints/{slug}_routes.py already exists.")
+        path.write_text(f"from flask import Blueprint\n\n{slug}_bp = Blueprint('{slug}_routes', __name__)\n", encoding="utf-8")
+        link_blueprint(self.root, f"blueprints.{slug}_routes", "created by Code Manager")
+        return {"module": f"blueprints.{slug}_routes", "file": f"blueprints/{slug}_routes.py"}
+
     # ---------- route baseline (loss guard) ----------
     def current_routes(self) -> list[dict]:
         rows = []

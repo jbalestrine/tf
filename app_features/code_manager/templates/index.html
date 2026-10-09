@@ -22,7 +22,7 @@
 </style>
 <script>
 (function () {
-  var TABS = [['overview','Overview'],['graph','Connections'],['groups','Route groups'],['templates','Templates'],['blueprints','Blueprints'],['features','Features'],['safety','Safety']];
+  var TABS = [['overview','Overview'],['graph','Connections'],['groups','Route groups'],['templates','Templates'],['blueprints','Blueprints'],['pages','Move pages'],['features','Features'],['safety','Safety']];
   var state = { tab: 'overview', analysis: null, budget: null };
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -144,6 +144,17 @@
     }).join('');
   }
 
+  function pagesTab(data) {
+    var opts = data.blueprints.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('');
+    var h = '<div class="cm-box"><b>Move a whole page out of main.py.</b> Pick a page and a live blueprint. The page route goes into the blueprint, its HTML goes to <code>templates/&lt;name&gt;.html</code>, and both are removed from main.py. Backed up first, verified against every route, and rolled back automatically if anything is missing.</div>';
+    h += '<div class="cm-box"><b>Need a new blueprint?</b> <input id="nb-slug" placeholder="name, e.g. okta" style="max-width:220px"> ' + btn('Create and link', 'id="nb-go"') + '<br><span style="color:#9aa4b2">Restart MasterChief afterwards so it shows as live.</span></div>';
+    if (!data.blueprints.length) h += '<div class="cm-box">No live blueprints yet. Create one above or link one on the Blueprints tab, then restart.</div>';
+    h += '<table><tr><th>Page</th><th>URL</th><th>Template</th><th>Move into</th></tr>' + data.pages.map(function (p) {
+      return '<tr><td>' + esc(p.func) + '</td><td>' + esc(p.url) + '</td><td>' + esc(p.template) + ' ? ' + p.template_lines + ' lines</td><td>' + (p.eligible ? '<select data-pg-bp="' + esc(p.func) + '">' + opts + '</select> ' + btn('Preview and move', 'data-pg="' + esc(p.func) + '"') : esc(p.reason)) + '</td></tr>';
+    }).join('') + '</table>';
+    return h;
+  }
+
   function features(data) {
     var h = '<div class="cm-box"><b>Add a feature without touching main.py</b><p style="color:#9aa4b2">Creates <code>app_features/&lt;name&gt;/</code> with its own routes, page, menu entry, README and test. Nothing is added to main.py.</p>' +
       '<p><input id="nf-slug" placeholder="name_with_underscores (e.g. bookmarks)"></p><p><input id="nf-title" placeholder="Title shown in the menu"></p><p><textarea id="nf-desc" rows="2" placeholder="What it does"></textarea></p>' + btn('Create feature', 'id="nf-go"') + '</div>';
@@ -174,10 +185,10 @@
     else if (state.tab === 'templates') body.innerHTML = templates();
     else {
       body.textContent = 'Loading...';
-      var url = { blueprints: '/api/blueprints', features: '/api/features', safety: '/api/safety' }[state.tab];
+      var url = { blueprints: '/api/blueprints', pages: '/api/pages', features: '/api/features', safety: '/api/safety' }[state.tab];
       api(url).then(function (d) {
         if (!d.ok) { body.textContent = d.error || 'Failed'; return; }
-        body.innerHTML = state.tab === 'blueprints' ? blueprints(d) : state.tab === 'features' ? features(d) : safety(d);
+        body.innerHTML = state.tab === 'blueprints' ? blueprints(d) : state.tab === 'pages' ? pagesTab(d) : state.tab === 'features' ? features(d) : safety(d);
         if (state.tab === 'safety') state.budget = d.budget, drawBudget();
       });
     }
@@ -197,6 +208,19 @@
         if (confirm(text)) { msg('Working? verifying all routes, please wait.', false); api('/api/blueprints/retire', { module: t.dataset.retire, apply: true }).then(function (d2) { msg(d2.ok ? 'Done: removed ' + d2.report.lines_removed + ' lines. Backup: ' + d2.report.backup + ' Archive: ' + d2.report.archive + ' Restart MasterChief.' : d2.error, !d2.ok); }); }
       });
     }
+    else if (t.dataset.pg) {
+      var sel = document.querySelector('select[data-pg-bp="' + t.dataset.pg + '"]'), mod = sel && sel.value;
+      if (!mod) { msg('Choose a blueprint first.', true); return; }
+      api('/api/pages/isolate', { func: t.dataset.pg, module: mod }).then(function (d) {
+        if (!d.ok) { msg(d.error, true); return; }
+        var r = d.report;
+        if (confirm('Move page ' + r.url + ' (' + r.func + ') into ' + r.module + '?\n\nTemplate -> ' + r.template_file + '\nRemoves ' + r.lines_removed + ' lines from main.py.\nBacked up, verified, auto-rolled back on any problem. Takes about a minute.')) {
+          msg('Working... verifying all routes, please wait.', false);
+          api('/api/pages/isolate', { func: t.dataset.pg, module: mod, apply: true }).then(function (d2) { msg(d2.ok ? 'Moved. Removed ' + d2.report.lines_removed + ' lines. Backup: ' + d2.report.backup + ' Restart MasterChief.' : d2.error, !d2.ok); if (d2.ok) render(); });
+        }
+      });
+    }
+    else if (t.id === 'nb-go') act('/api/blueprints/create', { slug: $('nb-slug').value }, render);
     else if (t.dataset.link) act('/api/blueprints/link', { module: t.dataset.link }, render);
     else if (t.dataset.unlink) act('/api/blueprints/unlink', { module: t.dataset.unlink }, render);
     else if (t.dataset.toggle) act('/api/features/toggle', { slug: t.dataset.toggle, enabled: t.dataset.on === '1' }, render);
