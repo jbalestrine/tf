@@ -88,7 +88,10 @@
 
   function graph() {
     var a = state.analysis, gs = a.groups.filter(function (g) { return g.route_count > 0; }).slice(0, 30);
-    var ts = a.templates.filter(function (t) { return t.used_by.length; });
+    var ts = a.templates.filter(function (t) { return t.used_by.length; }).map(function (t) { return { name: t.name, lines: t.lines, needed: [t.name] }; });
+    (a.template_files || []).filter(function (f) { return (f.routes || []).length; }).forEach(function (f) {
+      ts.push({ name: f.file.replace('templates/', ''), lines: f.lines, urls: f.routes });
+    });
     var hubs = a.hubs.slice(0, 16);
     var rowH = 34, W = 1000, H = Math.max(gs.length, ts.length, hubs.length) * rowH + 40;
     var pos = {};
@@ -97,10 +100,12 @@
     var edges = [];
     gs.forEach(function (g) {
       g.needs_templates.forEach(function (t) { if (pos['t:' + t]) edges.push(['t:' + t, 'g:' + g.prefix]); });
+      var gurls = (g.routes || []).map(function (r) { return r.url; });
+      ts.forEach(function (t) { if (t.urls && t.urls.some(function (u) { return gurls.indexOf(u) >= 0; })) edges.push(['t:' + t.name, 'g:' + g.prefix]); });
       hubs.forEach(function (h) { if (h.used_by.indexOf(g.prefix) >= 0) edges.push(['g:' + g.prefix, 'h:' + h.name]); });
     });
     var svg = '<svg id="cm-svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">';
-    svg += '<text x="10" y="14" fill="#9aa4b2" font-size="11">TEMPLATES</text><text x="390" y="14" fill="#9aa4b2" font-size="11">ROUTE GROUPS</text><text x="770" y="14" fill="#9aa4b2" font-size="11">SHARED HELPERS (used by 2+ groups)</text>';
+    svg += '<text x="10" y="14" fill="#9aa4b2" font-size="11">TEMPLATES (HTML files)</text><text x="390" y="14" fill="#9aa4b2" font-size="11">ROUTE GROUPS</text><text x="770" y="14" fill="#9aa4b2" font-size="11">SHARED HELPERS (used by 2+ groups)</text>';
     edges.forEach(function (e) {
       var a1 = pos[e[0]], b1 = pos[e[1]], x1 = a1.x + a1.w, y1 = a1.y + 12, x2 = b1.x, y2 = b1.y + 12, mx = (x1 + x2) / 2;
       svg += '<path class="cm-edge" data-a="' + esc(e[0]) + '" data-b="' + esc(e[1]) + '" d="M' + x1 + ',' + y1 + ' C' + mx + ',' + y1 + ' ' + mx + ',' + y2 + ' ' + x2 + ',' + y2 + '"/>';
