@@ -24,7 +24,8 @@ def try_llama(model_path: str, prompt: str, max_tokens: int, temperature: float)
     except Exception as e:
         return None, f"llama_cpp import failed: {e}"
     try:
-        model = _Llama(model_path=model_path)
+        ctx = os.environ.get('ECHO_LLM_CTX')
+        model = _Llama(model_path=model_path, n_ctx=int(ctx)) if ctx else _Llama(model_path=model_path)
     except Exception as e:
         return None, f"Failed to instantiate Llama: {e}"
     try:
