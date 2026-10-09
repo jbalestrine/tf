@@ -120,6 +120,15 @@
             const row = el('div', '', card + (seg.role === 'shadowed' ? 'opacity:.55;' : ''));
             row.append(el('strong', seg.label), el('span', '  ' + seg.path + ':' + seg.start + '-' + seg.end, 'color:#9aa4b2;'));
             if (seg.note) { row.append(el('div', seg.note, 'color:#9aa4b2;font-size:12px;')); }
+            if (seg.ide) {
+                const links = el('div', '', 'margin-top:4px;font-size:12px;display:flex;gap:12px;');
+                [['Open in Web IDE', seg.ide, '_blank'], ['Open in VS Code', seg.vscode, '_self']].forEach(function (l) {
+                    const a = el('a', l[0]); a.href = l[1]; a.target = l[2]; a.rel = 'noopener'; a.style.color = '#7aa2f7';
+                    a.addEventListener('click', function (e) { e.stopPropagation(); });
+                    links.append(a);
+                });
+                row.append(links);
+            }
             row.addEventListener('click', function () { openSegment(seg); });
             box.append(row);
         });

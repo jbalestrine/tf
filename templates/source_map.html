@@ -9,12 +9,25 @@
     <div id="sm-status" aria-live="polite" style="color:#9aa4b2;margin-bottom:6px;"></div>
     <div id="sm-health" style="margin-bottom:10px;"></div>
 </div>
+<div class="section">
+    <h3>3D map <span id="sm3d-stats" style="color:#9aa4b2;font-weight:normal;font-size:13px;"></span></h3>
+    <p style="color:#9aa4b2;margin-bottom:8px;">Big dots are app components, small dots are the files they use. Files that sit between several components are shared. Drag to rotate, scroll to zoom, click a dot to see its links. Gold dots are files the registry lists that no longer exist.</p>
+    <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:10px;">
+        <canvas id="sm3d" style="width:100%;height:380px;background:#0b1220;border-radius:8px;cursor:grab;"></canvas>
+        <div id="sm3d-info" style="background:#1f2937;border-radius:8px;padding:10px 12px;overflow:auto;max-height:380px;color:#9aa4b2;">Click a dot.</div>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="btn btn-info" id="sm3d-spin" type="button">Pause spin</button>
+        <button class="btn btn-info" id="sm3d-reset" type="button">Reset view</button>
+    </div>
+</div>
 <div class="section"><h3>Components</h3><div id="sm-components" style="display:grid;gap:10px;"></div></div>
 <div class="section">
     <h3>All routes (<span id="sm-route-count">0</span>)</h3>
     <input id="sm-route-filter" placeholder="Filter routes…" style="margin-bottom:8px;min-width:300px;">
     <div id="sm-routes" style="display:grid;gap:4px;"></div>
 </div>
+<script src="/static/source_map_3d.js"></script>
 <script>
 (function () {
     const $ = function (id) { return document.getElementById(id); };
@@ -26,6 +39,38 @@
         if (text !== undefined) { n.textContent = text; }
         if (style) { n.style.cssText = style; }
         return n;
+    }
+    function ideHref(path, line) { return '/masterchief_code_ui?open=' + encodeURIComponent(path) + (line ? '&line=' + line : ''); }
+    function openLinks(f, style) {
+        const box = el('span', '', style || '');
+        const ide = el('a', 'Web IDE'); ide.href = ideHref(f.path, f.line); ide.target = '_blank'; ide.rel = 'noopener'; ide.style.color = '#7aa2f7';
+        box.append(ide);
+        if (f.link) { const vs = el('a', 'VS Code'); vs.href = f.link; vs.style.cssText = 'color:#7aa2f7;margin-left:10px;'; box.append(vs); }
+        return box;
+    }
+    function showPick(p) {
+        const box = $('sm3d-info');
+        box.replaceChildren();
+        if (!p) { box.textContent = 'Click a dot.'; return; }
+        box.append(el('strong', p.label, 'color:#e5e7eb;'));
+        if (p.kind === 'file') {
+            box.append(el('div', 'File' + (p.data.role ? ' - ' + p.data.role : ''), 'margin:4px 0;'), openLinks(p.data));
+            box.append(el('div', 'Used by:', 'margin-top:8px;color:#e5e7eb;'));
+            p.links.forEach(function (l) { box.append(el('div', l.label, 'margin-left:8px;')); });
+        } else {
+            box.append(el('div', p.data.summary, 'margin:4px 0;'));
+            p.links.forEach(function (l) {
+                const row = el('div', '', 'margin:4px 0 0 4px;');
+                row.append(el('div', l.label + (l.data.exists === false ? ' (MISSING)' : ''), 'color:#e5e7eb;'), openLinks(l.data, 'font-size:12px;'));
+                box.append(row);
+            });
+        }
+    }
+    let view3d = null;
+    function render3d(list) {
+        if (!window.SourceMap3D || !$('sm3d')) { return; }
+        view3d = window.SourceMap3D.mount($('sm3d'), list, showPick);
+        $('sm3d-stats').textContent = '(' + view3d.stats.components + ' components, ' + view3d.stats.files + ' files, ' + view3d.stats.shared + ' shared)';
     }
     function fileLink(f) {
         const a = el('a', f.path + (f.line ? ':' + f.line : ''));
@@ -45,7 +90,7 @@
             if (c.how_to_edit) { n.append(el('div', 'How to edit: ' + c.how_to_edit, 'color:#9aa4b2;margin:4px 0;')); }
             c.files.forEach(function (f) {
                 const row = el('div', '', 'margin-left:8px;');
-                row.append(fileLink(f), el('span', '  — ' + f.role + (f.exists ? '' : ' (MISSING)'), 'color:#9aa4b2;'));
+                row.append(fileLink(f), openLinks(f, 'margin-left:10px;font-size:12px;'), el('span', '  — ' + f.role + (f.exists ? '' : ' (MISSING)'), 'color:#9aa4b2;'));
                 n.append(row);
             });
             if (c.urls.length) { n.append(el('div', 'URLs: ' + c.urls.join(', '), 'color:#9aa4b2;margin-top:4px;')); }
@@ -81,6 +126,7 @@
             renderComponents(data.components);
             renderRoutes(data.routes);
             renderHealth(data.health);
+            render3d(data.components);
         } catch (error) { $('sm-status').textContent = 'Failed to load: ' + error.message; }
     }
     async function find() {
@@ -95,6 +141,8 @@
             $('sm-status').textContent = d.routes.length + ' matching route(s), ' + d.components.length + ' component(s).';
         } catch (error) { $('sm-status').textContent = 'Failed: ' + error.message; }
     }
+    $('sm3d-spin').addEventListener('click', function () { if (view3d) { this.textContent = view3d.toggleSpin() ? 'Pause spin' : 'Resume spin'; } });
+    $('sm3d-reset').addEventListener('click', function () { if (view3d) { view3d.reset(); } });
     $('sm-go').addEventListener('click', find);
     $('sm-query').addEventListener('keydown', function (e) { if (e.key === 'Enter') { find(); } });
     $('sm-route-filter').addEventListener('input', function () {

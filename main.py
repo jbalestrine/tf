@@ -2682,6 +2682,7 @@ code{color:#4CAF50;}
       <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
       <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
       <a href="/page-editor" class="{{ 'active' if '/page-editor' in request.path else '' }}">✏️ Page Editor</a>
+      <a href="/site-settings" class="{{ 'active' if '/site-settings' in request.path else '' }}">🎛 Site Settings</a>
     <a href="/source-map" class="{{ 'active' if '/source-map' in request.path else '' }}">🧭 Source Map</a>
     <a href="/cicd" class="{{ 'active' if '/cicd' in request.path else '' }}">🚀 CI/CD Center</a>
     <a href="/backups" class="{{ 'active' if '/backups' in request.path else '' }}">💾 Data Backups</a>
@@ -16911,6 +16912,112 @@ def api_page_editor_restore():
         return result
 
     return _page_editor_call(work)
+
+
+def _site_settings():
+    from managers.site_settings import SiteSettings
+
+    return SiteSettings(_page_editor())
+
+
+def _site_settings_call(fn):
+    from managers.page_editor import PageEditorError
+    from managers.site_settings import SiteSettingsError
+
+    try:
+        return jsonify({'ok': True, **fn()})
+    except (PageEditorError, SiteSettingsError, UnicodeDecodeError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except Exception:
+        app.logger.exception('Site settings operation failed')
+        return jsonify({'ok': False, 'error': 'The site settings operation failed.'}), 500
+
+
+@app.route('/site-settings')
+def site_settings_page():
+    denied = _admin_page_or_error(False)
+    if denied is not None:
+        return denied
+    return _render_admin_fragment('site_settings.html')
+
+
+@app.route('/api/site-settings', methods=['GET'])
+def api_site_settings():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _site_settings_call(lambda: _site_settings().overview())
+
+
+@app.route('/api/site-settings/preview', methods=['POST'])
+def api_site_settings_preview():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    d = request.get_json(silent=True) or {}
+    return _site_settings_call(lambda: _site_settings().preview(d.get('values') or {}))
+
+
+@app.route('/api/site-settings/save', methods=['POST'])
+def api_site_settings_save():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    d = request.get_json(silent=True) or {}
+    if d.get('confirm') is not True:
+        return jsonify({'ok': False, 'error': 'Confirm the change first.'}), 400
+
+    def work():
+        result = _site_settings().save(d.get('values') or {})
+        _echo_operator_audit('site_settings_save', fields=sorted((d.get('values') or {}).keys()))
+        return result
+
+    return _site_settings_call(work)
+
+
+@app.route('/api/site-settings/nav/preview', methods=['POST'])
+def api_site_settings_nav_preview():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    d = request.get_json(silent=True) or {}
+    return _site_settings_call(lambda: _site_settings().nav_preview(d.get('op') or {}))
+
+
+@app.route('/api/site-settings/nav/save', methods=['POST'])
+def api_site_settings_nav_save():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    d = request.get_json(silent=True) or {}
+    if d.get('confirm') is not True:
+        return jsonify({'ok': False, 'error': 'Confirm the change first.'}), 400
+
+    def work():
+        result = _site_settings().nav_save(d.get('op') or {})
+        _echo_operator_audit('site_settings_nav', action=(d.get('op') or {}).get('type'))
+        return result
+
+    return _site_settings_call(work)
+
+
+@app.route('/api/site-settings/logo', methods=['POST'])
+def api_site_settings_logo():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    if request.form.get('confirm') != 'true':
+        return jsonify({'ok': False, 'error': 'Confirm the change first.'}), 400
+    upload = request.files.get('logo')
+    if upload is None:
+        return jsonify({'ok': False, 'error': 'Choose a logo file.'}), 400
+
+    def work():
+        result = _site_settings().set_logo(upload.filename, upload.read(1_000_001))
+        _echo_operator_audit('site_settings_logo', logo=result['logo'])
+        return result
+
+    return _site_settings_call(work)
 
 
 @app.route('/api/echo/models', methods=['GET'])

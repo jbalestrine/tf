@@ -1,0 +1,184 @@
+<div class="section">
+    <h2>Site Settings</h2>
+    <p style="color:#9aa4b2;margin-bottom:8px;">Change the logo, titles, version, About page text and menu without opening any file. Every change shows a diff first, keeps a backup, and lists the exact files it edits. Restore a backup from the <a href="/page-editor" style="color:#7aa2f7;">Page Editor</a>. Layout and Python changes take effect after you restart the app.</p>
+    <div id="ss-status" aria-live="polite" style="color:#9aa4b2;"></div>
+</div>
+<div class="section" id="ss-review" style="display:none;">
+    <h3>Review changes</h3>
+    <pre id="ss-diff" style="background:#0b1220;color:#c9d1d9;padding:10px;border-radius:6px;max-height:320px;overflow:auto;white-space:pre-wrap;"></pre>
+    <div id="ss-problems" style="color:#f7768e;margin:6px 0;"></div>
+    <button class="btn btn-success" id="ss-apply" type="button">Apply and keep backup</button>
+    <button class="btn btn-info" id="ss-cancel" type="button">Cancel</button>
+</div>
+<div class="section">
+    <h3>Logo</h3>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <img id="ss-logo-img" alt="Current logo" style="max-width:260px;max-height:90px;background:#111827;padding:6px;border-radius:6px;">
+        <div>
+            <input type="file" id="ss-logo-file" accept=".svg,.png,.jpg,.jpeg,.webp">
+            <button class="btn btn-info" id="ss-logo-go" type="button">Replace logo</button>
+            <div style="color:#9aa4b2;font-size:12px;margin-top:4px;">SVG, PNG, JPG or WebP up to 1 MB. Saved as <code>static/masterchief-logo.*</code>; the old file is copied to <code>data/page_editor_backups/</code>. Header markup: <code>main.py</code> and <code>templates/base.py</code>.</div>
+        </div>
+    </div>
+</div>
+<div id="ss-groups"></div>
+<div class="section">
+    <h3>Menu</h3>
+    <p style="color:#9aa4b2;margin-bottom:8px;">Rename groups and links, change where a link goes, add a link under a group, or remove one. Edits <code>HTML_TEMPLATE</code> in <code>main.py</code> and the matching line in <code>templates/base.py</code>. Removing a menu link does not delete the page itself.</p>
+    <div id="ss-nav" style="display:grid;gap:10px;"></div>
+</div>
+<script>
+(function () {
+    const $ = function (id) { return document.getElementById(id); };
+    const card = 'background:#1f2937;border-radius:6px;padding:10px 12px;';
+    const inputStyle = 'background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:4px 6px;';
+    let pending = null;
+
+    function el(tag, text, style) {
+        const n = document.createElement(tag);
+        if (text !== undefined) { n.textContent = text; }
+        if (style) { n.style.cssText = style; }
+        return n;
+    }
+    function status(t) { $('ss-status').textContent = t; }
+    async function post(url, body) {
+        const r = await fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const d = await r.json().catch(function () { return {}; });
+        if (!r.ok || d.ok === false) { throw new Error(d.error || ('HTTP ' + r.status)); }
+        return d;
+    }
+    function ideLink(path) {
+        const a = el('a', path); a.href = '/masterchief_code_ui?open=' + encodeURIComponent(path); a.target = '_blank'; a.rel = 'noopener'; a.style.color = '#7aa2f7';
+        return a;
+    }
+
+    async function review(previewUrl, saveUrl, body, after) {
+        try {
+            const d = await post(previewUrl, body);
+            $('ss-review').style.display = '';
+            $('ss-diff').textContent = d.changed ? d.diff : 'No changes.';
+            $('ss-problems').textContent = d.problems.length ? d.problems.join('; ') : '';
+            $('ss-apply').disabled = !d.changed || !d.ok;
+            pending = { saveUrl: saveUrl, body: body, after: after };
+            $('ss-review').scrollIntoView({ behavior: 'smooth' });
+        } catch (error) { status('Cannot review: ' + error.message); }
+    }
+    $('ss-apply').addEventListener('click', async function () {
+        if (!pending) { return; }
+        try {
+            const d = await post(pending.saveUrl, Object.assign({ confirm: true }, pending.body));
+            status('Saved ' + d.saved.length + ' file edit(s). ' + (d.needs_restart ? 'Restart the app to see layout changes.' : ''));
+            $('ss-review').style.display = 'none';
+            pending = null;
+            await load();
+        } catch (error) { status('Not saved: ' + error.message); }
+    });
+    $('ss-cancel').addEventListener('click', function () { $('ss-review').style.display = 'none'; pending = null; });
+
+    function renderGroups(groups) {
+        const box = $('ss-groups');
+        box.replaceChildren();
+        groups.forEach(function (g) {
+            const sec = el('div', '', 'margin:0 0 14px;');
+            sec.className = 'section';
+            sec.append(el('h3', g.name));
+            const inputs = {};
+            g.fields.forEach(function (f) {
+                const row = el('div', '', card + 'margin-bottom:8px;');
+                row.append(el('label', f.label, 'display:block;color:#e5e7eb;margin-bottom:4px;'));
+                const inp = f.kind === 'textarea' ? el('textarea') : el('input');
+                if (f.kind === 'textarea') { inp.rows = 4; }
+                inp.value = f.value; inp.dataset.orig = f.value;
+                inp.style.cssText = inputStyle + 'width:100%;';
+                inputs[f.id] = inp;
+                row.append(inp);
+                if (f.help) { row.append(el('div', f.help, 'color:#9aa4b2;font-size:12px;margin-top:4px;')); }
+                const files = el('div', 'Edits: ', 'color:#9aa4b2;font-size:12px;margin-top:4px;');
+                f.files.forEach(function (x) {
+                    const s = el('span', '', 'margin-right:10px;');
+                    s.append(ideLink(x.path));
+                    if (!x.found && !x.optional) { s.append(el('span', ' (not found)', 'color:#f0c674;')); }
+                    files.append(s);
+                });
+                row.append(files);
+                sec.append(row);
+            });
+            const btn = el('button', 'Review changes'); btn.className = 'btn btn-info'; btn.type = 'button';
+            btn.addEventListener('click', function () {
+                const values = {};
+                Object.keys(inputs).forEach(function (k) { if (inputs[k].value !== inputs[k].dataset.orig) { values[k] = inputs[k].value; } });
+                if (!Object.keys(values).length) { status('Nothing changed in ' + g.name + '.'); return; }
+                review('/api/site-settings/preview', '/api/site-settings/save', { values: values });
+            });
+            sec.append(btn);
+            box.append(sec);
+        });
+    }
+
+    function navButton(text, fn) {
+        const b = el('button', text); b.className = 'btn btn-info'; b.type = 'button'; b.style.cssText = 'padding:2px 8px;font-size:12px;';
+        b.addEventListener('click', fn);
+        return b;
+    }
+    function navOp(op) { return review('/api/site-settings/nav/preview', '/api/site-settings/nav/save', { op: op }); }
+
+    function renderNav(nav) {
+        const box = $('ss-nav');
+        box.replaceChildren();
+        nav.groups.forEach(function (g) {
+            const c = el('div', '', card);
+            if (g.line) {
+                const head = el('div', '', 'display:flex;gap:8px;align-items:center;margin-bottom:6px;');
+                const name = el('input'); name.value = g.label; name.style.cssText = inputStyle + 'font-weight:bold;';
+                head.append(el('span', 'Group', 'color:#9aa4b2;'), name, navButton('Rename group', function () { navOp({ type: 'rename_group', line: g.line, label: name.value }); }));
+                c.append(head);
+            } else { c.append(el('div', 'Top bar (outside any group)', 'color:#9aa4b2;margin-bottom:6px;')); }
+            g.links.forEach(function (l) {
+                const row = el('div', '', 'display:flex;gap:6px;align-items:center;margin:3px 0 3px 12px;flex-wrap:wrap;');
+                const label = el('input'); label.value = l.label; label.style.cssText = inputStyle + 'min-width:200px;';
+                const href = el('input'); href.value = l.href; href.style.cssText = inputStyle + 'min-width:200px;font-family:monospace;';
+                row.append(label, href,
+                    navButton('Save link', function () { navOp({ type: 'rename_link', line: l.line, label: label.value, href: href.value }); }),
+                    navButton('Remove', function () { navOp({ type: 'remove_link', line: l.line, href: l.href }); }));
+                c.append(row);
+            });
+            if (g.links.length) {
+                const last = g.links[g.links.length - 1];
+                const add = el('div', '', 'display:flex;gap:6px;align-items:center;margin:8px 0 0 12px;flex-wrap:wrap;');
+                const nl = el('input'); nl.placeholder = '🧩 New link label'; nl.style.cssText = inputStyle + 'min-width:200px;';
+                const nh = el('input'); nh.placeholder = '/new-page'; nh.style.cssText = inputStyle + 'min-width:200px;font-family:monospace;';
+                add.append(nl, nh, navButton('Add link at end of group', function () { navOp({ type: 'add_link', line: last.line, label: nl.value, href: nh.value }); }));
+                c.append(add);
+            }
+            box.append(c);
+        });
+    }
+
+    $('ss-logo-go').addEventListener('click', async function () {
+        const file = $('ss-logo-file').files[0];
+        if (!file) { status('Choose a logo file first.'); return; }
+        if (!window.confirm('Replace the logo with ' + file.name + '? The current logo is backed up.')) { return; }
+        const form = new FormData();
+        form.append('logo', file); form.append('confirm', 'true');
+        try {
+            const r = await fetch('/api/site-settings/logo', { method: 'POST', credentials: 'same-origin', body: form });
+            const d = await r.json().catch(function () { return {}; });
+            if (!r.ok || d.ok === false) { throw new Error(d.error || ('HTTP ' + r.status)); }
+            status('Logo replaced. ' + (d.needs_restart ? 'Restart the app so the header uses the new file name.' : 'Refresh to see it.'));
+            await load();
+        } catch (error) { status('Logo not changed: ' + error.message); }
+    });
+
+    async function load() {
+        try {
+            const r = await fetch('/api/site-settings', { credentials: 'same-origin' });
+            const d = await r.json();
+            if (!r.ok || d.ok === false) { throw new Error(d.error || ('HTTP ' + r.status)); }
+            $('ss-logo-img').src = d.logo.src + '?v=' + Date.now();
+            renderGroups(d.groups);
+            renderNav(d.nav);
+        } catch (error) { status('Failed to load: ' + error.message); }
+    }
+    load();
+})();
+</script>

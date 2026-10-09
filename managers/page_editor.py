@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import difflib
+from urllib.parse import quote
 import html
 import hashlib
 import json
@@ -153,6 +154,8 @@ class PageEditor:
         return {
             "id": f"{path}:{start}-{end}", "path": path, "start": start, "end": end,
             "label": label, "role": role, "note": note,
+            "ide": f"/masterchief_code_ui?open={quote(path)}&line={start}",
+            "vscode": f"vscode://file/{(self.root / path).as_posix()}:{start}",
         }
 
     def _whole_file(self, rel: str, label: str, role: str) -> dict | None:

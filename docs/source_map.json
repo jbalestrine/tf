@@ -450,7 +450,7 @@
       "title": "Page Editor",
       "category": "Operate",
       "summary": "Pick a page, see every file/block behind it, edit with diff, backup and restore.",
-      "how_to_edit": "UI: templates/page_editor.html. Logic and safety rules (allowed folders/types, backups): managers/page_editor.py. Routes: main.py. Backups go to data/page_editor_backups/.",
+      "how_to_edit": "UI: templates/page_editor.html. Logic and safety rules (allowed folders/types, backups): managers/page_editor.py. Routes: main.py. Backups go to data/page_editor_backups/. Each segment links to the Web IDE (/masterchief_code_ui?open=path&line=N) and VS Code.",
       "files": [
         {
           "path": "templates/page_editor.html",
@@ -468,6 +468,61 @@
       ],
       "urls": [
         "/page-editor"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "site-settings",
+      "title": "Site Settings wizard",
+      "category": "Operate",
+      "summary": "Forms to change the logo, browser title, version, About page text and menu entries. Each change shows a diff and keeps a backup.",
+      "how_to_edit": "Add or change a setting: edit the FIELDS list (file + regex per setting) in managers/site_settings.py. Page layout: templates/site_settings.html. Routes: main.py (/site-settings, /api/site-settings/*).",
+      "files": [
+        {
+          "path": "managers/site_settings.py",
+          "role": "Which setting edits which file (FIELDS), menu and logo logic"
+        },
+        {
+          "path": "templates/site_settings.html",
+          "role": "Wizard page"
+        },
+        {
+          "path": "main.py",
+          "role": "Routes /site-settings and /api/site-settings/*",
+          "anchor": "route\\('/site-settings'\\)"
+        },
+        {
+          "path": "managers/page_editor.py",
+          "role": "Validated, backed-up writes used by every edit"
+        }
+      ],
+      "urls": [
+        "/site-settings"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "source-map-3d",
+      "title": "Source Map 3D view",
+      "category": "Operate",
+      "summary": "Rotatable map of components and the files they use, with Web IDE and VS Code links.",
+      "how_to_edit": "Drawing and layout: static/source_map_3d.js. Page wiring: templates/source_map.html. Data comes from docs/source_map.json.",
+      "files": [
+        {
+          "path": "static/source_map_3d.js",
+          "role": "3D canvas renderer"
+        },
+        {
+          "path": "templates/source_map.html",
+          "role": "Page and info panel"
+        },
+        {
+          "path": "docs/source_map.json",
+          "role": "Component registry shown in the map"
+        }
+      ],
+      "urls": [
+        "/source-map"
       ],
       "warning": ""
     }

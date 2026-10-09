@@ -1883,7 +1883,24 @@ window.addEventListener('DOMContentLoaded', () => {
   refreshTree('');
   updateLineNumbers();
   appendOutput('[MasterChief] Web IDE loaded. Press Ctrl+N for Script Wizard, Ctrl+S to save, Ctrl+Enter to run.\n', 'out-success');
+  openFromQuery();
 });
+
+// Deep link: /masterchief_code_ui?open=templates/pages.py&line=8
+async function openFromQuery() {
+  const q = new URLSearchParams(location.search);
+  const path = q.get('open');
+  if (!path) return;
+  await loadFileContent(path, path.split('/').pop());
+  const line = parseInt(q.get('line') || '1', 10);
+  const ed = document.getElementById('code-editor');
+  if (!ed || !(line > 1)) return;
+  const lines = ed.value.split('\n');
+  const pos = lines.slice(0, line - 1).join('\n').length + (line > 1 ? 1 : 0);
+  ed.focus();
+  ed.setSelectionRange(pos, pos + (lines[line - 1] || '').length);
+  ed.scrollTop = Math.max(0, (line - 5) * parseFloat(getComputedStyle(ed).lineHeight || 18));
+}
 </script>
 </body>
 </html>
