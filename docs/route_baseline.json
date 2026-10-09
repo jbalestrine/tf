@@ -1,0 +1,3192 @@
+{
+ "saved": "2026-10-09 04:17:29",
+ "count": 531,
+ "routes": [
+  {
+   "rule": "/",
+   "method": "GET",
+   "endpoint": "dashboard",
+   "file": "main.py"
+  },
+  {
+   "rule": "/about",
+   "method": "GET",
+   "endpoint": "about_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/about",
+   "method": "GET",
+   "endpoint": "ui_pages.about_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/addons",
+   "method": "GET",
+   "endpoint": "addons_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/build/<filename>",
+   "method": "GET",
+   "endpoint": "addons_build",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/create_blank_module",
+   "method": "POST",
+   "endpoint": "addons_create_blank_module",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/delete/<filename>",
+   "method": "GET",
+   "endpoint": "addons_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/install/<filename>",
+   "method": "GET",
+   "endpoint": "addons_install",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/install/<filename>",
+   "method": "POST",
+   "endpoint": "addons_install",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/load/<addon_name>",
+   "method": "GET",
+   "endpoint": "addons_load",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules",
+   "method": "GET",
+   "endpoint": "addons_modules",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/",
+   "method": "GET",
+   "endpoint": "addons_module_root",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/file",
+   "method": "DELETE",
+   "endpoint": "module_file_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/file",
+   "method": "GET",
+   "endpoint": "module_file_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/file",
+   "method": "POST",
+   "endpoint": "module_file_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/file",
+   "method": "PUT",
+   "endpoint": "module_file_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/files",
+   "method": "GET",
+   "endpoint": "module_files_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/ui_integration",
+   "method": "GET",
+   "endpoint": "module_ui_integration_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/ui_integration",
+   "method": "POST",
+   "endpoint": "module_ui_integration_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/api/upload",
+   "method": "POST",
+   "endpoint": "module_upload_api",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/app/",
+   "method": "GET",
+   "endpoint": "addons_module_proxy",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/app/<path:subpath>",
+   "method": "GET",
+   "endpoint": "addons_module_proxy",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/build",
+   "method": "POST",
+   "endpoint": "addons_module_build",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/config/<path:config_file>",
+   "method": "GET",
+   "endpoint": "addons_module_config",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/config/<path:config_file>",
+   "method": "POST",
+   "endpoint": "addons_module_config_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/delete",
+   "method": "POST",
+   "endpoint": "addons_module_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/install_deps",
+   "method": "POST",
+   "endpoint": "addons_module_install_deps",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/manager",
+   "method": "GET",
+   "endpoint": "module_manager",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/run_setup/<path:setup_script>",
+   "method": "POST",
+   "endpoint": "addons_module_run_setup",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/start",
+   "method": "POST",
+   "endpoint": "addons_module_start",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/status",
+   "method": "GET",
+   "endpoint": "addons_module_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/stop",
+   "method": "POST",
+   "endpoint": "addons_module_stop",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/<module_name>/web/<path:filepath>",
+   "method": "GET",
+   "endpoint": "addons_module_web",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/modules/delete_all",
+   "method": "POST",
+   "endpoint": "delete_all_modules",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/register_features/<addon_name>",
+   "method": "GET",
+   "endpoint": "addons_register_features",
+   "file": "main.py"
+  },
+  {
+   "rule": "/addons/upload",
+   "method": "POST",
+   "endpoint": "addons_upload",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/about/version",
+   "method": "GET",
+   "endpoint": "about_github_version",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ado/hooks",
+   "method": "DELETE",
+   "endpoint": "api_ado_hooks",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ado/hooks",
+   "method": "DELETE",
+   "endpoint": "azure.api_ado_hooks",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/ado/hooks",
+   "method": "GET",
+   "endpoint": "api_ado_hooks",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ado/hooks",
+   "method": "GET",
+   "endpoint": "azure.api_ado_hooks",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/ado/hooks",
+   "method": "POST",
+   "endpoint": "api_ado_hooks",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ado/hooks",
+   "method": "POST",
+   "endpoint": "azure.api_ado_hooks",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/akamai/cps/acknowledge",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_acknowledge",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/changes",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_changes",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/deploy",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_deploy",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/details",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_details",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/dv-challenges",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_dv_challenges",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/list",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/renew",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_renew",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/sprint-scan",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_sprint_scan",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/cps/upload-cert",
+   "method": "POST",
+   "endpoint": "api_akamai_cps_upload_cert",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/creds/save",
+   "method": "POST",
+   "endpoint": "api_akamai_creds_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/creds/test",
+   "method": "POST",
+   "endpoint": "api_akamai_creds_test",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/origins/check-ssl",
+   "method": "POST",
+   "endpoint": "api_akamai_origins_check_ssl",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/origins/sync-to-kv",
+   "method": "POST",
+   "endpoint": "api_akamai_origins_sync_to_kv",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/r53/add-record",
+   "method": "POST",
+   "endpoint": "api_akamai_r53_add_record",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/r53/check-record",
+   "method": "POST",
+   "endpoint": "api_akamai_r53_check_record",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/akamai/r53/list-records",
+   "method": "POST",
+   "endpoint": "api_akamai_r53_list_records",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/architecture/visio",
+   "method": "POST",
+   "endpoint": "iac.api_architecture_visio",
+   "file": "blueprints/iac_routes.py"
+  },
+  {
+   "rule": "/api/azure/create_rg",
+   "method": "POST",
+   "endpoint": "api_azure_create_rg",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/azure/create_rg",
+   "method": "POST",
+   "endpoint": "azure.api_azure_create_rg",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/azure/groups",
+   "method": "GET",
+   "endpoint": "api_azure_groups",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/azure/groups",
+   "method": "GET",
+   "endpoint": "azure.api_azure_groups",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/azure/resources",
+   "method": "GET",
+   "endpoint": "api_azure_resources",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/azure/resources",
+   "method": "GET",
+   "endpoint": "azure.api_azure_resources",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/azure/storage/accounts",
+   "method": "GET",
+   "endpoint": "api_azure_storage_accounts",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/azure/storage/accounts",
+   "method": "GET",
+   "endpoint": "azure.api_azure_storage_accounts",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/azure/storage/containers",
+   "method": "POST",
+   "endpoint": "api_azure_storage_containers",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/azure/storage/containers",
+   "method": "POST",
+   "endpoint": "azure.api_azure_storage_containers",
+   "file": "blueprints/azure.py"
+  },
+  {
+   "rule": "/api/backups",
+   "method": "GET",
+   "endpoint": "api_list_backups",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/backups",
+   "method": "POST",
+   "endpoint": "api_create_backup",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/backups/<name>/download",
+   "method": "GET",
+   "endpoint": "api_download_backup",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/blueprint/main/extract",
+   "method": "POST",
+   "endpoint": "wizard.api_blueprint_main_extract",
+   "file": "blueprints/wizard.py"
+  },
+  {
+   "rule": "/api/blueprint/main/summary",
+   "method": "GET",
+   "endpoint": "wizard.api_blueprint_main_summary",
+   "file": "blueprints/wizard.py"
+  },
+  {
+   "rule": "/api/catalog/analysis",
+   "method": "GET",
+   "endpoint": "manager.api_catalog_analysis",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/catalog/files",
+   "method": "GET",
+   "endpoint": "manager.api_catalog_files",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/catalog/routes",
+   "method": "GET",
+   "endpoint": "manager.api_catalog_routes",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/certs/appgw",
+   "method": "POST",
+   "endpoint": "api_certs_appgw",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/appservices",
+   "method": "POST",
+   "endpoint": "api_certs_appservices",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/audit",
+   "method": "GET",
+   "endpoint": "api_certs_audit",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/audit/clear",
+   "method": "POST",
+   "endpoint": "api_certs_audit_clear",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/chain",
+   "method": "POST",
+   "endpoint": "api_certs_chain",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/delete",
+   "method": "POST",
+   "endpoint": "api_certs_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/details",
+   "method": "POST",
+   "endpoint": "api_certs_details",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/expiring",
+   "method": "POST",
+   "endpoint": "api_certs_expiring",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/keyvault/list",
+   "method": "POST",
+   "endpoint": "api_certs_kv_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/keyvault/sync",
+   "method": "POST",
+   "endpoint": "api_certs_kv_sync",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/keyvault/versions",
+   "method": "POST",
+   "endpoint": "api_certs_kv_versions",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/list",
+   "method": "POST",
+   "endpoint": "api_certs_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/summary",
+   "method": "GET",
+   "endpoint": "api_certs_summary",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/certs/wizard",
+   "method": "POST",
+   "endpoint": "api_certs_wizard",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/chatserv/message",
+   "method": "POST",
+   "endpoint": "chatserv.chatserv_message",
+   "file": "blueprints/chatserv_routes.py"
+  },
+  {
+   "rule": "/api/chatserv/motd",
+   "method": "POST",
+   "endpoint": "chatserv.chatserv_update_motd",
+   "file": "blueprints/chatserv_routes.py"
+  },
+  {
+   "rule": "/api/chatserv/state",
+   "method": "GET",
+   "endpoint": "chatserv.chatserv_state",
+   "file": "blueprints/chatserv_routes.py"
+  },
+  {
+   "rule": "/api/chatserv/transfers/consume",
+   "method": "POST",
+   "endpoint": "chatserv.chatserv_consume_transfers",
+   "file": "blueprints/chatserv_routes.py"
+  },
+  {
+   "rule": "/api/cicd/config",
+   "method": "POST",
+   "endpoint": "api_cicd_config",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cicd/explain",
+   "method": "GET",
+   "endpoint": "api_cicd_explain",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cicd/gitlab-template",
+   "method": "GET",
+   "endpoint": "api_cicd_gitlab_template",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cicd/gitlab-template",
+   "method": "POST",
+   "endpoint": "api_cicd_gitlab_template",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cicd/overview",
+   "method": "GET",
+   "endpoint": "api_cicd_overview",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cicd/run",
+   "method": "POST",
+   "endpoint": "api_cicd_run",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cicd/runs",
+   "method": "GET",
+   "endpoint": "api_cicd_runs",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cicd/test/<provider>",
+   "method": "POST",
+   "endpoint": "api_cicd_test",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/cloud/accounts",
+   "method": "GET",
+   "endpoint": "api_cloud_accounts_list",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/accounts",
+   "method": "POST",
+   "endpoint": "api_cloud_accounts_create",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/accounts/<aid>",
+   "method": "DELETE",
+   "endpoint": "api_cloud_accounts_delete",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/costs",
+   "method": "GET",
+   "endpoint": "api_cloud_costs",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/refresh",
+   "method": "POST",
+   "endpoint": "api_cloud_refresh",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/resources",
+   "method": "GET",
+   "endpoint": "api_cloud_resources_list",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/resources/<rid>",
+   "method": "GET",
+   "endpoint": "api_cloud_resources_get",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/resources/<rid>/start",
+   "method": "POST",
+   "endpoint": "api_cloud_resources_start",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/cloud/resources/<rid>/stop",
+   "method": "POST",
+   "endpoint": "api_cloud_resources_stop",
+   "file": "managers/cloud.py"
+  },
+  {
+   "rule": "/api/code-archetypes",
+   "method": "GET",
+   "endpoint": "api_code_archetypes",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/code-archetypes",
+   "method": "POST",
+   "endpoint": "api_code_archetypes",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/core-scripts",
+   "method": "GET",
+   "endpoint": "core_scripts.api_core_scripts",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/api/core-scripts/dry-check",
+   "method": "POST",
+   "endpoint": "core_scripts.api_core_scripts_dry_check",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/api/core-scripts/ideas",
+   "method": "DELETE",
+   "endpoint": "core_scripts.api_core_script_idea_remove",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/api/core-scripts/ideas",
+   "method": "GET",
+   "endpoint": "core_scripts.api_core_script_ideas",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/api/core-scripts/ideas",
+   "method": "POST",
+   "endpoint": "core_scripts.api_core_script_idea_add",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/api/core-scripts/run",
+   "method": "POST",
+   "endpoint": "core_scripts.api_core_scripts_run",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/api/deployments/capabilities",
+   "method": "GET",
+   "endpoint": "deployments.deployment_capabilities",
+   "file": "blueprints/deploy_routes.py"
+  },
+  {
+   "rule": "/api/deployments/execute",
+   "method": "POST",
+   "endpoint": "deployments.deployment_execute",
+   "file": "blueprints/deploy_routes.py"
+  },
+  {
+   "rule": "/api/deployments/preview",
+   "method": "POST",
+   "endpoint": "deployments.deployment_preview",
+   "file": "blueprints/deploy_routes.py"
+  },
+  {
+   "rule": "/api/echo/action_handlers",
+   "method": "GET",
+   "endpoint": "api_echo_action_handlers",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/approvals",
+   "method": "GET",
+   "endpoint": "api_echo_approvals",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/approvals/<path:session_id>/<action>",
+   "method": "POST",
+   "endpoint": "api_echo_approval_decision",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/chat",
+   "method": "POST",
+   "endpoint": "api_echo_chat",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/commands",
+   "method": "GET",
+   "endpoint": "api_echo_commands",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/commands",
+   "method": "POST",
+   "endpoint": "api_echo_commands",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/commands/<name>",
+   "method": "DELETE",
+   "endpoint": "api_echo_command_item",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/commands/<name>",
+   "method": "PUT",
+   "endpoint": "api_echo_command_item",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/debug_image_provider",
+   "method": "GET",
+   "endpoint": "api_echo_debug_image_provider",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/generate_image",
+   "method": "POST",
+   "endpoint": "api_echo_generate_image",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/generate_image_async",
+   "method": "POST",
+   "endpoint": "api_echo_generate_image_async",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/history",
+   "method": "GET",
+   "endpoint": "api_echo_history",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/image_status",
+   "method": "GET",
+   "endpoint": "api_echo_image_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/memories",
+   "method": "GET",
+   "endpoint": "api_echo_memories_list",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories",
+   "method": "POST",
+   "endpoint": "api_echo_memories_create",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories/<mid>",
+   "method": "DELETE",
+   "endpoint": "api_echo_memories_delete",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories/<mid>",
+   "method": "GET",
+   "endpoint": "api_echo_memories_get",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories/<mid>",
+   "method": "PUT",
+   "endpoint": "api_echo_memories_update",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories/<mid>/pin",
+   "method": "POST",
+   "endpoint": "api_echo_memories_pin",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories/context",
+   "method": "POST",
+   "endpoint": "api_echo_memories_context",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories/search",
+   "method": "GET",
+   "endpoint": "api_echo_memories_search",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/memories/topics",
+   "method": "GET",
+   "endpoint": "api_echo_memories_topics",
+   "file": "managers/memory.py"
+  },
+  {
+   "rule": "/api/echo/model",
+   "method": "GET",
+   "endpoint": "api_echo_model",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/models",
+   "method": "GET",
+   "endpoint": "api_echo_models",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/outputs",
+   "method": "GET",
+   "endpoint": "api_echo_outputs",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/outputs/delete",
+   "method": "POST",
+   "endpoint": "api_echo_outputs_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/preload_model",
+   "method": "GET",
+   "endpoint": "api_echo_preload_model",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/preload_model",
+   "method": "POST",
+   "endpoint": "api_echo_preload_model",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/remote/twilio",
+   "method": "POST",
+   "endpoint": "api_echo_remote_twilio",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/search",
+   "method": "GET",
+   "endpoint": "api_echo_search",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/select_model",
+   "method": "POST",
+   "endpoint": "api_echo_select_model",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/session/<session_id>",
+   "method": "DELETE",
+   "endpoint": "api_echo_session",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/session/<session_id>",
+   "method": "GET",
+   "endpoint": "api_echo_session",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/session/create",
+   "method": "POST",
+   "endpoint": "api_echo_session_create",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/session/favorite",
+   "method": "POST",
+   "endpoint": "api_echo_session_favorite",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/session_prefs",
+   "method": "GET",
+   "endpoint": "api_echo_session_prefs",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/session_prefs",
+   "method": "POST",
+   "endpoint": "api_echo_session_prefs",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/sessions",
+   "method": "GET",
+   "endpoint": "api_echo_sessions",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/stats",
+   "method": "GET",
+   "endpoint": "api_echo_stats",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/train",
+   "method": "POST",
+   "endpoint": "api_echo_train",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/train_cancel",
+   "method": "POST",
+   "endpoint": "api_echo_train_cancel",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/train_list",
+   "method": "GET",
+   "endpoint": "api_echo_train_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/train_model",
+   "method": "POST",
+   "endpoint": "api_echo_train_model",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/train_status",
+   "method": "GET",
+   "endpoint": "api_echo_train_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/training_files",
+   "method": "GET",
+   "endpoint": "api_echo_training_files",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/upload_ingest",
+   "method": "POST",
+   "endpoint": "api_echo_upload_ingest",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/voice_commands",
+   "method": "GET",
+   "endpoint": "api_voice_commands_get",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/voice_commands",
+   "method": "POST",
+   "endpoint": "api_voice_commands_post",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/voice_commands/<cmd_id>",
+   "method": "DELETE",
+   "endpoint": "api_voice_commands_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/voice_commands/<cmd_id>",
+   "method": "PUT",
+   "endpoint": "api_voice_commands_update",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/echo/youtube_search",
+   "method": "GET",
+   "endpoint": "api_echo_youtube_search",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/features",
+   "method": "GET",
+   "endpoint": "api_list_features",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/<feature_name>/toggle",
+   "method": "POST",
+   "endpoint": "api_toggle_feature",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/create",
+   "method": "POST",
+   "endpoint": "api_create_feature",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/enabled",
+   "method": "GET",
+   "endpoint": "api_features_enabled",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/features/enabled",
+   "method": "GET",
+   "endpoint": "feature_routes.api_features_enabled",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/api/features/github",
+   "method": "POST",
+   "endpoint": "api_load_from_github",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/github/clone",
+   "method": "POST",
+   "endpoint": "github_clone_repo",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/create-repo",
+   "method": "POST",
+   "endpoint": "github_create_repo",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/file-content/<path:repo_name>",
+   "method": "GET",
+   "endpoint": "github_file_content",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/files/<path:repo_name>",
+   "method": "GET",
+   "endpoint": "github_repo_files",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/load",
+   "method": "POST",
+   "endpoint": "api_load_from_github_url",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/github/repo-scripts",
+   "method": "POST",
+   "endpoint": "api_load_repo_scripts",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/github/repos",
+   "method": "GET",
+   "endpoint": "github_repos",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/repos/<owner>/<repo>",
+   "method": "GET",
+   "endpoint": "github_repo_detail",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/repos/<owner>/<repo>/contents",
+   "method": "GET",
+   "endpoint": "github_repo_contents",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/repos/<owner>/<repo>/file-content",
+   "method": "GET",
+   "endpoint": "github_file_content_api",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/save-file",
+   "method": "POST",
+   "endpoint": "github_save_file",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/api/features/github/search",
+   "method": "GET",
+   "endpoint": "api_search_github_repos",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/github/user/<username>/repos",
+   "method": "GET",
+   "endpoint": "api_get_user_repos",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/load-github",
+   "method": "POST",
+   "endpoint": "api_load_github_repo",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/script",
+   "method": "POST",
+   "endpoint": "api_load_from_script",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/features/settings",
+   "method": "GET",
+   "endpoint": "api_features_settings",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/features/settings",
+   "method": "GET",
+   "endpoint": "feature_routes.api_features_settings",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/api/features/settings",
+   "method": "POST",
+   "endpoint": "api_features_settings",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/features/settings",
+   "method": "POST",
+   "endpoint": "feature_routes.api_features_settings",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/api/features/test",
+   "method": "GET",
+   "endpoint": "test_route",
+   "file": "features/manager.py"
+  },
+  {
+   "rule": "/api/gallery/admin/login",
+   "method": "POST",
+   "endpoint": "gallery_admin_login",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/admin/logout",
+   "method": "POST",
+   "endpoint": "gallery_admin_logout",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/admin/settings",
+   "method": "GET",
+   "endpoint": "gallery_admin_settings",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/admin/settings",
+   "method": "POST",
+   "endpoint": "gallery_admin_settings",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/admin/verify",
+   "method": "POST",
+   "endpoint": "gallery_admin_verify",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/delete/<art_id>",
+   "method": "DELETE",
+   "endpoint": "gallery_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/image/<filename>",
+   "method": "GET",
+   "endpoint": "gallery_image",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/list",
+   "method": "GET",
+   "endpoint": "gallery_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/orders",
+   "method": "GET",
+   "endpoint": "gallery_orders",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/purchase",
+   "method": "POST",
+   "endpoint": "gallery_purchase",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/update/<art_id>",
+   "method": "POST",
+   "endpoint": "gallery_update",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gallery/upload",
+   "method": "POST",
+   "endpoint": "gallery_upload",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gguf/models",
+   "method": "GET",
+   "endpoint": "api_gguf_models",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/gguf/select",
+   "method": "POST",
+   "endpoint": "api_gguf_select",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/iac/generate",
+   "method": "POST",
+   "endpoint": "iac.api_iac_generate",
+   "file": "blueprints/iac_routes.py"
+  },
+  {
+   "rule": "/api/ide/exec_async",
+   "method": "POST",
+   "endpoint": "api_ide_exec_async",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/exec_status",
+   "method": "GET",
+   "endpoint": "api_ide_exec_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/execute",
+   "method": "POST",
+   "endpoint": "api_ide_execute",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/execute",
+   "method": "POST",
+   "endpoint": "ide.api_ide_execute",
+   "file": "blueprints/ide.py"
+  },
+  {
+   "rule": "/api/ide/load",
+   "method": "POST",
+   "endpoint": "api_ide_load",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/log",
+   "method": "POST",
+   "endpoint": "api_ide_log",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/remote/creds",
+   "method": "GET",
+   "endpoint": "api_ide_remote_creds_get",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/remote/creds",
+   "method": "POST",
+   "endpoint": "api_ide_remote_creds_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/save",
+   "method": "POST",
+   "endpoint": "api_ide_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/scripts",
+   "method": "GET",
+   "endpoint": "api_ide_scripts",
+   "file": "managers/script.py"
+  },
+  {
+   "rule": "/api/ide/scripts",
+   "method": "GET",
+   "endpoint": "ide.api_ide_scripts",
+   "file": "blueprints/ide.py"
+  },
+  {
+   "rule": "/api/ide/search",
+   "method": "GET",
+   "endpoint": "api_ide_search",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/ide/tree",
+   "method": "GET",
+   "endpoint": "api_ide_tree",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/feature_flags",
+   "method": "GET",
+   "endpoint": "manager.api_manager_feature_flags",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/feature_flags",
+   "method": "PUT",
+   "endpoint": "manager.api_manager_feature_flags",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/models",
+   "method": "GET",
+   "endpoint": "api_manager_models",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/models",
+   "method": "GET",
+   "endpoint": "manager.api_manager_models",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/models/preload",
+   "method": "POST",
+   "endpoint": "api_manager_models_preload",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/models/preload",
+   "method": "POST",
+   "endpoint": "manager.api_manager_models_preload",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/run_tests",
+   "method": "POST",
+   "endpoint": "api_manager_run_tests",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/run_tests",
+   "method": "POST",
+   "endpoint": "manager.api_manager_run_tests",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/run_tests/status",
+   "method": "GET",
+   "endpoint": "api_manager_run_tests_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/run_tests/status",
+   "method": "GET",
+   "endpoint": "manager.api_manager_run_tests_status",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "DELETE",
+   "endpoint": "api_manager_tasks",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "DELETE",
+   "endpoint": "manager.api_manager_tasks",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "GET",
+   "endpoint": "api_manager_tasks",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "GET",
+   "endpoint": "manager.api_manager_tasks",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "POST",
+   "endpoint": "api_manager_tasks",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "POST",
+   "endpoint": "manager.api_manager_tasks",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "PUT",
+   "endpoint": "api_manager_tasks",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/manager/tasks",
+   "method": "PUT",
+   "endpoint": "manager.api_manager_tasks",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/api/marketplace/installed",
+   "method": "GET",
+   "endpoint": "api_marketplace_installed",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins",
+   "method": "GET",
+   "endpoint": "api_marketplace_plugins_list",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>",
+   "method": "GET",
+   "endpoint": "api_marketplace_plugins_get",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>/config",
+   "method": "GET",
+   "endpoint": "api_marketplace_plugins_config_get",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>/config",
+   "method": "PUT",
+   "endpoint": "api_marketplace_plugins_config_update",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>/install",
+   "method": "POST",
+   "endpoint": "api_marketplace_plugins_install",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>/reviews",
+   "method": "GET",
+   "endpoint": "api_marketplace_plugins_reviews_list",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>/reviews",
+   "method": "POST",
+   "endpoint": "api_marketplace_plugins_reviews_create",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>/uninstall",
+   "method": "POST",
+   "endpoint": "api_marketplace_plugins_uninstall",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/plugins/<pid>/update",
+   "method": "POST",
+   "endpoint": "api_marketplace_plugins_update",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/marketplace/refresh",
+   "method": "POST",
+   "endpoint": "api_marketplace_refresh",
+   "file": "managers/marketplace.py"
+  },
+  {
+   "rule": "/api/mock/generate",
+   "method": "POST",
+   "endpoint": "mock.api_mock_generate",
+   "file": "blueprints/mock.py"
+  },
+  {
+   "rule": "/api/mock/start",
+   "method": "POST",
+   "endpoint": "mock.api_mock_start",
+   "file": "blueprints/mock.py"
+  },
+  {
+   "rule": "/api/mock/stop",
+   "method": "POST",
+   "endpoint": "mock.api_mock_stop",
+   "file": "blueprints/mock.py"
+  },
+  {
+   "rule": "/api/modules/toggle",
+   "method": "POST",
+   "endpoint": "api_modules_toggle",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/modules/toggle",
+   "method": "POST",
+   "endpoint": "feature_routes.api_modules_toggle",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/api/notifications",
+   "method": "GET",
+   "endpoint": "api_notifications_list",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/<nid>",
+   "method": "DELETE",
+   "endpoint": "api_notifications_delete",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/<nid>/read",
+   "method": "POST",
+   "endpoint": "api_notifications_read",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/channels",
+   "method": "GET",
+   "endpoint": "api_notification_channels_list",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/channels",
+   "method": "POST",
+   "endpoint": "api_notification_channels_create",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/channels/<cid>",
+   "method": "DELETE",
+   "endpoint": "api_notification_channels_delete",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/channels/<cid>",
+   "method": "PUT",
+   "endpoint": "api_notification_channels_update",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/channels/<cid>/test",
+   "method": "POST",
+   "endpoint": "api_notification_channels_test",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/count",
+   "method": "GET",
+   "endpoint": "api_notifications_count",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/read_all",
+   "method": "POST",
+   "endpoint": "api_notifications_read_all",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/rules",
+   "method": "GET",
+   "endpoint": "api_notification_rules_list",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/rules",
+   "method": "POST",
+   "endpoint": "api_notification_rules_create",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/rules/<rid>",
+   "method": "DELETE",
+   "endpoint": "api_notification_rules_delete",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/notifications/rules/<rid>",
+   "method": "PUT",
+   "endpoint": "api_notification_rules_update",
+   "file": "managers/notification.py"
+  },
+  {
+   "rule": "/api/observability/loki/query",
+   "method": "POST",
+   "endpoint": "observability.loki_query",
+   "file": "blueprints/observability_routes.py"
+  },
+  {
+   "rule": "/api/observability/prometheus/query",
+   "method": "POST",
+   "endpoint": "observability.prometheus_query",
+   "file": "blueprints/observability_routes.py"
+  },
+  {
+   "rule": "/api/observability/status",
+   "method": "GET",
+   "endpoint": "observability.observability_status",
+   "file": "blueprints/observability_routes.py"
+  },
+  {
+   "rule": "/api/okta/apps",
+   "method": "POST",
+   "endpoint": "api_okta_apps",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/okta/mfa",
+   "method": "POST",
+   "endpoint": "api_okta_mfa",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/okta/signin",
+   "method": "POST",
+   "endpoint": "api_okta_signin",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/backups",
+   "method": "GET",
+   "endpoint": "api_page_editor_backups",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/find",
+   "method": "GET",
+   "endpoint": "api_page_editor_find",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/page",
+   "method": "GET",
+   "endpoint": "api_page_editor_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/pages",
+   "method": "GET",
+   "endpoint": "api_page_editor_pages",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/preview",
+   "method": "POST",
+   "endpoint": "api_page_editor_preview",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/restore",
+   "method": "POST",
+   "endpoint": "api_page_editor_restore",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/save",
+   "method": "POST",
+   "endpoint": "api_page_editor_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/page-editor/segment",
+   "method": "GET",
+   "endpoint": "api_page_editor_segment",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/personality/apply",
+   "method": "POST",
+   "endpoint": "api_personality_apply",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/personality/delete",
+   "method": "POST",
+   "endpoint": "api_personality_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/personality/list",
+   "method": "GET",
+   "endpoint": "api_personality_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/personality/status",
+   "method": "GET",
+   "endpoint": "api_personality_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/personality/toggle",
+   "method": "POST",
+   "endpoint": "api_personality_toggle",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/pipelines",
+   "method": "GET",
+   "endpoint": "api_pipelines_list",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines",
+   "method": "POST",
+   "endpoint": "api_pipelines_create",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/<pid>",
+   "method": "DELETE",
+   "endpoint": "api_pipelines_delete",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/<pid>",
+   "method": "GET",
+   "endpoint": "api_pipelines_get",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/<pid>",
+   "method": "PUT",
+   "endpoint": "api_pipelines_update",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/<pid>/execute",
+   "method": "POST",
+   "endpoint": "api_pipelines_execute",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/<pid>/export",
+   "method": "GET",
+   "endpoint": "api_pipelines_export",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/<pid>/export.yaml",
+   "method": "GET",
+   "endpoint": "api_pipelines_export_yaml",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/import",
+   "method": "POST",
+   "endpoint": "api_pipelines_import",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/import-yaml",
+   "method": "POST",
+   "endpoint": "api_pipelines_import_yaml",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/runs",
+   "method": "GET",
+   "endpoint": "api_pipeline_runs_list",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/runs/<rid>",
+   "method": "GET",
+   "endpoint": "api_pipeline_runs_get",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/runs/<rid>/approval",
+   "method": "POST",
+   "endpoint": "api_pipeline_runs_approval",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/pipelines/runs/<rid>/cancel",
+   "method": "POST",
+   "endpoint": "api_pipeline_runs_cancel",
+   "file": "managers/pipeline.py"
+  },
+  {
+   "rule": "/api/rbac/api_keys",
+   "method": "POST",
+   "endpoint": "api_rbac_api_keys_create",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/api_keys/<key_id>",
+   "method": "DELETE",
+   "endpoint": "api_rbac_api_keys_delete",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/audit",
+   "method": "GET",
+   "endpoint": "api_rbac_audit",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/login",
+   "method": "POST",
+   "endpoint": "api_rbac_login",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/roles",
+   "method": "GET",
+   "endpoint": "api_rbac_roles_list",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/roles",
+   "method": "POST",
+   "endpoint": "api_rbac_roles_create",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/roles/<role_name>",
+   "method": "DELETE",
+   "endpoint": "api_rbac_roles_delete",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/roles/<role_name>",
+   "method": "PUT",
+   "endpoint": "api_rbac_roles_update",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/sessions",
+   "method": "GET",
+   "endpoint": "api_rbac_sessions_list",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/sessions/<session_id>",
+   "method": "DELETE",
+   "endpoint": "api_rbac_sessions_delete",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/sessions/all",
+   "method": "DELETE",
+   "endpoint": "api_rbac_sessions_delete_all",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/users",
+   "method": "GET",
+   "endpoint": "api_rbac_users_list",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/users",
+   "method": "POST",
+   "endpoint": "api_rbac_users_create",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/users/<user_id>",
+   "method": "DELETE",
+   "endpoint": "api_rbac_users_delete",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/rbac/users/<user_id>",
+   "method": "PUT",
+   "endpoint": "api_rbac_users_update",
+   "file": "managers/rbac.py"
+  },
+  {
+   "rule": "/api/resources/convert_to_training",
+   "method": "POST",
+   "endpoint": "api_resources_convert_to_training",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/resources/delete",
+   "method": "POST",
+   "endpoint": "api_resources_delete",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/resources/enqueue_ingest",
+   "method": "POST",
+   "endpoint": "api_resources_enqueue_ingest",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/resources/ingest_status",
+   "method": "GET",
+   "endpoint": "api_resources_ingest_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/resources/list",
+   "method": "GET",
+   "endpoint": "api_resources_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/resources/load",
+   "method": "POST",
+   "endpoint": "api_resources_load",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/resources/upload",
+   "method": "POST",
+   "endpoint": "api_resources_upload",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/roku/build",
+   "method": "POST",
+   "endpoint": "api_roku_build",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/roku/deploy",
+   "method": "POST",
+   "endpoint": "roku_tools.api_roku_deploy",
+   "file": "blueprints/roku_routes.py"
+  },
+  {
+   "rule": "/api/roku/download/<slug>",
+   "method": "GET",
+   "endpoint": "roku_tools.api_roku_download",
+   "file": "blueprints/roku_routes.py"
+  },
+  {
+   "rule": "/api/roku/guide/<token>",
+   "method": "GET",
+   "endpoint": "roku_tools.api_roku_guide",
+   "file": "blueprints/roku_routes.py"
+  },
+  {
+   "rule": "/api/roku/settings",
+   "method": "GET",
+   "endpoint": "roku_tools.api_roku_settings",
+   "file": "blueprints/roku_routes.py"
+  },
+  {
+   "rule": "/api/roku/settings",
+   "method": "POST",
+   "endpoint": "roku_tools.api_roku_settings",
+   "file": "blueprints/roku_routes.py"
+  },
+  {
+   "rule": "/api/roku/validate",
+   "method": "POST",
+   "endpoint": "api_roku_validate",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/site-settings",
+   "method": "GET",
+   "endpoint": "api_site_settings",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/site-settings/logo",
+   "method": "POST",
+   "endpoint": "api_site_settings_logo",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/site-settings/nav/preview",
+   "method": "POST",
+   "endpoint": "api_site_settings_nav_preview",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/site-settings/nav/save",
+   "method": "POST",
+   "endpoint": "api_site_settings_nav_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/site-settings/preview",
+   "method": "POST",
+   "endpoint": "api_site_settings_preview",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/site-settings/save",
+   "method": "POST",
+   "endpoint": "api_site_settings_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/source-map",
+   "method": "GET",
+   "endpoint": "api_source_map",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/source-map/lookup",
+   "method": "GET",
+   "endpoint": "api_source_map_lookup",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/source-map/markdown",
+   "method": "GET",
+   "endpoint": "api_source_map_markdown",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/stats",
+   "method": "GET",
+   "endpoint": "api_stats",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/calendar",
+   "method": "POST",
+   "endpoint": "api_teams_calendar",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/chat/messages",
+   "method": "POST",
+   "endpoint": "api_teams_chat_messages",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/chat/send",
+   "method": "POST",
+   "endpoint": "api_teams_chat_send",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/chats",
+   "method": "POST",
+   "endpoint": "api_teams_chats",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/connect",
+   "method": "POST",
+   "endpoint": "api_teams_connect",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/device_poll",
+   "method": "POST",
+   "endpoint": "api_teams_device_poll",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/device_start",
+   "method": "POST",
+   "endpoint": "api_teams_device_start",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/ps_connect",
+   "method": "POST",
+   "endpoint": "api_teams_ps_connect",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/ps_status",
+   "method": "POST",
+   "endpoint": "api_teams_ps_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/ps_teams",
+   "method": "POST",
+   "endpoint": "api_teams_ps_teams",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/terraform/ci-validate",
+   "method": "POST",
+   "endpoint": "terraform.api_terraform_ci_validate",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/terraform/enterprise/deploy_to_project",
+   "method": "POST",
+   "endpoint": "api_tf_enterprise_deploy_to_project",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/terraform/enterprise/download/<job_id>",
+   "method": "GET",
+   "endpoint": "api_tf_enterprise_download",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/terraform/enterprise/generate",
+   "method": "POST",
+   "endpoint": "api_tf_enterprise_generate",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/terraform/enterprise/validate",
+   "method": "POST",
+   "endpoint": "api_tf_enterprise_validate",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/terraform/generate",
+   "method": "POST",
+   "endpoint": "terraform.api_terraform_generate",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/terraform/install",
+   "method": "POST",
+   "endpoint": "iac.api_terraform_install",
+   "file": "blueprints/iac_routes.py"
+  },
+  {
+   "rule": "/api/terraform/run",
+   "method": "POST",
+   "endpoint": "terraform.api_terraform_run",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/terraform/status",
+   "method": "GET",
+   "endpoint": "iac.api_terraform_status",
+   "file": "blueprints/iac_routes.py"
+  },
+  {
+   "rule": "/api/terraform/validate-design",
+   "method": "POST",
+   "endpoint": "terraform.api_terraform_validate_design",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/test",
+   "method": "GET",
+   "endpoint": "api_test",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/test",
+   "method": "GET",
+   "endpoint": "feature_routes.api_test",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/api/tf/apply",
+   "method": "POST",
+   "endpoint": "api_tf_apply",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/tf/apply",
+   "method": "POST",
+   "endpoint": "terraform.api_tf_apply",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/tf/backup",
+   "method": "GET",
+   "endpoint": "api_tf_backup",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/tf/backup",
+   "method": "GET",
+   "endpoint": "terraform.api_tf_backup",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/tf/destroy",
+   "method": "POST",
+   "endpoint": "terraform.api_tf_destroy",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/tf/import",
+   "method": "POST",
+   "endpoint": "api_tf_import",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/tf/import",
+   "method": "POST",
+   "endpoint": "terraform.api_tf_import",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/tf/plan",
+   "method": "POST",
+   "endpoint": "terraform.api_tf_plan",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/tf/refresh",
+   "method": "GET",
+   "endpoint": "terraform.api_tf_refresh",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/tf/state",
+   "method": "GET",
+   "endpoint": "api_tf_state",
+   "file": "main.py"
+  },
+  {
+   "rule": "/api/tf/state",
+   "method": "GET",
+   "endpoint": "terraform.api_tf_state",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/tf/validate",
+   "method": "POST",
+   "endpoint": "terraform.api_tf_validate",
+   "file": "blueprints/terraform.py"
+  },
+  {
+   "rule": "/api/vault/audit",
+   "method": "GET",
+   "endpoint": "api_vault_audit",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/api/vault/rotation",
+   "method": "GET",
+   "endpoint": "api_vault_rotation",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/api/vault/secrets",
+   "method": "GET",
+   "endpoint": "api_vault_list",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/api/vault/secrets",
+   "method": "POST",
+   "endpoint": "api_vault_create",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/api/vault/secrets/<sid>",
+   "method": "DELETE",
+   "endpoint": "api_vault_delete",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/api/vault/secrets/<sid>",
+   "method": "GET",
+   "endpoint": "api_vault_get",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/api/vault/secrets/<sid>",
+   "method": "PUT",
+   "endpoint": "api_vault_update",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/api/vault/secrets/<sid>/versions",
+   "method": "GET",
+   "endpoint": "api_vault_versions",
+   "file": "managers/vault.py"
+  },
+  {
+   "rule": "/archetypes",
+   "method": "GET",
+   "endpoint": "code_archetypes_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/arm_creator",
+   "method": "GET",
+   "endpoint": "arm_creator",
+   "file": "main.py"
+  },
+  {
+   "rule": "/arm_creator",
+   "method": "GET",
+   "endpoint": "ui_pages.arm_creator",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/auth/azure/callback",
+   "method": "GET",
+   "endpoint": "azure_callback",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/auth/azure/login",
+   "method": "GET",
+   "endpoint": "azure_login",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/auth/github/callback",
+   "method": "GET",
+   "endpoint": "github_callback",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/auth/github/login",
+   "method": "GET",
+   "endpoint": "github_login",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/auth/logout",
+   "method": "POST",
+   "endpoint": "logout",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/auth/okta/callback",
+   "method": "GET",
+   "endpoint": "okta_callback",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/auth/okta/login",
+   "method": "GET",
+   "endpoint": "okta_login",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/auth/status",
+   "method": "GET",
+   "endpoint": "auth_status",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/backups",
+   "method": "GET",
+   "endpoint": "data_backups_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/blueprint-wizard",
+   "method": "GET",
+   "endpoint": "wizard.blueprint_wizard_page",
+   "file": "blueprints/wizard.py"
+  },
+  {
+   "rule": "/caf_generator",
+   "method": "GET",
+   "endpoint": "ui_pages.caf_generator",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/catalog/file",
+   "method": "GET",
+   "endpoint": "manager.catalog_file_view",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/chaos-monkey",
+   "method": "GET",
+   "endpoint": "core_scripts.core_scripts_page",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/chatserv",
+   "method": "GET",
+   "endpoint": "chatserv.chatserv_page",
+   "file": "blueprints/chatserv_routes.py"
+  },
+  {
+   "rule": "/cicd",
+   "method": "GET",
+   "endpoint": "cicd_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/cloud",
+   "method": "GET",
+   "endpoint": "cloud_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/cloud",
+   "method": "GET",
+   "endpoint": "ui_pages.cloud_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/core-scripts",
+   "method": "GET",
+   "endpoint": "core_scripts.core_scripts_page",
+   "file": "blueprints/core_scripts.py"
+  },
+  {
+   "rule": "/data/echo_chat_outputs/<path:fname>",
+   "method": "GET",
+   "endpoint": "serve_echo_output",
+   "file": "main.py"
+  },
+  {
+   "rule": "/data/echo_images/<path:fname>",
+   "method": "GET",
+   "endpoint": "serve_echo_image",
+   "file": "main.py"
+  },
+  {
+   "rule": "/debug/fetch_model",
+   "method": "GET",
+   "endpoint": "debug_fetch_model",
+   "file": "main.py"
+  },
+  {
+   "rule": "/deploy-center",
+   "method": "GET",
+   "endpoint": "deployments.deploy_center_page",
+   "file": "blueprints/deploy_routes.py"
+  },
+  {
+   "rule": "/echo-approvals",
+   "method": "GET",
+   "endpoint": "echo_approvals_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/echo-chat",
+   "method": "GET",
+   "endpoint": "echo_chat",
+   "file": "main.py"
+  },
+  {
+   "rule": "/echo-commands",
+   "method": "GET",
+   "endpoint": "echo_commands_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/echo-memory",
+   "method": "GET",
+   "endpoint": "echo_memory_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/echo-memory",
+   "method": "GET",
+   "endpoint": "ui_pages.echo_memory_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/echo-train",
+   "method": "GET",
+   "endpoint": "echo_train_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/ext/code_manager/",
+   "method": "GET",
+   "endpoint": "feature_code_manager.index",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/analysis",
+   "method": "GET",
+   "endpoint": "feature_code_manager.analysis",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/blueprints",
+   "method": "GET",
+   "endpoint": "feature_code_manager.blueprints",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/blueprints/link",
+   "method": "POST",
+   "endpoint": "feature_code_manager.link",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/blueprints/probe",
+   "method": "POST",
+   "endpoint": "feature_code_manager.probe",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/blueprints/unlink",
+   "method": "POST",
+   "endpoint": "feature_code_manager.unlink",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/features",
+   "method": "GET",
+   "endpoint": "feature_code_manager.features",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/features/create",
+   "method": "POST",
+   "endpoint": "feature_code_manager.create",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/features/toggle",
+   "method": "POST",
+   "endpoint": "feature_code_manager.toggle",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/safety",
+   "method": "GET",
+   "endpoint": "feature_code_manager.safety",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/safety/baseline",
+   "method": "POST",
+   "endpoint": "feature_code_manager.baseline",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/ext/code_manager/api/safety/budget",
+   "method": "POST",
+   "endpoint": "feature_code_manager.budget",
+   "file": "app_features/code_manager/__init__.py"
+  },
+  {
+   "rule": "/favicon.ico",
+   "method": "GET",
+   "endpoint": "ui_pages.favicon",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/feature/run/<path:feature_key>",
+   "method": "POST",
+   "endpoint": "feature_routes.feature_run",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/feature/run/<path:feature_key>",
+   "method": "POST",
+   "endpoint": "feature_run",
+   "file": "main.py"
+  },
+  {
+   "rule": "/features",
+   "method": "GET",
+   "endpoint": "feature_routes.features_page",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/features",
+   "method": "GET",
+   "endpoint": "features_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/gallery",
+   "method": "GET",
+   "endpoint": "art_gallery",
+   "file": "main.py"
+  },
+  {
+   "rule": "/github",
+   "method": "GET",
+   "endpoint": "github_page",
+   "file": "features/handlers/github_integration.py"
+  },
+  {
+   "rule": "/google-services",
+   "method": "GET",
+   "endpoint": "google_services_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/hello",
+   "method": "GET",
+   "endpoint": "ui_pages.hello",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/iac_manager",
+   "method": "GET",
+   "endpoint": "iac_manager",
+   "file": "main.py"
+  },
+  {
+   "rule": "/iac_manager",
+   "method": "GET",
+   "endpoint": "ui_pages.iac_manager",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/login",
+   "method": "GET",
+   "endpoint": "login",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/login",
+   "method": "POST",
+   "endpoint": "login",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/manager",
+   "method": "GET",
+   "endpoint": "manager.manager_dashboard",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/manager",
+   "method": "GET",
+   "endpoint": "manager_dashboard",
+   "file": "main.py"
+  },
+  {
+   "rule": "/marketplace",
+   "method": "GET",
+   "endpoint": "marketplace_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/marketplace",
+   "method": "GET",
+   "endpoint": "ui_pages.marketplace_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/master-menu",
+   "method": "GET",
+   "endpoint": "manager.master_menu_page",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/masterchief_code_ui",
+   "method": "GET",
+   "endpoint": "masterchief_code_ui",
+   "file": "main.py"
+  },
+  {
+   "rule": "/masterchief_code_ui",
+   "method": "GET",
+   "endpoint": "ui_pages.masterchief_code_ui",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/media/roku",
+   "method": "GET",
+   "endpoint": "roku_builder_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/metrics",
+   "method": "GET",
+   "endpoint": "observability.prometheus_metrics",
+   "file": "blueprints/observability_routes.py"
+  },
+  {
+   "rule": "/modules",
+   "method": "GET",
+   "endpoint": "modules_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/notifications",
+   "method": "GET",
+   "endpoint": "notifications_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/notifications",
+   "method": "GET",
+   "endpoint": "ui_pages.notifications_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/observability",
+   "method": "GET",
+   "endpoint": "observability.observability_page",
+   "file": "blueprints/observability_routes.py"
+  },
+  {
+   "rule": "/okta",
+   "method": "GET",
+   "endpoint": "okta_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/page-editor",
+   "method": "GET",
+   "endpoint": "page_editor_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/personality",
+   "method": "GET",
+   "endpoint": "personality_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/personality/edit",
+   "method": "GET",
+   "endpoint": "personality_edit",
+   "file": "main.py"
+  },
+  {
+   "rule": "/personality/save",
+   "method": "POST",
+   "endpoint": "personality_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/pipelines",
+   "method": "GET",
+   "endpoint": "pipelines_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/pipelines",
+   "method": "GET",
+   "endpoint": "ui_pages.pipelines_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/processes",
+   "method": "GET",
+   "endpoint": "processes_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/processes/kill/<int:pid>",
+   "method": "GET",
+   "endpoint": "processes_kill",
+   "file": "main.py"
+  },
+  {
+   "rule": "/rbac",
+   "method": "GET",
+   "endpoint": "rbac_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/rbac",
+   "method": "GET",
+   "endpoint": "ui_pages.rbac_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/resources",
+   "method": "GET",
+   "endpoint": "resources_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/resources/load_options",
+   "method": "GET",
+   "endpoint": "resources_load_options",
+   "file": "main.py"
+  },
+  {
+   "rule": "/resources/preview",
+   "method": "GET",
+   "endpoint": "resources_preview",
+   "file": "main.py"
+  },
+  {
+   "rule": "/roku",
+   "method": "GET",
+   "endpoint": "roku_autologin",
+   "file": "auth_module.py"
+  },
+  {
+   "rule": "/scripts",
+   "method": "GET",
+   "endpoint": "scripts_list",
+   "file": "managers/script.py"
+  },
+  {
+   "rule": "/scripts/add",
+   "method": "POST",
+   "endpoint": "scripts_add",
+   "file": "managers/script.py"
+  },
+  {
+   "rule": "/scripts/backup/<b64path>",
+   "method": "POST",
+   "endpoint": "scripts_backup",
+   "file": "main.py"
+  },
+  {
+   "rule": "/scripts/diff/<b64path>",
+   "method": "POST",
+   "endpoint": "scripts_diff",
+   "file": "main.py"
+  },
+  {
+   "rule": "/scripts/edit/<b64path>",
+   "method": "GET",
+   "endpoint": "scripts_edit",
+   "file": "main.py"
+  },
+  {
+   "rule": "/scripts/exec_path/<b64path>",
+   "method": "GET",
+   "endpoint": "scripts_exec_path",
+   "file": "main.py"
+  },
+  {
+   "rule": "/scripts/exec_path/<b64path>",
+   "method": "POST",
+   "endpoint": "scripts_exec_path",
+   "file": "main.py"
+  },
+  {
+   "rule": "/scripts/execute/<filename>",
+   "method": "GET",
+   "endpoint": "scripts_execute",
+   "file": "managers/script.py"
+  },
+  {
+   "rule": "/scripts/refresh_index",
+   "method": "POST",
+   "endpoint": "refresh_index",
+   "file": "managers/script.py"
+  },
+  {
+   "rule": "/scripts/run/<filename>",
+   "method": "POST",
+   "endpoint": "scripts_run",
+   "file": "managers/script.py"
+  },
+  {
+   "rule": "/scripts/save/<b64path>",
+   "method": "POST",
+   "endpoint": "scripts_save",
+   "file": "main.py"
+  },
+  {
+   "rule": "/scripts/suggest_commit/<b64path>",
+   "method": "GET",
+   "endpoint": "scripts_suggest_commit",
+   "file": "main.py"
+  },
+  {
+   "rule": "/secrets",
+   "method": "GET",
+   "endpoint": "secrets_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/secrets",
+   "method": "GET",
+   "endpoint": "ui_pages.secrets_page",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/services",
+   "method": "GET",
+   "endpoint": "services_list",
+   "file": "main.py"
+  },
+  {
+   "rule": "/services/restart/<service_name>",
+   "method": "GET",
+   "endpoint": "services_restart",
+   "file": "main.py"
+  },
+  {
+   "rule": "/services/start/<service_name>",
+   "method": "GET",
+   "endpoint": "services_start",
+   "file": "main.py"
+  },
+  {
+   "rule": "/services/stop/<service_name>",
+   "method": "GET",
+   "endpoint": "services_stop",
+   "file": "main.py"
+  },
+  {
+   "rule": "/setup/",
+   "method": "GET",
+   "endpoint": "setup_wizard.wizard_index",
+   "file": "setup_wizard/__init__.py"
+  },
+  {
+   "rule": "/setup/configure",
+   "method": "POST",
+   "endpoint": "setup_wizard.configure",
+   "file": "setup_wizard/__init__.py"
+  },
+  {
+   "rule": "/setup/status",
+   "method": "GET",
+   "endpoint": "setup_wizard.status",
+   "file": "setup_wizard/__init__.py"
+  },
+  {
+   "rule": "/site-map",
+   "method": "GET",
+   "endpoint": "manager.site_map_page",
+   "file": "blueprints/manager.py"
+  },
+  {
+   "rule": "/site-settings",
+   "method": "GET",
+   "endpoint": "site_settings_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/source-map",
+   "method": "GET",
+   "endpoint": "source_map_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/export-active",
+   "method": "GET",
+   "endpoint": "sys_export_active",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/file",
+   "method": "GET",
+   "endpoint": "diagnostics_routes.sys_api_file",
+   "file": "blueprints/diagnostics_routes.py"
+  },
+  {
+   "rule": "/sys/api/modules/from-idea",
+   "method": "POST",
+   "endpoint": "ops_routes.sys_api_modules_from_idea",
+   "file": "blueprints/ops_routes.py"
+  },
+  {
+   "rule": "/sys/api/ops-action",
+   "method": "POST",
+   "endpoint": "ops_routes.sys_api_ops_action",
+   "file": "blueprints/ops_routes.py"
+  },
+  {
+   "rule": "/sys/api/ops-summary",
+   "method": "GET",
+   "endpoint": "ops_routes.sys_api_ops_summary",
+   "file": "blueprints/ops_routes.py"
+  },
+  {
+   "rule": "/sys/api/orphan-sweep/abort",
+   "method": "POST",
+   "endpoint": "sys_orphan_sweep_abort",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/orphan-sweep/start",
+   "method": "POST",
+   "endpoint": "sys_orphan_sweep_start",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/orphan-sweep/stream",
+   "method": "GET",
+   "endpoint": "sys_orphan_sweep_stream",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/scan",
+   "method": "GET",
+   "endpoint": "diagnostics_routes.sys_api_scan",
+   "file": "blueprints/diagnostics_routes.py"
+  },
+  {
+   "rule": "/sys/api/scm/commit",
+   "method": "POST",
+   "endpoint": "scm_routes.sys_scm_commit",
+   "file": "blueprints/scm_routes.py"
+  },
+  {
+   "rule": "/sys/api/scm/commit",
+   "method": "POST",
+   "endpoint": "sys_scm_commit",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/scm/pull",
+   "method": "POST",
+   "endpoint": "scm_routes.sys_scm_pull",
+   "file": "blueprints/scm_routes.py"
+  },
+  {
+   "rule": "/sys/api/scm/pull",
+   "method": "POST",
+   "endpoint": "sys_scm_pull",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/scm/push",
+   "method": "POST",
+   "endpoint": "scm_routes.sys_scm_push",
+   "file": "blueprints/scm_routes.py"
+  },
+  {
+   "rule": "/sys/api/scm/push",
+   "method": "POST",
+   "endpoint": "sys_scm_push",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/scm/status",
+   "method": "GET",
+   "endpoint": "scm_routes.sys_scm_status",
+   "file": "blueprints/scm_routes.py"
+  },
+  {
+   "rule": "/sys/api/scm/status",
+   "method": "GET",
+   "endpoint": "sys_scm_status",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/api/services",
+   "method": "GET",
+   "endpoint": "ops_routes.sys_api_services",
+   "file": "blueprints/ops_routes.py"
+  },
+  {
+   "rule": "/sys/api/services",
+   "method": "GET",
+   "endpoint": "sys_api_services",
+   "file": "main.py"
+  },
+  {
+   "rule": "/sys/diagnostics",
+   "method": "GET",
+   "endpoint": "diagnostics_routes.sys_diagnostics",
+   "file": "blueprints/diagnostics_routes.py"
+  },
+  {
+   "rule": "/sys/ops",
+   "method": "GET",
+   "endpoint": "ops_routes.sys_ops_center",
+   "file": "blueprints/ops_routes.py"
+  },
+  {
+   "rule": "/sys/scm",
+   "method": "GET",
+   "endpoint": "scm_routes.sys_scm",
+   "file": "blueprints/scm_routes.py"
+  },
+  {
+   "rule": "/sys/scm",
+   "method": "GET",
+   "endpoint": "sys_scm",
+   "file": "main.py"
+  },
+  {
+   "rule": "/teams",
+   "method": "GET",
+   "endpoint": "teams_page",
+   "file": "main.py"
+  },
+  {
+   "rule": "/tf_wizard",
+   "method": "GET",
+   "endpoint": "tf_wizard_index",
+   "file": "main.py"
+  },
+  {
+   "rule": "/tf_wizard/generate",
+   "method": "POST",
+   "endpoint": "tf_wizard_generate",
+   "file": "main.py"
+  },
+  {
+   "rule": "/tf_wizard/schema/apply",
+   "method": "POST",
+   "endpoint": "tf_wizard_apply_schema",
+   "file": "main.py"
+  },
+  {
+   "rule": "/tf_wizard/static/<path:filename>",
+   "method": "GET",
+   "endpoint": "tf_wizard_static_files",
+   "file": "main.py"
+  },
+  {
+   "rule": "/web_ide",
+   "method": "GET",
+   "endpoint": "ui_pages.web_ide",
+   "file": "blueprints/ui_pages.py"
+  },
+  {
+   "rule": "/web_ide",
+   "method": "GET",
+   "endpoint": "web_ide",
+   "file": "main.py"
+  },
+  {
+   "rule": "/web_tf_wizard",
+   "method": "GET",
+   "endpoint": "feature_routes.web_tf_wizard",
+   "file": "blueprints/feature_routes.py"
+  },
+  {
+   "rule": "/web_tf_wizard",
+   "method": "GET",
+   "endpoint": "web_tf_wizard",
+   "file": "main.py"
+  }
+ ]
+}

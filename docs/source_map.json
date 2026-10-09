@@ -525,6 +525,52 @@
         "/source-map"
       ],
       "warning": ""
+    },
+    {
+      "id": "code-manager",
+      "title": "Code Manager",
+      "category": "Admin tools",
+      "summary": "Analyzes main.py, shows connections, blueprint manager, feature scaffolder, route baseline and size budget.",
+      "how_to_edit": "Page: app_features/code_manager/templates/index.html. Routes: app_features/code_manager/__init__.py. Analysis: managers/code_manager.py. Feature loading and scaffolding: managers/feature_loader.py. The single loader call sits near the end of main.py.",
+      "files": [
+        {
+          "path": "app_features/code_manager/templates/index.html",
+          "role": "Page and SVG graph"
+        },
+        {
+          "path": "app_features/code_manager/__init__.py",
+          "role": "Routes"
+        },
+        {
+          "path": "managers/code_manager.py",
+          "role": "main.py analysis, blueprint inventory, baseline, budget"
+        },
+        {
+          "path": "managers/feature_loader.py",
+          "role": "Loads app_features/ and linked blueprints; feature scaffolder"
+        },
+        {
+          "path": "main.py",
+          "role": "One _load_features(...) call before the __main__ block",
+          "anchor": "_load_features(app"
+        },
+        {
+          "path": "docs/route_baseline.json",
+          "role": "Saved route list"
+        },
+        {
+          "path": "docs/main_budget.json",
+          "role": "main.py size limit"
+        },
+        {
+          "path": "config/linked_blueprints.json",
+          "role": "Blueprints linked from the UI"
+        }
+      ],
+      "urls": [
+        "/ext/code_manager/"
+      ],
+      "warning": "Add new features under app_features/<name>/, not in main.py."
     }
   ],
   "notes": [

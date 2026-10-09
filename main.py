@@ -2687,6 +2687,7 @@ code{color:#4CAF50;}
     <a href="/cicd" class="{{ 'active' if '/cicd' in request.path else '' }}">🚀 CI/CD Center</a>
     <a href="/backups" class="{{ 'active' if '/backups' in request.path else '' }}">💾 Data Backups</a>
     <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
+    {% for f in feature_nav|default([]) %}<a href="{{ f.href }}" class="{{ 'active' if request.path.startswith(f.href) else '' }}">{{ f.icon }} {{ f.label }}</a>{% endfor %}
       <a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">🛠 Services</a>
       <a href="/about" class="{{ 'active' if '/about' in request.path else '' }}">ℹ️ About</a>
     </div>
@@ -20421,6 +20422,13 @@ def sys_scm_pull():
                         capture_output=True, text=True, cwd=app.root_path, timeout=60)
     output = (r.stdout + '\n' + r.stderr).strip()
     return jsonify({'ok': r.returncode == 0, 'output': output})
+
+
+
+# Isolated add-on features (app_features/) and linked blueprints. Add new features there, not in this file.
+from managers.feature_loader import load_features as _load_features
+_load_features(app, Path(__file__).parent, HTML_TEMPLATE, _admin_page_or_error, _admin_post_guard,
+               audit=lambda action, **details: _echo_operator_audit(action, **details))
 
 
 if __name__=='__main__':

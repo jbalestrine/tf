@@ -1,0 +1,8 @@
+{
+  "title": "Code Manager",
+  "description": "Shows what is inside main.py, where it points, what can move to a template or blueprint, and manages blueprints and isolated features.",
+  "version": "1.0.0",
+  "core": true,
+  "enabled": true,
+  "nav": {"label": "Code Manager", "href": "/ext/code_manager/", "icon": "🧭"}
+}

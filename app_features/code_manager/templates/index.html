@@ -1,0 +1,204 @@
+<div class="section">
+<h2>🧭 Code Manager</h2>
+<p style="color:#9aa4b2;">Read-only map of <code>main.py</code>: what is in it, what each part depends on, and what could move out. Nothing here deletes or moves code.</p>
+<div id="cm-budget" style="margin:8px 0;"></div>
+<div id="cm-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;"></div>
+<div id="cm-msg" style="margin:6px 0;"></div>
+<div id="cm-body">Loading...</div>
+</div>
+{% raw %}
+<style>
+#cm-body table{width:100%;border-collapse:collapse;font-size:13px}
+#cm-body th,#cm-body td{border-bottom:1px solid #2a3140;padding:5px 8px;text-align:left;vertical-align:top}
+.cm-pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#2a3140}
+.cm-easy{background:#1f6f43}.cm-medium{background:#8a6d1f}.cm-hard{background:#8a2f2f}
+.cm-tab.active{outline:2px solid #4da3ff}
+#cm-svg-wrap{overflow:auto;border:1px solid #2a3140;border-radius:6px;background:#0f1420}
+.cm-node{cursor:pointer}.cm-node rect{fill:#1b2233;stroke:#3a4560}
+.cm-node:hover rect,.cm-node.hl rect{stroke:#4da3ff}
+.cm-edge{fill:none;stroke:#4a5675;stroke-width:1;opacity:.35}.cm-edge.hl{stroke:#4da3ff;opacity:1;stroke-width:2}
+.cm-box{border:1px solid #2a3140;border-radius:6px;padding:10px;margin:8px 0}
+#cm-body input,#cm-body textarea{background:#0f1420;color:inherit;border:1px solid #2a3140;border-radius:4px;padding:5px;width:100%;max-width:420px}
+</style>
+<script>
+(function () {
+  var TABS = [['overview','Overview'],['graph','Connections'],['groups','Route groups'],['templates','Templates'],['blueprints','Blueprints'],['features','Features'],['safety','Safety']];
+  var state = { tab: 'overview', analysis: null, budget: null };
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function msg(text, bad) { $('cm-msg').innerHTML = text ? '<div class="cm-box" style="border-color:' + (bad ? '#8a2f2f' : '#1f6f43') + '">' + esc(text) + '</div>' : ''; }
+  function api(url, body) {
+    var opt = { credentials: 'same-origin' };
+    if (body !== undefined) { opt.method = 'POST'; opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(body); }
+    return fetch('/ext/code_manager' + url, opt).then(function (r) { return r.json(); });
+  }
+  function ide(file, line) { return '/masterchief_code_ui?open=' + encodeURIComponent(file) + (line ? '&line=' + line : ''); }
+  function btn(label, attrs) { return '<button class="btn btn-info" type="button" ' + attrs + '>' + label + '</button> '; }
+
+  function drawTabs() {
+    $('cm-tabs').innerHTML = TABS.map(function (t) {
+      return '<button type="button" class="btn btn-info cm-tab' + (t[0] === state.tab ? ' active' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>';
+    }).join('');
+  }
+  function drawBudget() {
+    var b = state.budget; if (!b) return;
+    var text = 'main.py: ' + b.lines + ' lines, ' + b.routes + ' routes' + (b.configured ? ' (limit ' + b.max_lines + ' lines / ' + b.max_routes + ' routes)' : ' (no size limit set - see Safety)');
+    $('cm-budget').innerHTML = '<div class="cm-box" style="border-color:' + (b.ok ? '#2a3140' : '#8a2f2f') + '">' + esc(text) + (b.ok ? '' : '<br><b>' + b.problems.map(esc).join('<br>') + '</b><br>Put new features in a feature folder (Features tab) instead of main.py.') + '</div>';
+  }
+
+  function overview() {
+    var a = state.analysis;
+    var easy = a.groups.filter(function (g) { return g.difficulty === 'easy'; });
+    var h = '<div class="cm-box"><b>' + a.total_lines + '</b> lines · <b>' + a.route_count + '</b> routes in <b>' + a.groups.length + '</b> groups · <b>' + a.helper_count + '</b> helpers · <b>' + a.template_lines + '</b> lines are page templates (' + Math.round(100 * a.template_lines / a.total_lines) + '% of the file).</div>';
+    h += '<div class="cm-box"><b>Easiest to move first</b> (few dependencies): ' + (easy.map(function (g) { return '<span class="cm-pill cm-easy">' + esc(g.prefix) + ' · ' + g.route_count + ' routes</span>'; }).join(' ') || 'none') + '</div>';
+    h += '<div class="cm-box"><b>Biggest route functions</b><table>' + a.biggest_routes.map(function (r) { return '<tr><td>' + esc(r.func) + '</td><td>' + esc(r.url) + '</td><td>' + r.lines + ' lines</td><td><a href="' + ide('main.py', r.line) + '">open line ' + r.line + '</a></td></tr>'; }).join('') + '</table></div>';
+    if (a.duplicates_within_main.length) {
+      h += '<div class="cm-box"><b>' + a.duplicates_within_main.length + ' URLs defined more than once in main.py.</b> The first definition is the one that runs; later copies are shadowed. They are different code, so compare before removing anything.<table>' + a.duplicates_within_main.slice(0, 60).map(function (d) { return '<tr><td>' + esc(d.method) + ' ' + esc(d.url) + '</td><td>' + d.functions.map(esc).join(' → ') + '</td></tr>'; }).join('') + '</table></div>';
+    }
+    return h;
+  }
+
+  function groups() {
+    return state.analysis.groups.map(function (g) {
+      var deps = g.needs_helpers.length + g.needs_values.length;
+      return '<details class="cm-box"><summary><b>' + esc(g.prefix) + '</b> · ' + g.route_count + ' routes · ' + g.lines + ' lines · <span class="cm-pill cm-' + g.difficulty + '">' + g.difficulty + '</span> · ' + deps + ' dependencies</summary>' +
+        '<p>Suggested home: <code>' + esc(g.suggested_file) + '</code> · main.py lines ' + g.first_line + '–' + g.last_line + '</p>' +
+        (g.writes_globals.length ? '<p>⚠ Writes globals: ' + g.writes_globals.map(esc).join(', ') + '</p>' : '') +
+        '<p><b>Needs from main.py:</b> ' + (g.needs_helpers.concat(g.needs_values).map(function (n) { return '<code>' + esc(n) + '</code>'; }).join(' ') || 'nothing') + '</p>' +
+        '<p><b>Templates used:</b> ' + (g.needs_templates.map(esc).join(', ') || 'none') + '</p>' +
+        '<table>' + g.routes.map(function (r) { return '<tr><td>' + esc(r.methods.join(',')) + '</td><td>' + esc(r.url) + '</td><td>' + esc(r.func) + '</td><td>' + r.lines + '</td><td><a href="' + ide('main.py', r.line) + '">open</a></td></tr>'; }).join('') + '</table></details>';
+    }).join('');
+  }
+
+  function templates() {
+    return '<p style="color:#9aa4b2">Large HTML strings inside main.py. "Safe" ones are plain text and can become a file in <code>templates/</code> without changing behavior.</p><table><tr><th>Name</th><th>Lines</th><th>Kind</th><th>Used by</th><th>Suggested file</th><th></th></tr>' +
+      state.analysis.templates.map(function (t) {
+        return '<tr><td>' + esc(t.name) + '</td><td>' + t.lines + '</td><td><span class="cm-pill ' + (t.safe_to_extract ? 'cm-easy' : 'cm-hard') + '">' + esc(t.kind) + '</span></td><td>' + (t.used_by.map(esc).join(', ') || 'not referenced by a route') + '</td><td>' + esc(t.suggested_file || t.note) + '</td><td><a href="' + ide('main.py', t.line) + '">open</a></td></tr>';
+      }).join('') + '</table>';
+  }
+
+  function graph() {
+    var a = state.analysis, gs = a.groups.filter(function (g) { return g.route_count > 0; }).slice(0, 30);
+    var ts = a.templates.filter(function (t) { return t.used_by.length; });
+    var hubs = a.hubs.slice(0, 16);
+    var rowH = 34, W = 1000, H = Math.max(gs.length, ts.length, hubs.length) * rowH + 40;
+    var pos = {};
+    function place(list, key, x, w) { list.forEach(function (n, i) { pos[key + ':' + (n.prefix || n.name)] = { x: x, y: 24 + i * rowH, w: w }; }); }
+    place(ts, 't', 10, 220); place(gs, 'g', 390, 220); place(hubs, 'h', 770, 220);
+    var edges = [];
+    gs.forEach(function (g) {
+      g.needs_templates.forEach(function (t) { if (pos['t:' + t]) edges.push(['t:' + t, 'g:' + g.prefix]); });
+      hubs.forEach(function (h) { if (h.used_by.indexOf(g.prefix) >= 0) edges.push(['g:' + g.prefix, 'h:' + h.name]); });
+    });
+    var svg = '<svg id="cm-svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">';
+    svg += '<text x="10" y="14" fill="#9aa4b2" font-size="11">TEMPLATES</text><text x="390" y="14" fill="#9aa4b2" font-size="11">ROUTE GROUPS</text><text x="770" y="14" fill="#9aa4b2" font-size="11">SHARED HELPERS (used by 2+ groups)</text>';
+    edges.forEach(function (e) {
+      var a1 = pos[e[0]], b1 = pos[e[1]], x1 = a1.x + a1.w, y1 = a1.y + 12, x2 = b1.x, y2 = b1.y + 12, mx = (x1 + x2) / 2;
+      svg += '<path class="cm-edge" data-a="' + esc(e[0]) + '" data-b="' + esc(e[1]) + '" d="M' + x1 + ',' + y1 + ' C' + mx + ',' + y1 + ' ' + mx + ',' + y2 + ' ' + x2 + ',' + y2 + '"/>';
+    });
+    function node(id, label, sub) { var p = pos[id]; return '<g class="cm-node" data-id="' + esc(id) + '"><rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="26" rx="5"/><text x="' + (p.x + 8) + '" y="' + (p.y + 17) + '" fill="#d6dbe6" font-size="12">' + esc(label) + '<tspan fill="#8a94a8"> ' + esc(sub) + '</tspan></text></g>'; }
+    ts.forEach(function (t) { svg += node('t:' + t.name, t.name, t.lines + 'L'); });
+    gs.forEach(function (g) { svg += node('g:' + g.prefix, g.prefix, g.route_count + 'r'); });
+    hubs.forEach(function (h) { svg += node('h:' + h.name, h.name, '×' + h.used_by.length); });
+    return '<p style="color:#9aa4b2">Hover or click a box to highlight what connects to it. A helper used by many groups is what makes those groups hard to separate.</p><div id="cm-svg-wrap">' + svg + '</svg></div><div id="cm-detail" class="cm-box">Select a box.</div>';
+  }
+  function wireGraph() {
+    var nodes = document.querySelectorAll('.cm-node');
+    function light(id, on) {
+      document.querySelectorAll('.cm-edge').forEach(function (e) {
+        var hit = e.getAttribute('data-a') === id || e.getAttribute('data-b') === id;
+        e.classList.toggle('hl', on && hit);
+      });
+    }
+    nodes.forEach(function (n) {
+      n.addEventListener('mouseenter', function () { light(n.getAttribute('data-id'), true); });
+      n.addEventListener('mouseleave', function () { light(n.getAttribute('data-id'), false); });
+      n.addEventListener('click', function () {
+        var id = n.getAttribute('data-id'), related = [];
+        document.querySelectorAll('.cm-edge').forEach(function (e) {
+          if (e.getAttribute('data-a') === id) related.push(e.getAttribute('data-b'));
+          if (e.getAttribute('data-b') === id) related.push(e.getAttribute('data-a'));
+        });
+        $('cm-detail').innerHTML = '<b>' + esc(id.slice(2)) + '</b> connects to: ' + (related.map(function (r) { return esc(r.slice(2)); }).join(', ') || 'nothing else');
+      });
+    });
+  }
+
+  function blueprints(data) {
+    var rows = data.blueprints;
+    var h = '<p style="color:#9aa4b2">Every file in <code>blueprints/</code>. <b>Linking</b> only registers it after a dry run, at the end of startup, so <code>main.py</code> routes keep priority. Unlinking undoes it. Restart to apply.</p><table><tr><th>File</th><th>Type</th><th>Status</th><th>Routes</th><th></th></tr>';
+    rows.forEach(function (b) {
+      var status = b.registered ? '<span class="cm-pill cm-easy">live</span>' : b.linked ? '<span class="cm-pill cm-medium">linked, restart</span>' : '<span class="cm-pill">not loaded</span>';
+      var act = '';
+      if (b.kind === 'blueprint' && !b.registered) act += btn('Dry run', 'data-probe="' + esc(b.module) + '"') + (b.linked ? btn('Unlink', 'data-unlink="' + esc(b.module) + '"') : btn('Link', 'data-link="' + esc(b.module) + '"'));
+      h += '<tr><td><a href="' + ide(b.file) + '">' + esc(b.file) + '</a><br><span style="color:#8a94a8">' + b.lines + ' lines</span></td><td>' + esc(b.kind) + '</td><td>' + status + '</td><td>' + (b.routes || []).length + (b.colliding ? ' <span class="cm-pill cm-hard">' + b.colliding + ' already served by main.py</span>' : '') + '</td><td>' + act + '<div id="probe-' + esc(b.module.replace(/\./g, '-')) + '"></div></td></tr>';
+    });
+    return h + '</table>';
+  }
+  function probeHtml(p) {
+    if (!p.ok) return '<div style="color:#ff8a8a">' + esc(p.error) + '</div>';
+    return p.blueprints.map(function (b) {
+      return '<div><b>' + esc(b.name) + '</b>: ' + b.routes.filter(function (r) { return r.status === 'new'; }).length + ' new, ' + b.routes.filter(function (r) { return r.status === 'collides'; }).length + ' already served</div>' +
+        '<div style="font-size:12px;max-height:160px;overflow:auto">' + b.routes.map(function (r) { return esc(r.methods.join(',')) + ' ' + esc(r.rule) + ' — ' + r.status; }).join('<br>') + '</div>';
+    }).join('');
+  }
+
+  function features(data) {
+    var h = '<div class="cm-box"><b>Add a feature without touching main.py</b><p style="color:#9aa4b2">Creates <code>app_features/&lt;name&gt;/</code> with its own routes, page, menu entry, README and test. Nothing is added to main.py.</p>' +
+      '<p><input id="nf-slug" placeholder="name_with_underscores (e.g. bookmarks)"></p><p><input id="nf-title" placeholder="Title shown in the menu"></p><p><textarea id="nf-desc" rows="2" placeholder="What it does"></textarea></p>' + btn('Create feature', 'id="nf-go"') + '</div>';
+    h += '<table><tr><th>Feature</th><th>Status</th><th>Files</th><th></th></tr>';
+    data.features.forEach(function (f) {
+      h += '<tr><td><b>' + esc(f.title) + '</b>' + (f.core ? ' <span class="cm-pill">core</span>' : '') + '<br><span style="color:#8a94a8">' + esc(f.description) + '</span></td><td>' + esc(f.state) + (f.error ? '<br><span style="color:#ff8a8a">' + esc(f.error) + '</span>' : '') + '<br>' + f.routes + ' routes</td><td>' + f.files.map(function (p) { return '<a href="' + ide(p) + '">' + esc(p) + '</a>'; }).join('<br>') + '</td><td>' + (f.core ? '' : btn(f.enabled ? 'Turn off' : 'Turn on', 'data-toggle="' + esc(f.slug) + '" data-on="' + (f.enabled ? 0 : 1) + '"')) + '</td></tr>';
+    });
+    return h + '</table>';
+  }
+
+  function safety(data) {
+    var b = data.baseline;
+    var h = '<div class="cm-box"><b>Route safety net.</b> Saves every URL the app serves today. After any refactor, compare to prove nothing disappeared.<br>' + btn('Save current routes as baseline', 'id="sf-save"') + '</div>';
+    if (!b.has_baseline) return h + '<div class="cm-box">No baseline saved yet.</div>';
+    h += '<div class="cm-box">Baseline of ' + b.count + ' routes saved ' + esc(b.saved) + '.<br><b style="color:' + (b.missing.length ? '#ff8a8a' : '#6fdc9a') + '">' + b.missing.length + ' missing</b> · ' + b.new.length + ' new · ' + b.moved.length + ' moved to another file</div>';
+    if (b.missing.length) h += '<div class="cm-box" style="border-color:#8a2f2f"><b>Missing routes</b><br>' + b.missing.map(function (r) { return esc(r.method) + ' ' + esc(r.rule) + ' (was in ' + esc(r.file) + ')'; }).join('<br>') + '</div>';
+    if (b.moved.length) h += '<details class="cm-box"><summary>' + b.moved.length + ' routes now served from a different file</summary>' + b.moved.slice(0, 100).map(function (r) { return esc(r.rule) + ': ' + esc(r.from) + ' → ' + esc(r.to); }).join('<br>') + '</details>';
+    h += '<div class="cm-box"><b>Size limit for main.py.</b> New code beyond the limit fails the tests. After you shrink main.py, tighten the limit so it cannot grow back.<br>' + btn('Tighten limit to current size', 'id="sf-ratchet"') + '</div>';
+    return h;
+  }
+
+  function render() {
+    drawTabs(); drawBudget();
+    var body = $('cm-body');
+    if (state.tab === 'overview') body.innerHTML = overview();
+    else if (state.tab === 'graph') { body.innerHTML = graph(); wireGraph(); }
+    else if (state.tab === 'groups') body.innerHTML = groups();
+    else if (state.tab === 'templates') body.innerHTML = templates();
+    else {
+      body.textContent = 'Loading...';
+      var url = { blueprints: '/api/blueprints', features: '/api/features', safety: '/api/safety' }[state.tab];
+      api(url).then(function (d) {
+        if (!d.ok) { body.textContent = d.error || 'Failed'; return; }
+        body.innerHTML = state.tab === 'blueprints' ? blueprints(d) : state.tab === 'features' ? features(d) : safety(d);
+        if (state.tab === 'safety') state.budget = d.budget, drawBudget();
+      });
+    }
+  }
+  function act(url, body, done) { api(url, body).then(function (d) { msg(d.message || d.error || (d.ok ? 'Done' : 'Failed'), !d.ok); if (d.ok && done) done(d); }); }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button'); if (!t || !$('cm-tabs')) return;
+    if (t.dataset.tab) { state.tab = t.dataset.tab; msg(''); render(); }
+    else if (t.dataset.probe) api('/api/blueprints/probe', { module: t.dataset.probe }).then(function (d) { var el = $('probe-' + t.dataset.probe.replace(/\./g, '-')); if (el) el.innerHTML = d.ok ? probeHtml(d.probe) : esc(d.error); });
+    else if (t.dataset.link) act('/api/blueprints/link', { module: t.dataset.link }, render);
+    else if (t.dataset.unlink) act('/api/blueprints/unlink', { module: t.dataset.unlink }, render);
+    else if (t.dataset.toggle) act('/api/features/toggle', { slug: t.dataset.toggle, enabled: t.dataset.on === '1' }, render);
+    else if (t.id === 'nf-go') act('/api/features/create', { slug: $('nf-slug').value, title: $('nf-title').value, description: $('nf-desc').value, nav_label: $('nf-title').value }, render);
+    else if (t.id === 'sf-save') act('/api/safety/baseline', {}, render);
+    else if (t.id === 'sf-ratchet') { if (confirm('Lower the size limit to the current size of main.py?')) act('/api/safety/budget', {}, render); }
+  });
+
+  api('/api/analysis').then(function (d) {
+    if (!d.ok) { $('cm-body').textContent = d.error || 'Failed to analyze main.py'; return; }
+    state.analysis = d.analysis; state.budget = d.budget; render();
+  }).catch(function (e) { $('cm-body').textContent = 'Failed to load: ' + e; });
+})();
+</script>
+{% endraw %}
