@@ -17,7 +17,7 @@ except Exception as e:
 print("\n🔄 Step 2: Testing raw llama-cpp-python initialization...")
 try:
     from llama_cpp import Llama
-    model_path = os.path.join(SCRIPT_DIR, 'models', 'mistral-7b-instruct-v0.1.Q4_K_M.gguf')
+    model_path = os.path.join(SCRIPT_DIR, 'models', 'mistral-7b-instruct-v0.1-q4_k_m.gguf')
     
     print(f"📂 Looking for model file at: {model_path}")
     print(f"❓ Does file exist? {os.path.exists(model_path)}")

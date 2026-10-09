@@ -7,7 +7,7 @@ from llama_cpp import Llama  # Natively communicates with GGUF weights
 
 # Force absolute system directory matching
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CURRENT_MODEL_PATH = os.path.join(SCRIPT_DIR, 'models', 'mistral-7b-instruct-v0.1.Q4_K_M.gguf')
+CURRENT_MODEL_PATH = os.path.join(SCRIPT_DIR, 'models', 'mistral-7b-instruct-v0.1-q4_k_m.gguf')
 
 class EchoChatBot:
     def __init__(self, training_store=None):

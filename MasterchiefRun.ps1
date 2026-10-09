@@ -61,7 +61,7 @@ if (Test-Path $envFile) {
 
 if ($DownloadModel) {
     $modelsDir = Join-Path $repoDir 'models'
-    $modelPath = Join-Path $modelsDir 'mistral-7b-instruct-v0.1.Q4_K_M.gguf'
+    $modelPath = Join-Path $modelsDir 'mistral-7b-instruct-v0.1-q4_k_m.gguf'
     $modelUrl = 'https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q4_K_M.gguf?download=true'
     New-Item -ItemType Directory -Path $modelsDir -Force | Out-Null
     if (-not (Test-Path $modelPath)) {

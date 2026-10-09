@@ -11,7 +11,7 @@ except ImportError:
     )
 
 # Path to your GGUF model
-MODEL_PATH = r"C:\Users\Echo\masterchief\models\mistral-7b-instruct-v0.1.Q4_K_M.gguf"
+MODEL_PATH = r"C:\Users\Echo\masterchief\models\mistral-7b-instruct-v0.1-q4_k_m.gguf"
 
 # Global model instance
 llm_instance = None
