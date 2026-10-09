@@ -47,6 +47,11 @@
     textarea{width:100%;min-height:74px;resize:vertical;border:1px solid var(--line);border-radius:9px;padding:11px;background:#0c1524;color:var(--text);font:13px/1.5 Consolas,monospace}
     pre{white-space:pre-wrap;overflow:auto;max-height:310px;margin:12px 0 0;padding:12px;background:#09111d;border:1px solid var(--line);border-radius:9px;color:#bfd2e9;font:12px/1.5 Consolas,monospace}
     .muted{color:var(--muted)}
+    .setup-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line)}
+    .setup-row:last-of-type{border-bottom:0}
+    .setup-row .setup-name{min-width:170px}
+    .setup-row .setup-badge{color:var(--muted);font-size:.82rem}
+    .setup-row .setup-badge.ok{color:var(--green)}
     @media(max-width:1050px){.service-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:680px){.shell{padding:12px}header{align-items:flex-start;flex-direction:column}.service-grid,.query-grid{grid-template-columns:1fr}.service-card{min-height:unset}}
   </style>
@@ -118,6 +123,27 @@
       Optional server-side bearer tokens: <code>PROMETHEUS_TOKEN</code>, <code>GRAFANA_API_TOKEN</code>, and <code>LOKI_TOKEN</code>.
       Set <code>METRICS_TOKEN</code> to require bearer authentication for scraping; otherwise <code>/metrics</code> is loopback-only.
     </div>
+
+    <div class="section-heading">
+      <div>
+        <h2>Local stack setup <span class="muted">(optional)</span></h2>
+        <p>Already running these elsewhere? Just set the URLs above. Otherwise install standalone, Docker-free copies into <code>tools/</code> with one click.</p>
+      </div>
+      <div class="service-actions">
+        <button class="button primary" type="button" data-setup="all" data-action="setup">Set up everything</button>
+        <button class="button" type="button" data-setup="all" data-action="stop">Stop all</button>
+      </div>
+    </div>
+    <section class="panel" id="setupPanel">
+      <div id="setupRows"></div>
+      <p class="muted" style="margin:10px 0 0">
+        Scripts are in <code>scripts/</code> and can be run or edited from
+        <a class="service-link" href="/core-scripts">Core Scripts</a> or the
+        <a class="service-link" href="/web_ide">Web IDE</a>. Grafana login is <code>admin</code> / <code>admin</code> on first start;
+        Prometheus and Loki are added to it as data sources automatically.
+      </p>
+      <pre id="setupLog" aria-live="polite">Setup output appears here.</pre>
+    </section>
 
     <div class="section-heading">
       <div><h2>Explore telemetry</h2><p>Queries pass through MasterChief to the configured service; tokens stay on the server.</p></div>
@@ -209,10 +235,68 @@
       }
     }
 
+    let setupTarget = 'all';
+    let setupTimer = null;
+
+    function setupButton(target, action, label, primary) {
+      return `<button class="button${primary ? ' primary' : ''}" type="button" data-setup="${target}" data-action="${action}">${label}</button>`;
+    }
+
+    async function loadSetup() {
+      const rows = document.getElementById('setupRows');
+      try {
+        const response = await fetch('/api/observability/setup');
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+        rows.innerHTML = Object.entries(payload.services).map(([name, svc]) => {
+          const badge = svc.running ? 'Running' : svc.installed ? 'Installed, stopped' : 'Not installed';
+          const buttons = svc.installed
+            ? (svc.running ? setupButton(name, 'stop', 'Stop') : setupButton(name, 'start', 'Start', true))
+            : setupButton(name, 'setup', 'Install &amp; start', true);
+          return `<div class="setup-row"><div class="setup-name"><strong>${svc.label}</strong> <span class="setup-badge${svc.running ? ' ok' : ''}">${badge}</span></div>
+            <div class="service-actions">${buttons}<a class="service-link" href="${svc.edit_url}">View script</a></div></div>`;
+        }).join('');
+        document.querySelectorAll('[data-setup]').forEach(b => { b.disabled = payload.all.busy || Object.values(payload.services).some(s => s.busy); });
+      } catch (error) {
+        rows.innerHTML = `<p class="muted">Setup controls unavailable: ${error.message}</p>`;
+      }
+    }
+
+    async function pollSetupLog() {
+      const output = document.getElementById('setupLog');
+      try {
+        const response = await fetch(`/api/observability/setup/${setupTarget}/log`);
+        const payload = await response.json();
+        if (payload.ok) output.textContent = payload.log || 'No output yet.';
+        output.scrollTop = output.scrollHeight;
+        if (payload.ok && payload.running) { setupTimer = setTimeout(pollSetupLog, 1500); return; }
+      } catch (error) { /* keep last output */ }
+      setupTimer = null;
+      loadSetup();
+      loadStatus();
+    }
+
+    async function runSetup(target, action) {
+      const output = document.getElementById('setupLog');
+      setupTarget = target;
+      output.textContent = 'Starting…';
+      const response = await fetch(`/api/observability/setup/${target}/${action}`, {method: 'POST'});
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) { output.textContent = payload.error || `Setup failed (${response.status}).`; return; }
+      document.querySelectorAll('[data-setup]').forEach(b => { b.disabled = true; });
+      clearTimeout(setupTimer);
+      pollSetupLog();
+    }
+
+    document.addEventListener('click', event => {
+      const button = event.target.closest('[data-setup]');
+      if (button && !button.disabled) runSetup(button.dataset.setup, button.dataset.action);
+    });
     document.getElementById('refreshStatus').addEventListener('click', loadStatus);
     document.getElementById('runPromQuery').addEventListener('click', () => runQuery('prometheus', 'promQuery', 'promResult'));
     document.getElementById('runLokiQuery').addEventListener('click', () => runQuery('loki', 'lokiQuery', 'lokiResult'));
     loadStatus();
+    loadSetup();
   </script>
 </body>
 </html>

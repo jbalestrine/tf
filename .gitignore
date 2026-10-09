@@ -47,3 +47,5 @@ data/script_index_repo.json
 data/scripts/*.stdout
 data/scripts/*.stderr
 data/backups/
+
+tools/grafana/

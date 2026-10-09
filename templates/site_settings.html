@@ -17,14 +17,14 @@
         <div>
             <input type="file" id="ss-logo-file" accept=".svg,.png,.jpg,.jpeg,.webp">
             <button class="btn btn-info" id="ss-logo-go" type="button">Replace logo</button>
-            <div style="color:#9aa4b2;font-size:12px;margin-top:4px;">SVG, PNG, JPG or WebP up to 1 MB. Saved as <code>static/masterchief-logo.*</code>; the old file is copied to <code>data/page_editor_backups/</code>. Header markup: <code>main.py</code> and <code>templates/base.py</code>.</div>
+            <div style="color:#9aa4b2;font-size:12px;margin-top:4px;">SVG, PNG, JPG or WebP up to 1 MB. Saved as <code>static/masterchief-logo.*</code>; the old file is copied to <code>data/page_editor_backups/</code>. Header markup: <code>templates/layout.html</code>.</div>
         </div>
     </div>
 </div>
 <div id="ss-groups"></div>
 <div class="section">
     <h3>Menu</h3>
-    <p style="color:#9aa4b2;margin-bottom:8px;">Rename groups and links, change where a link goes, add a link under a group, or remove one. Edits <code>HTML_TEMPLATE</code> in <code>main.py</code> and the matching line in <code>templates/base.py</code>. Removing a menu link does not delete the page itself.</p>
+    <p style="color:#9aa4b2;margin-bottom:8px;">Rename groups and links, change where a link goes, add a link under a group, or remove one. Edits the main menu in <code>templates/layout.html</code>. Removing a menu link does not delete the page itself.</p>
     <div id="ss-nav" style="display:grid;gap:10px;"></div>
 </div>
 <script>

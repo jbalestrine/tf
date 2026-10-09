@@ -401,11 +401,16 @@ def inject_ui_modules():
                 configured_modules = json.load(_f)
         else:
             configured_modules = {}
-        return {
-            'ui_modules': visible_pinned_modules(
-                configured_modules, app.config['UPLOAD_FOLDER']
-            )
-        }
+        modules = visible_pinned_modules(configured_modules, app.config['UPLOAD_FOLDER'])
+        running = app.config.get('running_services', {})
+        host = request.host.rsplit(':', 1)[0]
+        for _name, _mod in modules.items():
+            svc = running.get(_name) or {}
+            proc = svc.get('process')
+            # Ports are assigned dynamically at start, so link to the live one
+            if svc.get('port') and proc is not None and proc.poll() is None:
+                _mod['url'] = f"{request.scheme}://{host}:{svc['port']}/"
+        return {'ui_modules': modules}
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         app.logger.exception('Failed to load pinned add-on navigation entries')
         return {'ui_modules': {}}

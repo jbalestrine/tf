@@ -225,6 +225,16 @@ The POSIX starter creates or reuses `.venv` and installs `requirements.txt` on f
 
 Open the Observability Center at `/observability`. Set `PROMETHEUS_URL`, `GRAFANA_URL`, and `LOKI_URL` in the MasterChief server environment to connect existing services. Optional read-only bearer tokens are `PROMETHEUS_TOKEN`, `GRAFANA_API_TOKEN`, and `LOKI_TOKEN`. These credentials remain server-side.
 
+**Optional local stack (no Docker).** If you don't already run these services, use the "Local stack setup" panel on `/observability`, or run the scripts directly (they also appear in Core Scripts and the Web IDE):
+
+```powershell
+python scripts/setup_observability.py setup   # Prometheus + Loki + Grafana in one go
+python scripts/setup_grafana.py setup         # or one service at a time (setup_prometheus.py, setup_loki.py)
+python scripts/setup_observability.py stop    # also: start, status, install, uninstall
+```
+
+Standalone Windows builds are downloaded into `tools/` (git-ignored) and bound to localhost: Grafana `:3000`, Prometheus `:9090`, Loki `:3100`. The scripts write the matching `*_URL` values to `.env`, configure Prometheus to scrape MasterChief's `/metrics` on `localhost:8080`, and provision Prometheus and Loki as Grafana data sources. Grafana's first login is `admin` / `admin`. Loki starts empty until a log shipper pushes logs to it.
+
 MasterChief exposes request counters and latency histograms at `/metrics`. By default this endpoint is loopback-only; set `METRICS_TOKEN` to allow a Prometheus scraper on another host and configure its scrape job using [observability/prometheus-scrape-example.yml](observability/prometheus-scrape-example.yml). The sample Grafana dashboard and alert rules are in `observability/dashboards/` and `observability/alerts/`. Loki queries require a log shipper to send MasterChief logs to the configured Loki service.
 
 ### From PyPI

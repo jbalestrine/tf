@@ -4,7 +4,7 @@ from flask import Flask
 from managers.page_editor import PageEditor
 from managers.site_settings import SiteSettings, SiteSettingsError
 
-LAYOUT = '''HTML_TEMPLATE = """<!DOCTYPE html>
+LAYOUT = '''<!DOCTYPE html>
 <title>Old Title</title>
 <header id="masterchief-site-brand">
 <a href="/"><img src="/static/masterchief-logo.svg" alt="Old alt" style="width:min(360px,75vw);"></a>
@@ -19,7 +19,6 @@ LAYOUT = '''HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </details>
 </nav>
-"""
 '''
 ABOUT = '<title>About - Old</title>\n<h1>Head</h1>\n<p class="hero-description">\n   First   line\n   second.\n</p>\n'
 
@@ -29,9 +28,7 @@ def _make(tmp_path, with_base=True):
     (tmp_path / "static").mkdir()
     (tmp_path / "templates").mkdir()
     (tmp_path / "masterchief").mkdir()
-    (tmp_path / "main.py").write_bytes(LAYOUT.replace("\n", "\r\n").encode())
-    if with_base:
-        (tmp_path / "templates" / "base.py").write_text(LAYOUT, encoding="utf-8", newline="")
+    (tmp_path / "templates" / "layout.html").write_bytes(LAYOUT.replace("\n", "\r\n").encode())
     (tmp_path / "about.html").write_text(ABOUT, encoding="utf-8")
     (tmp_path / "setup.py").write_text('setup(\n    version="1.0.0",\n)\n', encoding="utf-8")
     (tmp_path / "masterchief" / "__init__.py").write_text('__version__ = "1.0.0"\n', encoding="utf-8")
@@ -52,9 +49,8 @@ def test_overview_reads_values(tmp_path):
 def test_save_fields_in_every_file_and_keep_crlf(tmp_path):
     ss = _make(tmp_path)
     ss.save({"site_title": "New <T>", "logo_alt": 'Say "hi"', "version": "2.1.0", "about_description": "Brand new text"})
-    main = (tmp_path / "main.py").read_bytes().decode()
+    main = (tmp_path / "templates" / "layout.html").read_bytes().decode()
     assert "<title>New &lt;T&gt;</title>" in main and 'alt="Say &quot;hi&quot;"' in main and "\r\n" in main
-    assert "New &lt;T&gt;" in (tmp_path / "templates" / "base.py").read_text(encoding="utf-8")
     assert 'version="2.1.0"' in (tmp_path / "setup.py").read_text() and '"2.1.0"' in (tmp_path / "masterchief" / "__init__.py").read_text()
     assert "Brand new text" in (tmp_path / "about.html").read_text()
     assert list((tmp_path / "data" / "page_editor_backups").iterdir())
@@ -81,7 +77,7 @@ def test_nav_ops(tmp_path):
     two = ss.nav()["groups"][1]["links"][1]
     ss.nav_save({"type": "remove_link", "line": two["line"], "href": "/two"})
     assert [l["href"] for l in ss.nav()["groups"][1]["links"]] == ["/uno", "/three"]
-    base = (tmp_path / "templates" / "base.py").read_text(encoding="utf-8")
+    base = (tmp_path / "templates" / "layout.html").read_text(encoding="utf-8")
     assert "/three" in base and "/two" not in base and "Ops &amp; Co" in base
     with pytest.raises(SiteSettingsError):
         ss.nav_preview({"type": "add_link", "line": last["line"], "label": "x", "href": "javascript:alert(1)"})

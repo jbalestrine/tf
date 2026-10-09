@@ -6,8 +6,12 @@ import hmac
 import ipaddress
 import os
 import re
+import subprocess
+import sys
 import time
+from base64 import urlsafe_b64encode
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import requests
@@ -41,6 +45,34 @@ _SERVICE_SETTINGS = {
     "loki": ("LOKI_URL", "/ready"),
 }
 _SAFE_DASHBOARD_UID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+_SETUP_ACTIONS = {"setup", "install", "start", "stop"}
+_setup_jobs: dict[str, subprocess.Popen] = {}
+
+try:
+    from auth_module import requires_permission
+except ImportError:
+    from functools import wraps
+
+    def requires_permission(_permission):
+        def decorator(func):
+            @wraps(func)
+            def authentication_unavailable(*args, **kwargs):
+                abort(503, description="Authentication is unavailable; setup scripts are disabled.")
+            return authentication_unavailable
+        return decorator
+
+
+def _stack():
+    from scripts import observability_stack
+
+    return observability_stack
+
+
+def _setup_log(target: str) -> Path:
+    stack = _stack()
+    base = stack.TOOLS_DIR if target == "all" else stack.service_dir(target)
+    base.mkdir(parents=True, exist_ok=True)
+    return base / ("observability-setup.log" if target == "all" else "setup.log")
 
 
 def _service_url(service: str) -> str | None:
@@ -255,3 +287,76 @@ def loki_query():
         return jsonify({"ok": False, "error": "Loki returned invalid JSON."}), 502
 
     return jsonify({"ok": True, "result": result})
+
+
+@observability_bp.get("/api/observability/setup")
+@requires_permission("scripts")
+def setup_state():
+    """Report install/run state and script locations for the optional local stack."""
+    stack = _stack()
+    services = {}
+    for name, spec in stack.SERVICES.items():
+        installed = bool(stack.homepath(name))
+        script = stack.ROOT / "scripts" / f"setup_{name}.py"
+        if installed:
+            os.environ.setdefault(spec["env"], stack.default_url(name))
+        services[name] = {
+            "label": spec["label"],
+            "installed": installed,
+            "running": bool(stack.running_pid(name)) or stack.healthy(name, 1),
+            "busy": name in _setup_jobs and _setup_jobs[name].poll() is None,
+            "script": f"scripts/setup_{name}.py",
+            "edit_url": "/scripts/edit/" + urlsafe_b64encode(str(script).encode()).decode(),
+        }
+    all_script = stack.ROOT / "scripts" / "setup_observability.py"
+    return jsonify({
+        "ok": True,
+        "services": services,
+        "all": {
+            "busy": "all" in _setup_jobs and _setup_jobs["all"].poll() is None,
+            "script": "scripts/setup_observability.py",
+            "edit_url": "/scripts/edit/" + urlsafe_b64encode(str(all_script).encode()).decode(),
+        },
+    })
+
+
+@observability_bp.post("/api/observability/setup/<target>/<action>")
+@requires_permission("scripts")
+def setup_run(target: str, action: str):
+    """Run an optional setup script in the background and log its output."""
+    stack = _stack()
+    if target not in {*stack.SERVICES, "all"} or action not in _SETUP_ACTIONS:
+        return jsonify({"ok": False, "error": "Unknown service or action."}), 400
+    busy = [key for key, job in _setup_jobs.items() if job.poll() is None]
+    if busy:
+        return jsonify({"ok": False, "error": f"Setup already running for: {', '.join(busy)}."}), 409
+
+    script = "setup_observability.py" if target == "all" else f"setup_{target}.py"
+    log_path = _setup_log(target)
+    with open(log_path, "w", encoding="utf-8") as log:
+        log.write(f"$ python scripts/{script} {action}\n")
+    log = open(log_path, "ab")
+    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    _setup_jobs[target] = subprocess.Popen(
+        [sys.executable, "-u", str(stack.ROOT / "scripts" / script), action],
+        cwd=str(stack.ROOT), stdout=log, stderr=subprocess.STDOUT, creationflags=flags,
+    )
+    log.close()
+    return jsonify({"ok": True, "started": f"{target} {action}"}), 202
+
+
+@observability_bp.get("/api/observability/setup/<target>/log")
+@requires_permission("scripts")
+def setup_log(target: str):
+    stack = _stack()
+    if target not in {*stack.SERVICES, "all"}:
+        return jsonify({"ok": False, "error": "Unknown service."}), 400
+    path = _setup_log(target)
+    text = path.read_text(encoding="utf-8", errors="replace")[-6000:] if path.exists() else ""
+    job = _setup_jobs.get(target)
+    return jsonify({
+        "ok": True,
+        "running": bool(job and job.poll() is None),
+        "exit_code": job.poll() if job else None,
+        "log": text,
+    })

@@ -40,7 +40,7 @@
     links.forEach(link => { link.hidden = false; });
     groups.forEach(group => {
       group.hidden = false;
-      group.open = group.classList.contains('active') || groupLinks.get(group).some(link => link.classList.contains('active'));
+      group.open = false;
     });
     if (status) status.textContent = '';
   }

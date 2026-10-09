@@ -12,12 +12,12 @@ from pathlib import Path
 
 from managers.page_editor import PageEditor, PageEditorError, _sha
 
-LAYOUT_FILES = ("main.py", "templates/base.py")
-HTML_START = "HTML_TEMPLATE"
+LAYOUT_FILE = "templates/layout.html"
+LAYOUT_FILES = (LAYOUT_FILE,)
 NAV_OPEN = '<nav aria-label="Main navigation">'
 HREF_RE = re.compile(r"^/[A-Za-z0-9_\-./#?=&%]*$")
 VERSION_RE = re.compile(r"^\d+(\.\d+){1,3}([.\-+][0-9A-Za-z.]+)?$")
-NAV_LINK_RE = re.compile(r'^(\s*)<a href="(/[^"]*)" class="(.*?)">(.*?)</a>\s*$')
+NAV_LINK_RE = re.compile(r'^(\s*)<a href="(/[^"]*)"(?: class="(.*?)")?>(.*?)</a>\s*$')
 NAV_SUMMARY_RE = re.compile(r'^(\s*<summary[^>]*>)(.*?)(</summary>\s*)$')
 LOGO_TYPES = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 MAX_LOGO_BYTES = 1_000_000
@@ -28,23 +28,20 @@ class SiteSettingsError(ValueError):
     pass
 
 
-def _b(file, pattern, flags=0, after=None, optional=False):
-    return {"file": file, "pattern": pattern, "flags": flags, "after": after, "optional": optional}
+def _b(file, pattern, flags=0, after=None, optional=False, nth=0):
+    return {"file": file, "pattern": pattern, "flags": flags, "after": after, "optional": optional, "nth": nth}
 
 
 FIELDS = [
     {"id": "site_title", "group": "Site", "label": "Browser tab title", "kind": "text",
      "help": "Text in the browser tab on every page that uses the shared layout.",
-     "bindings": [_b("main.py", r"<title>(?P<v>[^<{]*)</title>", after=HTML_START),
-                  _b("templates/base.py", r"<title>(?P<v>[^<{]*)</title>", after=HTML_START, optional=True)]},
+     "bindings": [_b(LAYOUT_FILE, r"<title>(?P<v>[^<{]*)</title>")]},
     {"id": "logo_alt", "group": "Site", "label": "Logo alt text", "kind": "text", "attr": True,
      "help": "Description read by screen readers and shown if the logo cannot load.",
-     "bindings": [_b("main.py", r'masterchief-site-brand.*?<img[^>]*?alt="(?P<v>[^"]*)"', re.S, after=HTML_START),
-                  _b("templates/base.py", r'masterchief-site-brand.*?<img[^>]*?alt="(?P<v>[^"]*)"', re.S, after=HTML_START, optional=True)]},
+     "bindings": [_b(LAYOUT_FILE, r'masterchief-site-brand.*?<img[^>]*?alt="(?P<v>[^"]*)"', re.S)]},
     {"id": "logo_width", "group": "Site", "label": "Logo max width (px)", "kind": "int", "min": 40, "max": 1200,
      "help": "Largest width of the logo in the header.",
-     "bindings": [_b("main.py", r"masterchief-site-brand.*?width:min\((?P<v>\d+)px", re.S, after=HTML_START),
-                  _b("templates/base.py", r"masterchief-site-brand.*?width:min\((?P<v>\d+)px", re.S, after=HTML_START, optional=True)]},
+     "bindings": [_b(LAYOUT_FILE, r"masterchief-site-brand.*?width:min\((?P<v>\d+)px", re.S)]},
     {"id": "version", "group": "Version", "label": "App version", "kind": "version",
      "help": "Updates the package version in setup.py and masterchief/__init__.py. The About page also shows the latest GitHub release, which is read from GitHub.",
      "bindings": [_b("setup.py", r'^\s*version="(?P<v>[^"]+)"', re.M),
@@ -64,6 +61,18 @@ FIELDS = [
     {"id": "about_description", "group": "About page", "label": "Hero description", "kind": "textarea",
      "bindings": [_b("about.html", r'<p class="hero-description">(?P<v>.*?)</p>', re.S)]},
 ]
+_CARD = r'<div class="feature-card[^>]*>\s*<span class="feature-icon">.*?</span>\s*'
+_CARD_COUNT = 18
+for _n in range(_CARD_COUNT):
+    FIELDS.append({"id": f"about_card_{_n + 1}_title", "group": "About page cards", "label": f"Card {_n + 1} title", "kind": "text",
+                   "bindings": [_b("about.html", _CARD + r"<h3>(?P<v>.*?)</h3>", re.S, optional=True, nth=_n)]})
+    FIELDS.append({"id": f"about_card_{_n + 1}_text", "group": "About page cards", "label": f"Card {_n + 1} text", "kind": "textarea",
+                   "bindings": [_b("about.html", _CARD + r"<h3>.*?</h3>\s*<p>(?P<v>.*?)</p>", re.S, optional=True, nth=_n)]})
+for _n, _name in enumerate(("Current Features", "Updates Made", "Coming Soon", "Tech Stack")):
+    FIELDS.append({"id": f"about_section_{_n + 1}_title", "group": "About page sections", "label": f"Section {_n + 1} heading ({_name})", "kind": "text",
+                   "bindings": [_b("about.html", r'<h2 class="section-title">(?P<v>.*?)</h2>', re.S, optional=True, nth=_n)]})
+    FIELDS.append({"id": f"about_section_{_n + 1}_subtitle", "group": "About page sections", "label": f"Section {_n + 1} subtitle ({_name})", "kind": "text",
+                   "bindings": [_b("about.html", r'<p class="section-subtitle">(?P<v>.*?)</p>', re.S, optional=True, nth=_n)]})
 FIELD_BY_ID = {f["id"]: f for f in FIELDS}
 
 
@@ -71,7 +80,6 @@ class SiteSettings:
     def __init__(self, editor: PageEditor):
         self.editor = editor
         self.root = editor.root
-        self._nav_main_lines: list[str] = []
 
     # ---------- reading ----------
     def _read(self, rel: str) -> tuple[bytes, str]:
@@ -85,7 +93,9 @@ class SiteSettings:
             base = text.find(binding["after"])
             if base < 0:
                 return None
-        return re.compile(binding["pattern"], binding["flags"]).search(text, base)
+        found = list(re.compile(binding["pattern"], binding["flags"]).finditer(text, base))
+        nth = binding.get("nth", 0)
+        return found[nth] if len(found) > nth else None
 
     @staticmethod
     def _to_plain(value: str) -> str:
@@ -216,18 +226,15 @@ class SiteSettings:
     # ---------- menu ----------
     def _nav_range(self, text: str) -> tuple[list[str], int, int]:
         lines = text.splitlines()
-        start_html = next((i for i, l in enumerate(lines) if l.startswith(HTML_START)), None)
-        if start_html is None:
-            raise SiteSettingsError("Layout template not found.")
         try:
-            open_i = next(i for i in range(start_html, len(lines)) if NAV_OPEN in lines[i])
+            open_i = next(i for i, l in enumerate(lines) if NAV_OPEN in l)
             close_i = next(i for i in range(open_i, len(lines)) if "</nav>" in lines[i])
         except StopIteration as exc:
             raise SiteSettingsError("Menu markup not found.") from exc
         return lines, open_i, close_i
 
     def nav(self) -> dict:
-        _, text = self._read("main.py")
+        _, text = self._read(LAYOUT_FILE)
         lines, open_i, close_i = self._nav_range(text)
         groups, current = [{"label": "Top bar", "line": None, "links": []}], None
         for i in range(open_i + 1, close_i):
@@ -255,23 +262,13 @@ class SiteSettings:
             try:
                 raw, text = self._read(rel)
                 lines, open_i, close_i = self._nav_range(text)
-            except (PageEditorError, SiteSettingsError):
-                if rel == "main.py":
-                    raise
-                continue
+            except PageEditorError as exc:
+                raise SiteSettingsError(f"{rel} is not available for editing.") from exc
             try:
                 line_no = int(op.get("line"))
             except (TypeError, ValueError) as exc:
                 raise SiteSettingsError("A menu line is required.") from exc
-            main_lines = self._nav_main_lines
-            if rel == "main.py":
-                idx = line_no - 1
-                anchor = None
-            else:
-                anchor = main_lines[line_no - 1].strip()
-                idx = next((i for i in range(open_i, close_i) if lines[i].strip() == anchor), None)
-                if idx is None:
-                    continue
+            idx = line_no - 1
             if not (open_i < idx < close_i):
                 raise SiteSettingsError("That line is not part of the menu.")
             old = lines[idx]
@@ -287,8 +284,10 @@ class SiteSettings:
                 if not m:
                     raise SiteSettingsError("That line is not a menu link.")
                 if kind == "rename_link":
-                    href = self._check_href(op.get("href") or m.group(2))
-                    new = f'{m.group(1)}<a href="{href}" class="{m.group(3)}">{self._check_label(op.get("label"))}</a>'
+                    requested = op.get("href") or m.group(2)
+                    href = requested if requested == m.group(2) else self._check_href(requested)
+                    cls = f' class="{m.group(3)}"' if m.group(3) is not None else ""
+                    new = f'{m.group(1)}<a href="{href}"{cls}>{self._check_label(op.get("label"))}</a>'
                     changes.append({"path": rel, "start": idx + 1, "end": idx + 1, "text": new, "sha": sha, "old": old})
                 elif kind == "add_link":
                     href = self._check_href(op.get("href"))
@@ -313,8 +312,7 @@ class SiteSettings:
         return href
 
     def _prepare_nav(self) -> None:
-        _, text = self._read("main.py")
-        self._nav_main_lines = text.splitlines()
+        self._read(LAYOUT_FILE)
 
     def nav_preview(self, op: dict) -> dict:
         self._prepare_nav()
@@ -340,9 +338,8 @@ class SiteSettings:
 
     # ---------- logo ----------
     def logo_info(self) -> dict:
-        _, text = self._read("main.py")
-        base = text.find(HTML_START)
-        m = re.compile(r'masterchief-site-brand.*?<img src="(/static/[^"]+)"', re.S).search(text, max(base, 0))
+        _, text = self._read(LAYOUT_FILE)
+        m = re.compile(r'masterchief-site-brand.*?<img src="(/static/[^"]+)"', re.S).search(text)
         return {"src": m.group(1) if m else "", "max_bytes": MAX_LOGO_BYTES, "types": sorted(LOGO_TYPES)}
 
     @staticmethod
@@ -387,8 +384,7 @@ class SiteSettings:
                     raw, text = self._read(r)
                 except PageEditorError:
                     continue
-                base = text.find(HTML_START)
-                m = re.compile(r'masterchief-site-brand.*?<img src="(?P<v>/static/[^"]+)"', re.S).search(text, max(base, 0))
+                m = re.compile(r'masterchief-site-brand.*?<img src="(?P<v>/static/[^"]+)"', re.S).search(text)
                 if not m:
                     continue
                 c = self._span_change(r, raw, text, m.start("v"), m.end("v"), new_src)
