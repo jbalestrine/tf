@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mail &amp; Calendar - MasterChief</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111827; color: #e5e7eb; font: 15px/1.5 Arial, sans-serif; }
+  main { max-width: 1200px; margin: auto; padding: 24px 20px 56px; }
+  a { color: #93c5fd; }
+  h1 { margin: 0; color: #8ab4f8; }
+  .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+  .top a { text-decoration: none; background: #1f2937; padding: 8px 14px; border-radius: 8px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 10px; font-size: 1.1rem; color: #f3f4f6; }
+  input, select, textarea, button { font: inherit; padding: 8px 10px; border-radius: 6px; border: 1px solid #4b5563; background: #111827; color: #e5e7eb; }
+  button { cursor: pointer; background: #2563eb; border-color: #2563eb; color: #fff; }
+  button.sec { background: #374151; border-color: #4b5563; }
+  button.del { background: #991b1b; border-color: #991b1b; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .row > * { flex: 1 1 180px; }
+  .msg { padding: 8px 10px; border-bottom: 1px solid #374151; cursor: pointer; }
+  .msg:hover { background: #273449; }
+  .msg.unread .subj { font-weight: 700; }
+  .meta { color: #9ca3af; font-size: .85rem; }
+  .ev { padding: 8px 0; border-bottom: 1px solid #374151; }
+  .ev .when { color: #8ab4f8; font-size: .85rem; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #111827; padding: 12px; border-radius: 8px; max-height: 420px; overflow: auto; }
+  .err { color: #fca5a5; }
+  .hint { color: #9ca3af; font-size: .85rem; }
+  .acct { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 6px 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><h1>Mail &amp; Calendar</h1><a href="/google-services">&larr; Google Services</a></div>
+  <div class="cols">
+    <div>
+      <div class="card">
+        <h2>Accounts</h2>
+        <div id="accounts"></div>
+        <details style="margin-top:10px">
+          <summary>Add an account</summary>
+          <p class="hint">Use an <b>app password</b>, not your normal password. Gmail: Google Account &rarr; Security &rarr; 2-Step Verification &rarr; App passwords. Yahoo: Account Security &rarr; Generate app password. Credentials are stored only in this app's local <code>data/mailcal_accounts.json</code> and the mailbox is opened read-only.</p>
+          <div class="row">
+            <select id="provider"><option value="gmail">Gmail</option><option value="yahoo">Yahoo</option><option value="outlook">Outlook.com</option><option value="icloud">iCloud</option><option value="custom">Other IMAP</option></select>
+            <input id="label" placeholder="Label (optional)">
+          </div>
+          <div class="row"><input id="email" placeholder="Email address"><input id="password" type="password" placeholder="App password" autocomplete="new-password"></div>
+          <div class="row"><input id="host" placeholder="IMAP host (only for Other)"></div>
+          <div class="row"><input id="calname" placeholder="Calendar name (optional)"><input id="calurl" placeholder="Calendar ICS URL (optional, https)"></div>
+          <p class="hint">Google Calendar: Settings &rarr; your calendar &rarr; <i>Secret address in iCal format</i>. Yahoo/others: any calendar's published ICS link.</p>
+          <button id="add">Connect</button> <span id="addmsg"></span>
+        </details>
+      </div>
+      <div class="card">
+        <h2>Inbox <select id="acctsel" style="width:auto"></select> <button class="sec" id="refresh">Refresh</button></h2>
+        <div id="inbox" class="hint">Add an account to see mail.</div>
+      </div>
+      <div class="card" id="viewer" hidden><h2 id="vsubj"></h2><div class="meta" id="vmeta"></div><pre id="vbody"></pre></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Upcoming events <select id="days" style="width:auto"><option value="7">7 days</option><option value="14" selected>14 days</option><option value="30">30 days</option></select></h2>
+        <div id="events" class="hint">No calendars connected.</div>
+      </div>
+      <div class="card">
+        <h2>Other services</h2>
+        <p class="hint"><b>Google Voice</b> has no public API. Voicemail and texts can be forwarded to Gmail (Voice &rarr; Settings), then they show up in the Gmail inbox here. <b>Skype</b> has been retired by Microsoft.</p>
+        <a href="https://voice.google.com/" target="_blank" rel="noopener noreferrer">Open Google Voice &nearr;</a>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = s => new Date(s).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+async function api(url, method, body) {
+  const r = await fetch(url, { method: method || 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  let d = {}; try { d = await r.json(); } catch (e) { d = { error: 'HTTP ' + r.status }; }
+  if (!r.ok && !d.error) d.error = 'HTTP ' + r.status;
+  return d;
+}
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+let accounts = [];
+async function loadAccounts() {
+  const d = await api('/api/mailcal/accounts');
+  accounts = d.accounts || [];
+  const box = $('accounts'); box.replaceChildren();
+  if (!accounts.length) box.append(el('div', 'hint', d.error || 'No accounts yet.'));
+  accounts.forEach(a => {
+    const row = el('div', 'acct');
+    row.append(el('span', '', a.label + ' (' + a.email + ')'));
+    const b = el('button', 'del', 'Remove');
+    b.onclick = async () => { if (confirm('Remove ' + a.email + '?')) { await api('/api/mailcal/accounts/' + a.id, 'DELETE'); loadAccounts(); } };
+    row.append(b); box.append(row);
+  });
+  $('acctsel').replaceChildren(...accounts.map(a => { const o = el('option', '', a.label); o.value = a.id; return o; }));
+  if (accounts.length) loadInbox();
+  loadCalendar();
+}
+async function loadInbox() {
+  const id = $('acctsel').value; if (!id) return;
+  const box = $('inbox'); box.replaceChildren(el('div', 'hint', 'Loading...'));
+  const d = await api('/api/mailcal/accounts/' + id + '/inbox');
+  box.replaceChildren();
+  if (d.error) { box.append(el('div', 'err', d.error)); return; }
+  (d.messages || []).forEach(m => {
+    const row = el('div', 'msg' + (m.unread ? ' unread' : ''));
+    row.append(el('div', 'subj', m.subject), el('div', 'meta', m.from + ' - ' + m.date));
+    row.onclick = () => openMsg(id, m.uid);
+    box.append(row);
+  });
+  if (!box.children.length) box.append(el('div', 'hint', 'Inbox is empty.'));
+}
+async function openMsg(id, uid) {
+  const d = await api('/api/mailcal/accounts/' + id + '/message/' + uid);
+  $('viewer').hidden = false;
+  $('vsubj').textContent = d.error || d.subject;
+  $('vmeta').textContent = d.error ? '' : 'From ' + d.from + ' | To ' + d.to + ' | ' + d.date;
+  $('vbody').textContent = d.body || '';
+  $('viewer').scrollIntoView({ behavior: 'smooth' });
+}
+async function loadCalendar() {
+  const box = $('events');
+  const d = await api('/api/mailcal/calendar?days=' + $('days').value);
+  box.replaceChildren();
+  (d.errors || []).forEach(e => box.append(el('div', 'err', e)));
+  (d.events || []).forEach(ev => {
+    const row = el('div', 'ev');
+    row.append(el('div', '', ev.title), el('div', 'when', (ev.all_day ? new Date(ev.start).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' (all day)' : fmt(ev.start)) + (ev.location ? ' @ ' + ev.location : '')), el('div', 'meta', ev.calendar));
+    box.append(row);
+  });
+  if (!box.children.length) box.append(el('div', 'hint', 'No upcoming events (or no calendars connected).'));
+}
+$('add').onclick = async () => {
+  $('addmsg').textContent = 'Connecting...';
+  const cal = $('calurl').value.trim();
+  const d = await api('/api/mailcal/accounts', 'POST', {
+    provider: $('provider').value, label: $('label').value, email: $('email').value, password: $('password').value,
+    imap_host: $('host').value, calendars: cal ? [{ name: $('calname').value || 'Calendar', url: cal }] : []
+  });
+  $('addmsg').textContent = d.error || 'Connected.';
+  $('addmsg').className = d.error ? 'err' : '';
+  if (!d.error) { $('password').value = ''; loadAccounts(); }
+};
+$('refresh').onclick = loadInbox;
+$('acctsel').onchange = loadInbox;
+$('days').onchange = loadCalendar;
+loadAccounts();
+</script>
+</body>
+</html>

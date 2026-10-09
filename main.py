@@ -2024,6 +2024,7 @@ from blueprints import (
     feature_routes,
     iac_routes,
     ide,
+    mailcal_routes,
     manager,
     mock,
     observability_routes,
@@ -2043,6 +2044,7 @@ app.register_blueprint(iac_routes.iac_bp)
 app.register_blueprint(roku_routes.roku_bp)
 app.register_blueprint(mock.mock_bp)
 app.register_blueprint(observability_routes.observability_bp)
+app.register_blueprint(mailcal_routes.mailcal_bp)
 app.register_blueprint(azure.azure_bp)
 app.register_blueprint(manager.manager_bp)
 app.register_blueprint(core_scripts.core_scripts_bp)
