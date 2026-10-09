@@ -1753,6 +1753,28 @@ class EchoChatBot:
 
         return None
 
+    def _find_llama_python(self) -> str:
+        """Python that can import llama_cpp: this interpreter if it can, otherwise another one on the machine (cached)."""
+        cached = getattr(self, '_llama_python', None)
+        if cached:
+            return cached
+        import importlib.util
+        import shutil
+        found = sys.executable
+        if importlib.util.find_spec('llama_cpp') is None:
+            candidates = [shutil.which('python'), shutil.which('py'), *glob.glob(r'C:\Python3*\python.exe'),
+                          *glob.glob(os.path.expandvars(r'%LOCALAPPDATA%\Programs\Python\Python3*\python.exe'))]
+            for cand in dict.fromkeys(c for c in candidates if c and os.path.exists(c)):
+                try:
+                    ok = subprocess.run([cand, '-c', 'import llama_cpp'], capture_output=True, timeout=30).returncode == 0
+                except Exception:
+                    ok = False
+                if ok:
+                    found = cand
+                    break
+        self._llama_python = found
+        return found
+
     def _generate_with_local_llm(self, prompt: str, max_tokens: int = 256, temperature: float = 0.7, _retry: bool = False) -> Optional[str]:
         """Generate text using the bundled `echo/llm_worker.py` subprocess.
 
@@ -1833,7 +1855,7 @@ class EchoChatBot:
         # Allow configurable timeout via env var, default to 45s to avoid long UI stalls.
         timeout = int(os.environ.get('ECHO_LLM_TIMEOUT', '45'))
         try:
-            worker_python = (os.environ.get('ECHO_LLM_WORKER_PYTHON') or sys.executable or '').strip()
+            worker_python = (os.environ.get('ECHO_LLM_WORKER_PYTHON') or self._find_llama_python()).strip()
             if not worker_python:
                 worker_python = sys.executable
             cmd = [worker_python, worker, '--model', self._local_model_path, '--max_tokens', str(int(max_tokens)), '--temperature', str(float(temperature))]
