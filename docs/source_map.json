@@ -1,0 +1,453 @@
+{
+  "components": [
+    {
+      "id": "nav-menu",
+      "title": "Top navigation / drop-down menus",
+      "category": "Layout",
+      "summary": "The header, menu groups (Operate, AI & Tools, ...) and their links.",
+      "how_to_edit": "Add or rename a <a href> inside the matching <details class='nav-group'> block. Group open/active state is the request.path.startswith(...) test on the <details> line.",
+      "files": [
+        {
+          "path": "main.py",
+          "role": "LIVE nav (this is what is rendered)",
+          "anchor": "^HTML_TEMPLATE\\s*="
+        },
+        {
+          "path": "templates/base.py",
+          "role": "Older copy of the layout and nav (shadowed)",
+          "anchor": "nav-group"
+        },
+        {
+          "path": "static/navigation.js",
+          "role": "Nav search / behaviour"
+        }
+      ],
+      "urls": [],
+      "warning": "The nav is defined TWICE. main.py's HTML_TEMPLATE overrides the one imported from templates/base.py, so pages show main.py's version. Change both until they are merged."
+    },
+    {
+      "id": "logo",
+      "title": "Logo",
+      "category": "Layout",
+      "summary": "The MasterChief logo shown in the header and on standalone pages.",
+      "how_to_edit": "Replace static/masterchief-logo.svg to change the image everywhere. To change size or alt text edit the <img> tag in the files below.",
+      "files": [
+        {
+          "path": "static/masterchief-logo.svg",
+          "role": "The logo image"
+        },
+        {
+          "path": "main.py",
+          "role": "<img> in the live layout",
+          "anchor": "masterchief-logo\\.svg"
+        },
+        {
+          "path": "templates/base.py",
+          "role": "<img> in the shadowed layout",
+          "anchor": "masterchief-logo\\.svg"
+        },
+        {
+          "path": "core/site_branding.py",
+          "role": "Injects the logo into standalone .html pages",
+          "anchor": "masterchief-logo"
+        }
+      ],
+      "urls": [],
+      "warning": ""
+    },
+    {
+      "id": "version",
+      "title": "App version",
+      "category": "Release",
+      "summary": "The version number for packaging, PyPI, and the About page.",
+      "how_to_edit": "Change version= in setup.py for the package/PyPI version. The About page shows the latest version from GitHub (GITHUB_REPO env var), not setup.py.",
+      "files": [
+        {
+          "path": "setup.py",
+          "role": "Package / PyPI version",
+          "anchor": "version="
+        },
+        {
+          "path": "core/github_version.py",
+          "role": "Fetches the GitHub version for About"
+        },
+        {
+          "path": "main.py",
+          "role": "/api/about/version route",
+          "anchor": "def about_github_version"
+        }
+      ],
+      "urls": [
+        "/about",
+        "/api/about/version"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "about",
+      "title": "About page",
+      "category": "Pages",
+      "summary": "The About page content.",
+      "how_to_edit": "Edit about.html (plain HTML in the project root).",
+      "files": [
+        {
+          "path": "about.html",
+          "role": "Page content"
+        },
+        {
+          "path": "main.py",
+          "role": "Route that serves it",
+          "anchor": "def about_page"
+        }
+      ],
+      "urls": [
+        "/about"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "diagnostics",
+      "title": "System diagnostics",
+      "category": "Pages",
+      "summary": "Diagnostics page and scan APIs.",
+      "how_to_edit": "Edit the route logic in the blueprint and the HTML in templates/diagnostics.py.",
+      "files": [
+        {
+          "path": "blueprints/diagnostics_routes.py",
+          "role": "Routes /sys/diagnostics and /sys/api/scan",
+          "anchor": "/sys/diagnostics"
+        },
+        {
+          "path": "templates/diagnostics.py",
+          "role": "HTML template string",
+          "anchor": "DIAGNOSTICS_TEMPLATE"
+        }
+      ],
+      "urls": [
+        "/sys/diagnostics"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "echo-chat-page",
+      "title": "Echo Chat page (UI)",
+      "category": "Echo",
+      "summary": "What you see on /echo-chat: layout, styles, front-end script.",
+      "how_to_edit": "Layout/HTML: ECHO_CHAT_TEMPLATE in main.py. Look and feel: static/echo_chat.css. Browser behaviour: static/echo_chat.js.",
+      "files": [
+        {
+          "path": "main.py",
+          "role": "ECHO_CHAT_TEMPLATE (HTML) and the page route",
+          "anchor": "^ECHO_CHAT_TEMPLATE"
+        },
+        {
+          "path": "static/echo_chat.css",
+          "role": "Styles"
+        },
+        {
+          "path": "static/echo_chat.js",
+          "role": "Front-end logic"
+        },
+        {
+          "path": "echo_chat_page.html",
+          "role": "Older standalone copy (check before editing)"
+        }
+      ],
+      "urls": [
+        "/echo-chat"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "echo-chat-logic",
+      "title": "Echo Chat brain and API",
+      "category": "Echo",
+      "summary": "How Echo answers: commands, memory, script library, app-change orders.",
+      "how_to_edit": "Replies and commands: echo/chat_bot.py. HTTP endpoint and admin command handling (!confirmed, !cancelchange): api_echo_chat in main.py.",
+      "files": [
+        {
+          "path": "echo/chat_bot.py",
+          "role": "The chat bot (reply logic, script reference index)",
+          "anchor": "^class "
+        },
+        {
+          "path": "main.py",
+          "role": "/api/echo/chat endpoint",
+          "anchor": "def api_echo_chat"
+        },
+        {
+          "path": "managers/echo_change_approvals.py",
+          "role": "Pending app-change proposals"
+        },
+        {
+          "path": "blueprints/echo_control_routes.py",
+          "role": "Echo control routes"
+        },
+        {
+          "path": "blueprints/echo_runtime_routes.py",
+          "role": "Echo runtime routes"
+        }
+      ],
+      "urls": [
+        "/api/echo/chat"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "echo-approvals",
+      "title": "Echo Approvals",
+      "category": "Echo",
+      "summary": "Review and approve changes Echo proposes.",
+      "how_to_edit": "Page markup: templates/echo_approvals.html. Data/diffs: managers/echo_change_approvals.py. Routes: main.py.",
+      "files": [
+        {
+          "path": "templates/echo_approvals.html",
+          "role": "Page UI"
+        },
+        {
+          "path": "managers/echo_change_approvals.py",
+          "role": "list_pending / list_history / apply",
+          "anchor": "def list_pending"
+        },
+        {
+          "path": "main.py",
+          "role": "Routes /echo-approvals and /api/echo/approvals",
+          "anchor": "route\\('/echo-approvals'\\)"
+        }
+      ],
+      "urls": [
+        "/echo-approvals"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "echo-training",
+      "title": "Echo training and memory pages",
+      "category": "Echo",
+      "summary": "Training and memory UIs.",
+      "how_to_edit": "Edit the page templates and their routes.",
+      "files": [
+        {
+          "path": "echo_train_page.html",
+          "role": "Training page"
+        },
+        {
+          "path": "echo_memory.html",
+          "role": "Memory page"
+        },
+        {
+          "path": "echo_commands.html",
+          "role": "Commands list page"
+        }
+      ],
+      "urls": [
+        "/echo-train",
+        "/echo-memory",
+        "/echo-commands"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "backups",
+      "title": "Data Backups",
+      "category": "Operate",
+      "summary": "Zip backup of data/.",
+      "how_to_edit": "UI: templates/data_backups.html. Logic: managers/data_backup.py. Routes: main.py.",
+      "files": [
+        {
+          "path": "templates/data_backups.html",
+          "role": "Page UI"
+        },
+        {
+          "path": "managers/data_backup.py",
+          "role": "Backup logic"
+        },
+        {
+          "path": "main.py",
+          "role": "Routes /backups, /api/backups",
+          "anchor": "route\\('/backups'\\)"
+        }
+      ],
+      "urls": [
+        "/backups"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "cicd",
+      "title": "CI/CD Center",
+      "category": "Operate",
+      "summary": "Workflow trigger analysis, deploy target selection, triggers.",
+      "how_to_edit": "UI: templates/cicd.html. Logic and providers: managers/cicd_center.py. Routes: main.py. Pipelines themselves: .github/workflows/*.yml. Saved settings go to data/cicd_config.json (created on first save).",
+      "files": [
+        {
+          "path": "templates/cicd.html",
+          "role": "Page UI"
+        },
+        {
+          "path": "managers/cicd_center.py",
+          "role": "Logic: workflow parsing, GitHub/GitLab/TFE/Render triggers"
+        },
+        {
+          "path": "main.py",
+          "role": "Routes /cicd, /api/cicd/*",
+          "anchor": "route\\('/cicd'\\)"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "role": "Tests on push/PR to main"
+        },
+        {
+          "path": ".github/workflows/pypi-publish.yml",
+          "role": "PyPI publish on release/tag"
+        }
+      ],
+      "urls": [
+        "/cicd"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "source-control",
+      "title": "Source Control page (git buttons)",
+      "category": "Operate",
+      "summary": "Commit / push / pull from the UI.",
+      "how_to_edit": "Routes call git via subprocess. main.py has a duplicate copy of these routes.",
+      "files": [
+        {
+          "path": "blueprints/scm_routes.py",
+          "role": "Blueprint copy",
+          "anchor": "/sys/scm"
+        },
+        {
+          "path": "main.py",
+          "role": "Duplicate copy",
+          "anchor": "route\\('/sys/scm'\\)"
+        },
+        {
+          "path": "templates/scm.py",
+          "role": "Page HTML"
+        }
+      ],
+      "urls": [
+        "/sys/scm"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "ideas-basket",
+      "title": "Idea Basket and Chaos Monkey",
+      "category": "Operate",
+      "summary": "Idea basket panel inside /chaos-monkey.",
+      "how_to_edit": "Panel HTML: templates/core_scripts.html (#ideas-panel). API and storage: blueprints/core_scripts.py.",
+      "files": [
+        {
+          "path": "templates/core_scripts.html",
+          "role": "Page and ideas panel",
+          "anchor": "ideas-panel"
+        },
+        {
+          "path": "blueprints/core_scripts.py",
+          "role": "Routes /chaos-monkey and /api/core-scripts/ideas"
+        }
+      ],
+      "urls": [
+        "/chaos-monkey"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "code-ui",
+      "title": "Code UI (script library)",
+      "category": "Scripts",
+      "summary": "masterchief_code_ui: browse and manage scripts.",
+      "how_to_edit": "Page served by ui_pages; script indexing lives in the Echo bot and the script index modules.",
+      "files": [
+        {
+          "path": "blueprints/ui_pages.py",
+          "role": "Route /masterchief_code_ui",
+          "anchor": "masterchief_code_ui"
+        },
+        {
+          "path": "main.py",
+          "role": "Main route /masterchief_code_ui",
+          "anchor": "route\\('/masterchief_code_ui'\\)"
+        }
+      ],
+      "urls": [
+        "/masterchief_code_ui"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "chatserv",
+      "title": "ChatServ (IRC)",
+      "category": "Chat",
+      "summary": "Chat server page, model controls.",
+      "how_to_edit": "UI: templates/chatserv.html and static/chatserv_controls.js. Routes: blueprints/chatserv_routes.py.",
+      "files": [
+        {
+          "path": "templates/chatserv.html",
+          "role": "Page"
+        },
+        {
+          "path": "static/chatserv_controls.js",
+          "role": "Controls script"
+        },
+        {
+          "path": "blueprints/chatserv_routes.py",
+          "role": "Routes"
+        }
+      ],
+      "urls": [
+        "/chatserv"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "login-rbac",
+      "title": "Login and roles",
+      "category": "Security",
+      "summary": "Users, passwords, permissions.",
+      "how_to_edit": "Runtime user data is data/rbac.json (hashed passwords - do not hand-edit or commit). Admin UI: rbac.html.",
+      "files": [
+        {
+          "path": "rbac.html",
+          "role": "Roles UI"
+        },
+        {
+          "path": "data/rbac.json",
+          "role": "User/session data (runtime state)"
+        }
+      ],
+      "urls": [
+        "/login",
+        "/rbac"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "requirements",
+      "title": "Python dependencies",
+      "category": "Release",
+      "summary": "What pip installs.",
+      "how_to_edit": "requirements.txt is required; requirements-optional.txt holds heavy AI/audio packages (torch, diffusers).",
+      "files": [
+        {
+          "path": "requirements.txt",
+          "role": "Core dependencies"
+        },
+        {
+          "path": "requirements-optional.txt",
+          "role": "Optional heavy dependencies"
+        }
+      ],
+      "urls": [],
+      "warning": ""
+    }
+  ],
+  "notes": [
+    "Open a file link with VS Code installed to jump straight to the line.",
+    "Temporary helper scripts used to apply edits are deleted after use; anything permanent lives in tools/."
+  ]
+}

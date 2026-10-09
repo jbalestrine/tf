@@ -1,0 +1,106 @@
+<div class="section">
+    <h2>Source Map — which file controls what?</h2>
+    <p style="color:#9aa4b2;margin-bottom:10px;">Type a page URL (like <code>/echo-chat</code>) or a keyword (like <code>logo</code>, <code>menu</code>, <code>version</code>) to find the files behind it. Links open the file at the right line in VS Code. The curated list is stored in <code>docs/source_map.json</code>; edit that file to add more.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <input id="sm-query" placeholder="/echo-chat, logo, menu, version…" style="min-width:300px;">
+        <button class="btn btn-info" id="sm-go" type="button">Find</button>
+        <a class="btn btn-info" href="/api/source-map/markdown" target="_blank" rel="noopener">Download as Markdown</a>
+    </div>
+    <div id="sm-status" aria-live="polite" style="color:#9aa4b2;margin-bottom:6px;"></div>
+    <div id="sm-health" style="margin-bottom:10px;"></div>
+</div>
+<div class="section"><h3>Components</h3><div id="sm-components" style="display:grid;gap:10px;"></div></div>
+<div class="section">
+    <h3>All routes (<span id="sm-route-count">0</span>)</h3>
+    <input id="sm-route-filter" placeholder="Filter routes…" style="margin-bottom:8px;min-width:300px;">
+    <div id="sm-routes" style="display:grid;gap:4px;"></div>
+</div>
+<script>
+(function () {
+    const $ = function (id) { return document.getElementById(id); };
+    const card = 'background:#1f2937;border-radius:6px;padding:10px 12px;';
+    let data = null;
+
+    function el(tag, text, style) {
+        const n = document.createElement(tag);
+        if (text !== undefined) { n.textContent = text; }
+        if (style) { n.style.cssText = style; }
+        return n;
+    }
+    function fileLink(f) {
+        const a = el('a', f.path + (f.line ? ':' + f.line : ''));
+        a.href = f.link;
+        a.style.color = f.exists === false ? '#f0c674' : '#7aa2f7';
+        return a;
+    }
+    function renderComponents(list) {
+        const box = $('sm-components');
+        box.replaceChildren();
+        if (!list.length) { box.append(el('div', 'Nothing matched.', 'color:#9aa4b2;')); }
+        list.forEach(function (c) {
+            const n = el('div', '', card);
+            n.append(el('strong', c.title), el('span', '  [' + c.category + ']', 'color:#9aa4b2;'));
+            n.append(el('div', c.summary, 'color:#c9d1d9;margin:4px 0;'));
+            if (c.warning) { n.append(el('div', '⚠ ' + c.warning, 'color:#f0c674;margin:4px 0;')); }
+            if (c.how_to_edit) { n.append(el('div', 'How to edit: ' + c.how_to_edit, 'color:#9aa4b2;margin:4px 0;')); }
+            c.files.forEach(function (f) {
+                const row = el('div', '', 'margin-left:8px;');
+                row.append(fileLink(f), el('span', '  — ' + f.role + (f.exists ? '' : ' (MISSING)'), 'color:#9aa4b2;'));
+                n.append(row);
+            });
+            if (c.urls.length) { n.append(el('div', 'URLs: ' + c.urls.join(', '), 'color:#9aa4b2;margin-top:4px;')); }
+            box.append(n);
+        });
+    }
+    function renderRoutes(rows) {
+        const box = $('sm-routes');
+        box.replaceChildren();
+        $('sm-route-count').textContent = rows.length;
+        rows.slice(0, 400).forEach(function (r) {
+            const row = el('div', '', 'display:flex;gap:10px;flex-wrap:wrap;');
+            const a = el('a', r.file + ':' + (r.line || ''));
+            a.href = r.link || '#';
+            a.style.color = '#7aa2f7';
+            row.append(el('code', r.url, 'min-width:280px;'), el('span', r.methods.join(','), 'color:#9aa4b2;min-width:60px;'), a);
+            if (r.files.length) { row.append(el('span', 'uses ' + r.files.join(', '), 'color:#9aa4b2;')); }
+            if (r.duplicate) { row.append(el('span', '⚠ duplicate route', 'color:#f0c674;')); }
+            box.append(row);
+        });
+    }
+    function renderHealth(h) {
+        const box = $('sm-health');
+        box.replaceChildren();
+        if (h.missing_files.length) { box.append(el('div', 'Registry points to missing files: ' + h.missing_files.map(function (m) { return m.path; }).join(', '), 'color:#f0c674;')); }
+        if (h.duplicate_routes.length) { box.append(el('div', 'Same URL defined more than once (the first one wins): ' + h.duplicate_routes.join('; '), 'color:#f0c674;')); }
+    }
+    async function load() {
+        try {
+            const r = await fetch('/api/source-map', { credentials: 'same-origin' });
+            data = await r.json();
+            if (!r.ok || data.ok === false) { throw new Error(data.error || ('HTTP ' + r.status)); }
+            renderComponents(data.components);
+            renderRoutes(data.routes);
+            renderHealth(data.health);
+        } catch (error) { $('sm-status').textContent = 'Failed to load: ' + error.message; }
+    }
+    async function find() {
+        const q = $('sm-query').value.trim();
+        if (!q) { renderComponents(data.components); return; }
+        try {
+            const r = await fetch('/api/source-map/lookup?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+            const d = await r.json();
+            if (!r.ok || d.ok === false) { throw new Error(d.error || ('HTTP ' + r.status)); }
+            renderComponents(d.components);
+            renderRoutes(d.routes);
+            $('sm-status').textContent = d.routes.length + ' matching route(s), ' + d.components.length + ' component(s).';
+        } catch (error) { $('sm-status').textContent = 'Failed: ' + error.message; }
+    }
+    $('sm-go').addEventListener('click', find);
+    $('sm-query').addEventListener('keydown', function (e) { if (e.key === 'Enter') { find(); } });
+    $('sm-route-filter').addEventListener('input', function () {
+        const f = this.value.toLowerCase();
+        renderRoutes(data.routes.filter(function (r) { return (r.url + r.file).toLowerCase().indexOf(f) !== -1; }));
+    });
+    load();
+})();
+</script>

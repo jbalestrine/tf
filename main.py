@@ -2681,7 +2681,10 @@ code{color:#4CAF50;}
       <a href="/cloud" class="{{ 'active' if '/cloud' in request.path else '' }}">☁️ Cloud</a>
       <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
       <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
-      <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
+      <a href="/source-map" class="{{ 'active' if '/source-map' in request.path else '' }}">🧭 Source Map</a>
+    <a href="/cicd" class="{{ 'active' if '/cicd' in request.path else '' }}">🚀 CI/CD Center</a>
+    <a href="/backups" class="{{ 'active' if '/backups' in request.path else '' }}">💾 Data Backups</a>
+    <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
       <a href="/services" class="{{ 'active' if '/services' in request.path else '' }}">🛠 Services</a>
       <a href="/about" class="{{ 'active' if '/about' in request.path else '' }}">ℹ️ About</a>
     </div>
@@ -2727,7 +2730,9 @@ code{color:#4CAF50;}
       <a href="/echo-chat" class="{{ 'active' if '/echo-chat' in request.path else '' }}">🌙 Echo Chat</a>
       <a href="/echo-commands" class="{{ 'active' if '/echo-commands' in request.path else '' }}">⌨ Echo Commands</a>
       <a href="/echo-train" class="{{ 'active' if '/echo-train' in request.path else '' }}">🎓 Training</a>
-      <a href="/echo-memory" class="{{ 'active' if '/echo-memory' in request.path else '' }}">🧠 Echo Memory</a>
+      <a href="/echo-approvals" class="{{ 'active' if '/echo-approvals' in request.path else '' }}">✅ Echo Approvals</a>
+    <a href="/chaos-monkey#ideas-panel">💡 Ideas Basket</a>
+    <a href="/echo-memory" class="{{ 'active' if '/echo-memory' in request.path else '' }}">🧠 Echo Memory</a>
       <a href="/web_ide" class="{{ 'active' if '/web_ide' in request.path else '' }}">💻 Web IDE</a>
       <a href="/masterchief_code_ui" class="{{ 'active' if '/masterchief_code_ui' in request.path else '' }}">🧠 MasterChief Code UI</a>
     </div>
@@ -16749,6 +16754,51 @@ def api_cicd_gitlab_template():
     if denied is not None:
         return denied
     return _cicd_call(lambda: {'template': _cicd_center().gitlab_ci_template()})
+
+
+def _source_map():
+    from managers.source_map import SourceMap
+
+    return SourceMap(app, Path(__file__).resolve().parent)
+
+
+@app.route('/source-map')
+def source_map_page():
+    denied = _admin_page_or_error(False)
+    if denied is not None:
+        return denied
+    return _render_admin_fragment('source_map.html')
+
+
+@app.route('/api/source-map', methods=['GET'])
+def api_source_map():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return jsonify({'ok': True, **_source_map().overview()})
+
+
+@app.route('/api/source-map/lookup', methods=['GET'])
+def api_source_map_lookup():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    from managers.source_map import SourceMapError
+
+    try:
+        return jsonify({'ok': True, **_source_map().lookup(request.args.get('q', ''))})
+    except SourceMapError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+
+@app.route('/api/source-map/markdown', methods=['GET'])
+def api_source_map_markdown():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    from flask import Response
+
+    return Response(_source_map().markdown(), mimetype='text/markdown')
 
 
 @app.route('/api/echo/models', methods=['GET'])
