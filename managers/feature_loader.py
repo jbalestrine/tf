@@ -292,6 +292,7 @@ def load_features(app: Flask, root, layout_template: str, admin_page, post_guard
     if not app.config.get("_feature_nav_registered"):
         app.config["_feature_nav_registered"] = True
         app.context_processor(lambda: {"feature_nav": app.config.get("_feature_nav", [])})
+    app.context_processor(lambda: {"route_live": lambda path: any(r.rule == path for r in app.url_map.iter_rules())})
     return statuses
 
 

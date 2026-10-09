@@ -2566,8 +2566,8 @@ code{color:#4CAF50;}
     <div class="nav-group-content">
       <a href="/rbac" class="{{ 'active' if '/rbac' in request.path else '' }}">🛡 RBAC</a>
       <a href="/secrets" class="{{ 'active' if '/secrets' in request.path else '' }}">🔐 Secrets</a>
-      <a href="/teams" class="{{ 'active' if request.path=='/teams' else '' }}">📅 Teams</a>
-      <a href="/okta" class="{{ 'active' if request.path=='/okta' else '' }}">🔒 Okta</a>
+      {% if route_live('/teams') %}<a href="/teams" class="{{ 'active' if request.path=='/teams' else '' }}">📅 Teams</a>{% endif %}
+      {% if route_live('/okta') %}<a href="/okta" class="{{ 'active' if request.path=='/okta' else '' }}">🔒 Okta</a>{% endif %}
       <a href="/google-services" class="{{ 'active' if '/google-services' in request.path else '' }}">🌐 Google Services</a>
     </div>
   </details>
