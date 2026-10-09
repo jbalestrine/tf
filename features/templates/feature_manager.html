@@ -372,6 +372,25 @@
             margin-top: 5px;
             display: block;
         }
+
+        .fm-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+        .fm-toolbar input, .fm-toolbar select { padding:8px 10px; background:#1f1f1f; color:#e0e0e0; border:1px solid #444; border-radius:6px; }
+        .fm-toolbar input[type=search] { flex:1; min-width:200px; }
+        .fm-stats { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+        .fm-stat { background:rgba(255,255,255,0.05); border:1px solid #3a3a3a; border-radius:8px; padding:8px 14px; min-width:110px; }
+        .fm-stat b { display:block; font-size:1.4em; color:#81c784; }
+        .fm-stat.warn b { color:#ffb300; }
+        .fm-badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:0.75em; margin-left:6px; }
+        .fm-healthy { background:rgba(76,175,80,.2); color:#81c784; }
+        .fm-degraded { background:rgba(255,179,0,.2); color:#ffd54f; }
+        .fm-off { background:rgba(158,158,158,.2); color:#bdbdbd; }
+        .fm-issues { margin:8px 0; padding:8px 10px; border-left:3px solid #ffb300; background:rgba(255,179,0,.08); font-size:.85em; color:#ffe082; }
+        .fm-details { margin:8px 0; font-size:.85em; }
+        .fm-details summary { cursor:pointer; color:#90caf9; }
+        .fm-details ul { margin:6px 0 0 18px; }
+        .fm-ok { color:#81c784; } .fm-bad { color:#ef9a9a; }
+        .fm-code { width:100%; min-height:260px; font-family:Consolas,monospace; font-size:13px; background:#111; color:#e0e0e0; border:1px solid #444; border-radius:6px; padding:8px; }
+        .fm-activity td, .fm-activity th { padding:4px 8px; text-align:left; border-bottom:1px solid #333; font-size:.85em; }
         .btn-sm {
             padding: 5px 10px;
             font-size: 0.8em;
@@ -396,6 +415,19 @@
             <p>The architecture-to-code workflow now includes guided Terraform designs, live blueprint-style hub-and-spoke diagrams, subnet grouping, labeled peering, and SVG/Visio export. Echo ChatServ adds persistent account-based rooms, moderation, persona bots, MOTD management, allowlisted page transfers, and platform-admin-only script/model operations. The local pipeline studio supports YAML/JSON interchange and approval gates; the Observability Center connects existing Prometheus, Grafana, and Loki services. Admins can preview and confirm source-bundle staging for local, WSL/WSL2, and USB targets. Optional CI/CD templates validate and plan only; generated infrastructure is not applied automatically. Cloud actions use the user's supplied credentials and remain limited by cloud-provider IAM. See <a href="/about" style="color:#81c784;">About</a> for the full milestone highlights.</p>
         </section>
 
+        <div class="fm-stats" id="fm-stats"></div>
+        <div class="fm-toolbar">
+            <input type="search" id="fm-search" placeholder="Search features, descriptions, routes..." aria-label="Search features">
+            <select id="fm-filter" aria-label="Filter">
+                <option value="all">All</option><option value="enabled">Enabled</option><option value="disabled">Disabled</option>
+                <option value="attention">Needs attention</option>
+            </select>
+            <select id="fm-sort" aria-label="Sort"><option value="name">Sort: name</option><option value="status">Sort: status</option></select>
+            <button class="btn btn-secondary" type="button" onclick="refreshAll()">Refresh</button>
+            <button class="btn btn-secondary" type="button" onclick="document.getElementById('fm-import-file').click()">Import</button>
+            <button class="btn btn-secondary" type="button" onclick="openActivity()">Activity</button>
+            <input type="file" id="fm-import-file" accept=".json" style="display:none">
+        </div>
         <div class="features-grid" id="features-grid">
             <div class="loading">Loading features...</div>
         </div>
@@ -441,6 +473,30 @@
         </div>
     </div>
 
+    <!-- Edit feature modal -->
+    <div id="fm-edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title" id="fm-edit-title">Edit feature</h2><span class="close" onclick="closeEdit()">&times;</span></div>
+            <form id="fm-edit-form">
+                <div class="form-group"><label>Display name *</label><input id="fm-e-display" required maxlength="100"></div>
+                <div class="form-group"><label>Description</label><textarea id="fm-e-desc" rows="2" maxlength="500"></textarea></div>
+                <div class="form-group"><label>Version</label><input id="fm-e-version" placeholder="1.0.0"></div>
+                <div class="form-group"><label>Dependencies (comma-separated)</label><input id="fm-e-deps"></div>
+                <div class="form-group"><label>Handler code (Python, syntax-checked on save; previous version is backed up)</label><textarea id="fm-e-code" class="fm-code" spellcheck="false"></textarea></div>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEdit()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Activity modal -->
+    <div id="fm-activity-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title">Recent activity</h2><span class="close" onclick="document.getElementById('fm-activity-modal').style.display='none'">&times;</span></div>
+            <div id="fm-activity-body"></div>
+        </div>
+    </div>
+
     <!-- Feature Creation Modal -->
     <div id="feature-modal" class="modal">
         <div class="modal-content">
@@ -452,7 +508,7 @@
             <form id="feature-form">
                 <div class="form-group">
                     <label for="feature-name">Feature Name *</label>
-                    <input type="text" id="feature-name" name="name" required minlength="2" maxlength="64" pattern="[a-z][a-z0-9_-]+" placeholder="e.g., azure-vm-manager">
+                    <input type="text" id="feature-name" name="name" required minlength="2" maxlength="64" pattern="[a-z][a-z0-9_\-]+" placeholder="e.g., azure-vm-manager">
                 </div>
 
                 <div class="form-group">
@@ -731,6 +787,8 @@ def register_ui(app):
             </div>
         </div>
     </div>
+
+    <script>
         let features = [];
         let templates = {
             'azure-service': {
@@ -882,62 +940,213 @@ def register_ui(app):
             loadFromUrl();
         });
 
+        let health = {};
+        let summary = {};
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
         async function loadFeatures() {
             try {
-                const response = await fetch('/api/features');
-                const data = await response.json();
-
-                features = data.features || [];
+                const [list, sum] = await Promise.all([
+                    fetch('/api/features').then(r => r.json()),
+                    fetch('/api/features/summary').then(r => r.json()).catch(() => ({}))
+                ]);
+                features = list.features || [];
+                health = sum.features || {};
+                summary = sum.summary || {};
+                renderStats();
                 renderFeatures();
             } catch (error) {
                 showAlert('Error loading features: ' + error.message, 'error');
             }
         }
 
+        function refreshAll() { loadFeatures(); }
+
+        function renderStats() {
+            const s = summary;
+            const box = document.getElementById('fm-stats');
+            if (!s.total && s.total !== 0) { box.innerHTML = ''; return; }
+            box.innerHTML = [
+                ['Total', s.total, ''], ['Enabled', s.enabled, ''], ['Disabled', s.disabled, ''],
+                ['Healthy', s.healthy, ''], ['Needs attention', s.degraded, s.degraded ? 'warn' : ''],
+                ['Missing packages', s.missing_dependencies, s.missing_dependencies ? 'warn' : '']
+            ].map(x => `<div class="fm-stat ${x[2]}"><b>${esc(x[1])}</b>${x[0]}</div>`).join('');
+        }
+
+        function visibleFeatures() {
+            const q = document.getElementById('fm-search').value.trim().toLowerCase();
+            const f = document.getElementById('fm-filter').value;
+            const sort = document.getElementById('fm-sort').value;
+            let list = features.filter(x => {
+                const h = health[x.name] || {};
+                if (f === 'enabled' && !x.enabled) return false;
+                if (f === 'disabled' && x.enabled) return false;
+                if (f === 'attention' && !(h.issues && h.issues.length)) return false;
+                if (!q) return true;
+                const hay = [x.name, x.display_name, x.description].concat((x.routes || []).map(r => r.path)).join(' ').toLowerCase();
+                return hay.includes(q);
+            });
+            list.sort((a, b) => sort === 'status'
+                ? (b.enabled - a.enabled) || a.name.localeCompare(b.name)
+                : a.name.localeCompare(b.name));
+            return list;
+        }
+
         function renderFeatures() {
             const grid = document.getElementById('features-grid');
-
+            const list = visibleFeatures();
             if (features.length === 0) {
                 grid.innerHTML = '<div class="feature-card"><p>No features available. Create your first feature!</p></div>';
                 return;
             }
-
-            grid.innerHTML = features.map(feature => `
+            if (list.length === 0) {
+                grid.innerHTML = '<div class="feature-card"><p>No features match your search or filter.</p></div>';
+                return;
+            }
+            grid.innerHTML = list.map(feature => {
+                const h = health[feature.name] || {};
+                const badge = !feature.enabled ? '<span class="fm-badge fm-off">off</span>'
+                    : h.status === 'degraded' ? '<span class="fm-badge fm-degraded">needs attention</span>'
+                    : '<span class="fm-badge fm-healthy">healthy</span>';
+                const deps = (h.dependencies || []).map(d => `<li class="${d.installed ? 'fm-ok' : 'fm-bad'}">${esc(d.name)} ${d.installed ? '&#10003; ' + esc(d.version) : '&#10007; not installed'}</li>`).join('')
+                    || (feature.dependencies || []).map(d => `<li>${esc(d)}</li>`).join('');
+                const routes = (h.routes || feature.routes || []).map(r => `<li class="${r.live === false ? 'fm-bad' : r.live ? 'fm-ok' : ''}"><code>${esc(r.method)} ${esc(r.path)}</code> ${esc(r.description || '')}${r.live ? ' &#10003;' : ''}</li>`).join('');
+                const issues = (h.issues || []).length ? `<div class="fm-issues">${h.issues.map(esc).join('<br>')}</div>` : '';
+                const uiActions = (feature.ui_components || []).map(c => (c.actions || []).map(a =>
+                    `<button class="btn btn-primary" data-act="${esc(a.action)}" data-name="${esc(feature.name)}" data-url="${esc(a.url || a.modal || a.label)}" data-label="${esc(a.label)}">${esc(a.label)}</button>`).join('')).join('');
+                return `
                 <div class="feature-card ${feature.enabled ? 'enabled' : ''}">
-                    <div class="feature-status ${feature.enabled ? 'status-enabled' : 'status-disabled'}">
-                        ${feature.enabled ? 'Enabled' : 'Disabled'}
-                    </div>
+                    <div class="feature-status ${feature.enabled ? 'status-enabled' : 'status-disabled'}">${feature.enabled ? 'Enabled' : 'Disabled'}</div>
                     <div class="feature-header">
-                        <div class="feature-title">${feature.display_name}</div>
+                        <div class="feature-title">${esc(feature.display_name)}${badge}</div>
                         <label class="feature-toggle">
-                            <input type="checkbox" ${feature.enabled ? 'checked' : ''} onchange="toggleFeature('${feature.name}', this.checked)">
+                            <input type="checkbox" ${feature.enabled ? 'checked' : ''} data-act="toggle" data-name="${esc(feature.name)}">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div class="feature-description">${feature.description}</div>
-                    <div class="feature-meta">
-                        <span>Version: ${feature.version}</span>
-                        <span>Deps: ${feature.dependencies.length}</span>
-                    </div>
-                    ${feature.ui_components && feature.ui_components.length > 0 ? `
+                    <div class="feature-description">${esc(feature.description)}</div>
+                    <div class="feature-meta"><span>Version: ${esc(feature.version)}</span><span>Deps: ${(feature.dependencies || []).length}</span><span>Routes: ${(feature.routes || []).length}</span></div>
+                    ${issues}
+                    ${deps || routes ? `<details class="fm-details"><summary>Dependencies &amp; routes</summary>${deps ? `<ul>${deps}</ul>` : ''}${routes ? `<ul>${routes}</ul>` : ''}</details>` : ''}
+                    ${uiActions ? `<div class="feature-actions">${uiActions}</div>` : ''}
                     <div class="feature-actions">
-                        ${feature.ui_components.map(component => 
-                            component.actions ? component.actions.map(action => 
-                                action.action === 'navigate' ? 
-                                    `<button class="btn btn-primary" onclick="window.location.href='${action.url}'">${action.label}</button>` :
-                                action.action === 'modal' ?
-                                    `<button class="btn btn-primary" onclick="openModal('${action.modal}')">${action.label}</button>` :
-                                `<button class="btn btn-primary" onclick="runFeatureAction('${feature.name}', '${action.label}')">${action.label}</button>`
-                            ).join('') : ''
-                        ).join('')}
+                        <button class="btn btn-secondary" data-act="edit" data-name="${esc(feature.name)}">Edit</button>
+                        <button class="btn btn-secondary" data-act="duplicate" data-name="${esc(feature.name)}">Duplicate</button>
+                        <button class="btn btn-secondary" data-act="export" data-name="${esc(feature.name)}">Export</button>
+                        <button class="btn btn-danger" data-act="delete" data-name="${esc(feature.name)}">Delete</button>
                     </div>
-                    ` : ''}
-                    <div class="feature-actions">
-                        <button class="btn btn-secondary" onclick="editFeature('${feature.name}')">Edit</button>
-                        <button class="btn btn-danger" onclick="deleteFeature('${feature.name}')">Delete</button>
-                    </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
+        }
+
+        async function api(url, method, body) {
+            const r = await fetch(url, { method: method || 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+            let d = {};
+            try { d = await r.json(); } catch (e) { d = { success: false, error: 'HTTP ' + r.status }; }
+            if (!r.ok && !d.error) d.error = 'HTTP ' + r.status;
+            return d;
+        }
+
+        document.getElementById('features-grid').addEventListener('click', function (e) {
+            const el = e.target.closest('[data-act]');
+            if (!el || el.dataset.act === 'toggle') return;
+            const name = el.dataset.name;
+            switch (el.dataset.act) {
+                case 'edit': editFeature(name); break;
+                case 'delete': deleteFeature(name); break;
+                case 'duplicate': duplicateFeature(name); break;
+                case 'export': window.location.href = '/api/features/' + encodeURIComponent(name) + '/export'; break;
+                case 'navigate': window.location.href = el.dataset.url; break;
+                case 'modal': openModal(el.dataset.url); break;
+                default: runFeatureAction(name, el.dataset.label);
+            }
+        });
+        document.getElementById('features-grid').addEventListener('change', function (e) {
+            const el = e.target.closest('[data-act="toggle"]');
+            if (el) toggleFeature(el.dataset.name, el.checked, el);
+        });
+        ['fm-search', 'fm-filter', 'fm-sort'].forEach(id => document.getElementById(id).addEventListener('input', renderFeatures));
+
+        document.getElementById('fm-import-file').addEventListener('change', async function () {
+            const file = this.files[0];
+            this.value = '';
+            if (!file) return;
+            let payload;
+            try { payload = JSON.parse(await file.text()); } catch (e) { showAlert('That file is not valid JSON.', 'error'); return; }
+            if (!confirm('Import feature "' + ((payload.config || {}).name || file.name) + '"? It is added disabled; its code is not run until you enable it.')) return;
+            const d = await api('/api/features/import', 'POST', payload);
+            showAlert(d.success ? 'Feature imported (disabled).' : 'Import failed: ' + d.error, d.success ? 'success' : 'error');
+            if (d.success) loadFeatures();
+        });
+
+        async function toggleFeature(featureName, enabled, box) {
+            if (box) box.disabled = true;
+            try {
+                const result = await api(`/api/features/${encodeURIComponent(featureName)}/toggle`, 'POST', { enabled });
+                if (result.success) {
+                    showAlert(`Feature ${enabled ? 'enabled' : 'disabled'} successfully!` + (!enabled ? ' Routes it registered stay until the app restarts.' : ''), 'success');
+                } else {
+                    showAlert('Error toggling feature: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error toggling feature: ' + error.message, 'error');
+            }
+            loadFeatures();
+        }
+
+        let editingName = null;
+        async function editFeature(name) {
+            const d = await api('/api/features/' + encodeURIComponent(name));
+            if (!d.success) { showAlert(d.error || 'Could not load feature', 'error'); return; }
+            const f = d.feature;
+            editingName = name;
+            document.getElementById('fm-edit-title').textContent = 'Edit ' + f.display_name + ' (' + name + ')';
+            document.getElementById('fm-e-display').value = f.display_name;
+            document.getElementById('fm-e-desc').value = f.description || '';
+            document.getElementById('fm-e-version').value = f.version || '1.0.0';
+            document.getElementById('fm-e-deps').value = (f.dependencies || []).join(', ');
+            document.getElementById('fm-e-code').value = f.handler_code || '';
+            document.getElementById('fm-edit-modal').style.display = 'block';
+        }
+        function closeEdit() { document.getElementById('fm-edit-modal').style.display = 'none'; editingName = null; }
+        document.getElementById('fm-edit-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!editingName) return;
+            const d = await api('/api/features/' + encodeURIComponent(editingName), 'PUT', {
+                display_name: document.getElementById('fm-e-display').value,
+                description: document.getElementById('fm-e-desc').value,
+                version: document.getElementById('fm-e-version').value,
+                dependencies: document.getElementById('fm-e-deps').value.split(',').map(x => x.trim()).filter(Boolean),
+                handler_code: document.getElementById('fm-e-code').value
+            });
+            if (d.success) {
+                showAlert('Saved.' + (d.restart_required ? ' Restart MasterChief for handler code changes to take effect.' : ''), 'success');
+                closeEdit(); loadFeatures();
+            } else { showAlert('Save failed: ' + d.error, 'error'); }
+        });
+
+        async function duplicateFeature(name) {
+            const copy = prompt('Name for the copy (lowercase letters, numbers, - or _):', name + '-copy');
+            if (!copy) return;
+            const d = await api('/api/features/' + encodeURIComponent(name) + '/duplicate', 'POST', { name: copy });
+            showAlert(d.success ? 'Duplicated as ' + copy + ' (disabled).' : 'Duplicate failed: ' + d.error, d.success ? 'success' : 'error');
+            if (d.success) loadFeatures();
+        }
+
+        async function deleteFeature(name) {
+            if (!confirm('Delete feature "' + name + '"? Its config and handler are removed; a backup copy is kept in features/trash.')) return;
+            const d = await api('/api/features/' + encodeURIComponent(name), 'DELETE');
+            showAlert(d.success ? 'Deleted ' + name + '.' + (d.restart_required ? ' Restart MasterChief to unload its routes.' : '') : 'Delete failed: ' + d.error, d.success ? 'success' : 'error');
+            if (d.success) loadFeatures();
+        }
+
+        async function openActivity() {
+            const d = await api('/api/features/activity');
+            const rows = (d.activity || []).map(a => `<tr><td>${esc(a.ts)}</td><td>${esc(a.action)}</td><td>${esc(a.feature)}</td><td>${esc(a.actor)}</td><td>${esc(a.detail)}</td></tr>`).join('');
+            document.getElementById('fm-activity-body').innerHTML = rows
+                ? `<table class="fm-activity" style="width:100%"><tr><th>When</th><th>Action</th><th>Feature</th><th>By</th><th>Detail</th></tr>${rows}</table>`
+                : '<p>No activity recorded yet.</p>';
+            document.getElementById('fm-activity-modal').style.display = 'block';
         }
 
         function loadTemplate(templateName) {
@@ -997,39 +1206,6 @@ def register_ui(app):
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = 'Create Feature';
-            }
-        }
-
-        async function toggleFeature(featureName, enabled) {
-            try {
-                const response = await fetch(\`/api/features/\${featureName}/toggle\`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showAlert(\`Feature \${enabled ? 'enabled' : 'disabled'} successfully!\`, 'success');
-                    loadFeatures();
-                } else {
-                    showAlert('Error toggling feature: ' + result.error, 'error');
-                }
-            } catch (error) {
-                showAlert('Error toggling feature: ' + error.message, 'error');
-            }
-        }
-
-        function editFeature(featureName) {
-            // TODO: Implement feature editing
-            showAlert('Feature editing not yet implemented', 'error');
-        }
-
-        function deleteFeature(featureName) {
-            if (confirm(\`Are you sure you want to delete the feature "\${featureName}"?\`)) {
-                // TODO: Implement feature deletion
-                showAlert('Feature deletion not yet implemented', 'error');
             }
         }
 
@@ -1116,7 +1292,7 @@ def register_ui(app):
         function showAlert(message, type) {
             const alerts = document.getElementById('alerts');
             const alert = document.createElement('div');
-            alert.className = \`alert alert-\${type}\`;
+            alert.className = `alert alert-${type}`;
             alert.textContent = message;
 
             alerts.appendChild(alert);
