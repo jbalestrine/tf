@@ -126,10 +126,11 @@
 
   function blueprints(data) {
     var rows = data.blueprints;
-    var h = '<p style="color:#9aa4b2">Every file in <code>blueprints/</code>. <b>Linking</b> only registers it after a dry run, at the end of startup, so <code>main.py</code> routes keep priority. Unlinking undoes it. Restart to apply.</p><table><tr><th>File</th><th>Type</th><th>Status</th><th>Routes</th><th></th></tr>';
+    var h = '<p style="color:#9aa4b2">Every file in <code>blueprints/</code>. <b>Linking</b> registers it at startup after a dry run. If it serves a URL that <code>main.py</code> also defines, <b>the blueprint's version takes over</b>. Once a blueprint is live, <b>Move from main.py</b> previews, then removes, the matching code from <code>main.py</code> (backed up and archived, auto-rolled back if any route goes missing).</p><table><tr><th>File</th><th>Type</th><th>Status</th><th>Routes</th><th></th></tr>';
     rows.forEach(function (b) {
       var status = b.registered ? '<span class="cm-pill cm-easy">live</span>' : b.linked ? '<span class="cm-pill cm-medium">linked, restart</span>' : '<span class="cm-pill">not loaded</span>';
       var act = '';
+      if (b.kind === 'blueprint' && b.registered && b.routes.length) act += btn('Move from main.py?', 'data-retire="' + esc(b.module) + '"');
       if (b.kind === 'blueprint' && !b.registered) act += btn('Dry run', 'data-probe="' + esc(b.module) + '"') + (b.linked ? btn('Unlink', 'data-unlink="' + esc(b.module) + '"') : btn('Link', 'data-link="' + esc(b.module) + '"'));
       h += '<tr><td><a href="' + ide(b.file) + '">' + esc(b.file) + '</a><br><span style="color:#8a94a8">' + b.lines + ' lines</span></td><td>' + esc(b.kind) + '</td><td>' + status + '</td><td>' + (b.routes || []).length + (b.colliding ? ' <span class="cm-pill cm-hard">' + b.colliding + ' already served by main.py</span>' : '') + '</td><td>' + act + '<div id="probe-' + esc(b.module.replace(/\./g, '-')) + '"></div></td></tr>';
     });
@@ -187,6 +188,15 @@
     var t = ev.target.closest('button'); if (!t || !$('cm-tabs')) return;
     if (t.dataset.tab) { state.tab = t.dataset.tab; msg(''); render(); }
     else if (t.dataset.probe) api('/api/blueprints/probe', { module: t.dataset.probe }).then(function (d) { var el = $('probe-' + t.dataset.probe.replace(/\./g, '-')); if (el) el.innerHTML = d.ok ? probeHtml(d.probe) : esc(d.error); });
+    else if (t.dataset.retire) {
+      api('/api/blueprints/retire', { module: t.dataset.retire }).then(function (d) {
+        if (!d.ok) { msg(d.error, true); return; }
+        var r = d.report;
+        if (!r.move.length) { msg('Nothing to move. ' + r.skipped.length + ' functions were kept in main.py.', false); return; }
+        var text = 'Remove ' + r.move.length + ' functions (' + r.lines_removed + ' lines) from main.py?\n\n' + r.move.map(function (m) { return m.func + ' ' + m.routes.join(', '); }).join('\n') + (r.skipped.length ? '\n\nKept in main.py: ' + r.skipped.map(function (s) { return s.func + ' (' + s.reason + ')'; }).join('; ') : '') + '\n\nmain.py is backed up first, removed code is archived, and it rolls back automatically if any route goes missing. This takes about a minute.';
+        if (confirm(text)) { msg('Working? verifying all routes, please wait.', false); api('/api/blueprints/retire', { module: t.dataset.retire, apply: true }).then(function (d2) { msg(d2.ok ? 'Done: removed ' + d2.report.lines_removed + ' lines. Backup: ' + d2.report.backup + ' Archive: ' + d2.report.archive + ' Restart MasterChief.' : d2.error, !d2.ok); }); }
+      });
+    }
     else if (t.dataset.link) act('/api/blueprints/link', { module: t.dataset.link }, render);
     else if (t.dataset.unlink) act('/api/blueprints/unlink', { module: t.dataset.unlink }, render);
     else if (t.dataset.toggle) act('/api/features/toggle', { slug: t.dataset.toggle, enabled: t.dataset.on === '1' }, render);

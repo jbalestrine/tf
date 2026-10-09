@@ -295,6 +295,117 @@ class CodeManager:
         from managers.feature_loader import read_linked
         return read_linked(self.root)
 
+    # ---------- move main.py routes into a live blueprint ----------
+    def retire_module(self, module: str, dry_run: bool = True, timeout: int = 240) -> dict:
+        """Remove main.py route functions that a live blueprint already serves.
+
+        Removed code is archived (never deleted), main.py is backed up first, and the change is
+        rolled back automatically if any baseline route goes missing.
+        """
+        import shutil
+        import subprocess
+        import sys
+        if not MODULE_RE.match(module or ""):
+            raise CodeManagerError("Module must look like blueprints.some_name.")
+        names = [n for n, b in self.app.blueprints.items() if getattr(b, "import_name", "") == module]
+        if not names:
+            raise CodeManagerError("That blueprint is not live yet. Link it, restart, then try again.")
+        prefixes = tuple(n + "." for n in names)
+        served = set()
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.startswith(prefixes):
+                for m in (rule.methods or set()) - {"HEAD", "OPTIONS"}:
+                    served.add((rule.rule, m))
+
+        raw = self.main_path.read_bytes().decode("utf-8")
+        tree = ast.parse(raw)
+        lines = re.findall(r"[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+", raw)
+        movable, skipped = [], []
+        for fn in tree.body:
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            infos = [i for i in (_route_info(d) for d in fn.decorator_list) if i]
+            if not infos:
+                continue
+            pairs = {(u, m) for u, ms in infos for m in ms}
+            if not any(p in served for p in pairs):
+                continue
+            first = min(d.lineno for d in fn.decorator_list)
+            row = {"func": fn.name, "start": first, "end": fn.end_lineno, "lines": fn.end_lineno - first + 1,
+                   "routes": sorted(f"{m} {u}" for u, m in pairs)}
+            if len(infos) != len(fn.decorator_list):
+                skipped.append({**row, "reason": "has other decorators (kept in main.py)"})
+            elif not pairs <= served:
+                skipped.append({**row, "reason": "blueprint does not serve every URL/method of this function (kept)"})
+            else:
+                movable.append(row)
+
+        def mentions(name: str) -> bool:
+            pattern = re.compile(r"\b" + re.escape(name) + r"\b")
+            outside = "".join(l for i, l in enumerate(lines, 1) if not any(r["start"] <= i <= r["end"] for r in movable if r["func"] == name))
+            if pattern.search(outside):
+                return True
+            for folder in ("templates",):
+                for f in (self.root / folder).rglob("*"):
+                    if f.suffix in {".html", ".py", ".js"} and f.is_file() and pattern.search(f.read_text(encoding="utf-8", errors="ignore")):
+                        return True
+            return False
+
+        keep = []
+        for row in movable:
+            if mentions(row["func"]):
+                skipped.append({**row, "reason": "name is referenced elsewhere (url_for or a call), kept in main.py"})
+            else:
+                keep.append(row)
+        movable = keep
+        report = {"module": module, "dry_run": dry_run, "move": movable, "skipped": skipped,
+                  "lines_removed": sum(r["lines"] for r in movable), "applied": False, "backup": "", "archive": ""}
+        if dry_run or not movable:
+            return report
+
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        backup_dir = self.root / "data" / "main_py_backups"
+        archive_dir = self.root / "data" / "retired_code"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        backup = backup_dir / f"main.py.{stamp}.before-{module.split('.')[1]}"
+        shutil.copy2(self.main_path, backup)
+        drop = set()
+        for r in movable:
+            drop.update(range(r["start"], r["end"] + 1))
+        archive = archive_dir / f"{module.split('.')[1]}.{stamp}.py"
+        chunks = ["".join(lines[r["start"] - 1:r["end"]]) for r in sorted(movable, key=lambda r: r["start"])]
+        archive.write_text(f"# Retired from main.py on {stamp}; now served by {module}.\n# Kept for reference - restore by pasting back into main.py.\n\n" + "\n\n".join(chunks), encoding="utf-8")
+        new_text = "".join(l for i, l in enumerate(lines, 1) if i not in drop)
+        new_text = re.sub(r"(\r?\n){4,}", "\n\n\n", new_text)
+        try:
+            ast.parse(new_text)
+        except SyntaxError as exc:
+            raise CodeManagerError(f"Edit would break main.py ({exc}); nothing was changed.") from exc
+        self.main_path.write_bytes(new_text.encode("utf-8"))
+        script = ("import json,sys;from pathlib import Path;import main;"
+                  "from managers.code_manager import CodeManager;"
+                  "r=CodeManager(main.app,Path('.').resolve()).compare_baseline();"
+                  "print('RESULT:'+json.dumps({'missing':r['missing']}))")
+        failure = ""
+        try:
+            proc = subprocess.run([sys.executable, "-c", script], cwd=self.root, capture_output=True, text=True, timeout=timeout)
+            line = next((l for l in proc.stdout.splitlines() if l.startswith("RESULT:")), "")
+            missing = json.loads(line[7:])["missing"] if line else None
+            if missing is None:
+                failure = "main.py failed to import: " + (proc.stderr or proc.stdout)[-400:]
+            elif missing:
+                failure = f"{len(missing)} routes would go missing, e.g. {missing[0]['rule']}"
+        except Exception as exc:
+            failure = f"verification failed: {exc}"
+        if failure:
+            shutil.copy2(backup, self.main_path)
+            report.update(error=failure + " main.py was restored from backup.")
+            return report
+        self._cache = None
+        report.update(applied=True, backup=backup.relative_to(self.root).as_posix(), archive=archive.relative_to(self.root).as_posix())
+        return report
+
     # ---------- route baseline (loss guard) ----------
     def current_routes(self) -> list[dict]:
         rows = []

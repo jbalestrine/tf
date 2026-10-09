@@ -83,6 +83,22 @@ def init(app, ctx):
         ctx.audit("unlink_blueprint", module=module)
         return jsonify({"ok": True, "message": "Unlinked. Restart MasterChief for it to take effect."})
 
+    @bp.route("/api/blueprints/retire", methods=["POST"])
+    def retire():
+        denied = guarded(True)
+        if denied is not None:
+            return denied
+        data = body()
+        try:
+            report = manager.retire_module(str(data.get("module", "")), dry_run=not data.get("apply"))
+        except CodeManagerError as exc:
+            return failure(exc)
+        if report.get("error"):
+            return jsonify({"ok": False, "error": report["error"], "report": report}), 500
+        if report["applied"]:
+            ctx.audit("retire_main_routes", module=report["module"], lines=report["lines_removed"])
+        return jsonify({"ok": True, "report": report})
+
     @bp.route("/api/features")
     def features():
         denied = guarded()
