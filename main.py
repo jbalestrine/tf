@@ -592,7 +592,7 @@ try:
 
     if not forced_model:
 
-        forced_model = str(Path.cwd() / 'models' / 'mistral-7b-instruct-v0.1.Q4_K_M.gguf')
+        forced_model = next((str(f) for f in sorted((Path(__file__).parent / 'models').glob('mistral-7b-instruct-v0.1*.gguf'))), None) or str(Path(__file__).parent / 'models' / 'mistral-7b-instruct-v0.1-q4_k_m.gguf')
 
     # resolve to absolute path
 
