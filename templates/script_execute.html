@@ -1,0 +1,66 @@
+{# MasterChief template: script_execute
+   Status: Not used by any route in main.py (the pages actually served use the copy in templates/pages.py). Kept so nothing is lost.
+   Loaded in main.py as SCRIPT_EXECUTE_TEMPLATE = load_template('script_execute') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="section">
+
+<h2>Execute Script: {{ filename }}</h2>
+
+<form method="POST" action="/scripts/run/{{ filename }}">
+
+<div class="form-group">
+
+<label>Arguments (optional)</label>
+
+<input type="text" name="args" placeholder="arg1 arg2 arg3">
+
+</div>
+
+<button type="submit" class="btn">Run Script</button>
+
+<a href="/scripts" class="btn btn-warning">Cancel</a>
+
+</form>
+
+{% if result %}
+
+<h3>Execution Result</h3>
+
+<p><strong>Success:</strong> {{ result.success }}</p>
+
+{% if result.returncode is defined %}
+
+<p><strong>Return Code:</strong> {{ result.returncode }}</p>
+
+{% endif %}
+
+{% if result.stdout %}
+
+<h4>Output:</h4>
+
+<pre><code>{{ result.stdout }}</code></pre>
+
+{% endif %}
+
+{% if result.stderr %}
+
+<h4>Errors:</h4>
+
+<pre style="border-left-color:#f44336;"><code>{{ result.stderr }}</code></pre>
+
+{% endif %}
+
+{% if result.error %}
+
+<div class="alert alert-error">{{ result.error }}</div>
+
+{% endif %}
+
+{% endif %}
+
+</div>
+
+{% endblock %}

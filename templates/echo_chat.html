@@ -1,0 +1,2184 @@
+{# MasterChief template: echo_chat
+   Used by: HTML for /echo-chat.
+   Loaded in main.py as ECHO_CHAT_TEMPLATE = load_template('echo_chat') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+.echo-container{display:grid;grid-template-columns:1fr 2fr;gap:20px;height:calc(100vh - 250px);}
+
+.echo-sidebar{background:#2d2d2d;padding:20px;border-radius:10px;border-left:4px solid #9370DB;overflow-y:auto;}
+
+.echo-main{display:flex;flex-direction:column;background:#2d2d2d;border-radius:10px;border-left:4px solid #9370DB;}
+
+.echo-art{color:#9370DB;font-family:monospace;font-size:10px;white-space:pre;line-height:1.2;margin-bottom:20px;}
+
+.echo-stats{margin-top:20px;}
+
+.echo-stats h4{color:#9370DB;margin-bottom:10px;}
+
+.echo-stats .stat-item{display:flex;justify-content:space-between;padding:8px;background:#1a1a1a;margin-bottom:5px;border-radius:5px;}
+
+.chat-header{background:#9370DB;color:#fff;padding:15px 20px;border-radius:10px 10px 0 0;font-size:1.2em;font-weight:bold;}
+
+.chat-messages{flex:1;overflow-y:auto;padding:20px;background:#1a1a1a;display:flex;flex-direction:column;gap:15px;}
+
+.chat-message{display:flex;gap:10px;animation:fadeIn 0.3s;}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+.chat-message.user{flex-direction:row-reverse;}
+
+.chat-bubble{max-width:70%;padding:12px 16px;border-radius:15px;position:relative;}
+
+.chat-message.echo .chat-bubble{background:#4a148c;color:#fff;border-bottom-left-radius:5px;}
+
+.chat-message.user .chat-bubble{background:#1976D2;color:#fff;border-bottom-right-radius:5px;}
+
+.chat-icon{font-size:24px;flex-shrink:0;}
+
+.chat-timestamp{font-size:0.75em;color:#888;margin-top:5px;}
+
+.training-buttons{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+
+.training-btn{font-size:0.85em;padding:4px 12px;border-radius:12px;border:none;cursor:pointer;transition:all 0.2s;}
+
+.training-btn.excellent{background:#4CAF50;color:#fff;}
+
+.training-btn.good{background:#8BC34A;color:#fff;}
+
+.training-btn.fair{background:#FFC107;color:#000;}
+
+.training-btn.poor{background:#f44336;color:#fff;}
+
+.training-btn:hover{transform:scale(1.05);box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+
+.training-btn.selected{box-shadow:0 0 10px currentColor;border:2px solid #fff;}
+
+.chat-input-area{padding:20px;background:#2d2d2d;border-radius:0 0 10px 10px;border-top:2px solid #9370DB;}
+#ytPlayerBar{background:#12122a;border-top:2px solid #6b46c1;transition:height 0.25s ease;overflow:hidden;}
+#ytPlayerBar.yt-minimized{height:40px !important;}
+#ytPlayerBar iframe{display:block;width:100%;border:0;}
+.yt-bar-title{font-size:0.82em;color:#c9b0ff;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin:0 8px;}
+
+.chat-input-form{display:flex;flex-direction:column;gap:8px;position:relative;}
+
+.chat-input{width:100%;box-sizing:border-box;padding:12px 18px;background:#1a1a1a;border:2px solid #9370DB;color:#e0e0e0;border-radius:12px;font-size:1em;resize:vertical;min-height:52px;}
+
+.chat-input-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+.chat-input:focus{outline:none;border-color:#BA55D3;}
+
+.send-btn{background:linear-gradient(135deg,#9370DB,#BA55D3);color:#fff;border:none;padding:12px 30px;border-radius:25px;cursor:pointer;font-weight:bold;transition:all 0.3s;}
+
+.send-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(147,112,219,0.4);}
+
+.typing-indicator{display:none;padding:10px;color:#9370DB;}
+
+.typing-indicator.active{display:block;}
+
+@media(max-width:768px){.echo-container{grid-template-columns:1fr;}.echo-sidebar{max-height:300px;}}
+
+</style>
+
+<div class="echo-container">
+
+<div class="echo-sidebar">
+
+<div class="echo-art">{{ echo_art }}</div>
+
+<div class="echo-stats">
+
+<h4>✨ Training Stats</h4>
+
+<div class="stat-item"><span>Patterns Learned:</span><span id="patterns-count">0</span></div>
+
+<div class="stat-item"><span>Total Examples:</span><span id="total-examples">0</span></div>
+
+<div class="stat-item"><span>Session Messages:</span><span id="session-messages">0</span></div>
+
+<div class="stat-item"><span>Current Model:</span><span id="current-model">(checking...)</span></div>
+
+<div style="margin-top:8px;">
+
+<select id="modelSelect" style="width:100%;padding:6px;border-radius:6px;background:#111;color:#eee;border:1px solid #333;"></select>
+
+<div style="display:flex;gap:6px;margin-top:6px;">
+
+<button class="btn btn-sm btn-primary" onclick="selectModel()">Load Model</button>
+
+<button class="btn btn-sm btn-secondary" onclick="fetchModels()">Refresh</button>
+
+<button class="btn btn-sm" onclick="document.getElementById('personaFile').click()">Upload Persona</button>
+
+<button class="btn btn-sm" onclick="document.getElementById('trainingFile').click()">Upload Training</button>
+
+<input id="personaFile" type="file" accept=".txt,.md,.jsonl" style="display:none" onchange="uploadPersona(this.files[0])">
+
+<input id="trainingFile" type="file" accept=".jsonl,.json,.txt" style="display:none" onchange="uploadTraining(this.files[0])">
+
+</div>
+
+</div>
+
+</div>
+
+<div style="margin-top:15px;">
+
+<h4>💬 Chat History</h4>
+
+<div id="session-list" style="max-height:220px;overflow:auto;margin-top:8px;"></div>
+
+<div style="display:flex;gap:8px;margin-top:8px;">
+
+<button onclick="createSession()" class="btn btn-sm btn-success">New Session</button>
+
+<button onclick="fetchSessions()" class="btn btn-sm btn-secondary">Refresh</button>
+
+</div>
+
+</div>
+
+<div style="margin-top:15px;">
+
+<h4>⚙️ Fine-tune Model</h4>
+
+<div style="display:flex;gap:8px;flex-direction:column;">
+
+<div style="display:flex;gap:8px;">
+
+<select id="trainingFileSelect" style="flex:1"></select>
+
+<button class="btn btn-sm" onclick="fetchTrainingFiles()">Refresh</button>
+
+</div>
+
+<div style="display:flex;gap:8px;">
+
+<input id="tf_epochs" type="number" value="1" style="width:100px" />
+
+<input id="tf_batch" type="number" value="8" style="width:100px" />
+
+<input id="tf_lr" type="text" value="1e-4" style="width:140px" />
+
+<input id="tf_output" type="text" placeholder="output name (optional)" />
+
+<button class="btn btn-sm btn-warning" onclick="startTraining()">Start Training</button>
+
+</div>
+
+<div id="trainingJobs" style="margin-top:8px;max-height:160px;overflow:auto;background:#111;padding:8px;border-radius:6px;font-size:0.9em;color:#ddd"></div>
+
+</div>
+
+</div>
+
+<div style="margin-top:15px;">
+
+<h4>📚 Resources</h4>
+
+<div id="resources-sidebar" style="max-height:220px;overflow:auto;margin-top:8px;">
+
+    <div style="margin-bottom:6px;">Category: <select id="resourceCategory" style="width:160px;margin-left:6px;" onchange="populateResourceList()"><option value="all">All</option><option value="reference">Reference</option><option value="template">Template</option><option value="examples">Examples</option></select></div>
+
+    <div id="resource-list" style="margin-top:6px;"></div>
+
+    <div style="display:flex;gap:8px;margin-top:8px;"><button onclick="fetchResourcesForSidebar()" class="btn btn-sm btn-secondary">Refresh</button></div>
+
+    <div style="margin-top:12px;">
+
+        <h4>Saved Outputs</h4>
+
+        <div id="savedOutputs" style="max-height:160px;overflow:auto;margin-top:6px;color:#ddd"></div>
+
+        <div style="display:flex;gap:8px;margin-top:6px;"><button class="btn btn-sm" onclick="fetchSavedOutputs()">Refresh</button></div>
+
+    </div>
+
+</div>
+
+</div>
+
+<button onclick="clearChat()" class="btn btn-warning" style="width:100%;margin-top:15px;">Clear Chat</button>
+
+<button onclick="searchMemory()" class="btn btn-info" style="width:100%;margin-top:10px;">Search Memory</button>
+
+</div>
+
+<div class="echo-main">
+
+<div class="chat-header">🌙 Echo Starlite - Chat <a href="/echo-commands" class="btn btn-sm" style="margin-left:8px;color:#fff;">⌨ Command Center</a><button class="btn btn-sm" style="margin-left:8px;" onclick="openImagePrompt()">Generate Image</button></div>
+
+<div class="chat-messages" id="chatMessages">
+
+<div class="chat-message echo">
+
+<div class="chat-icon">🌙</div>
+
+<div>
+
+<div class="chat-bubble">Hello... I am Echo 🌙<br>I'm here to help with DevOps tasks and learn from our conversations... 💜</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="typing-indicator" id="typingIndicator">Echo is typing...</div>
+
+<!-- Persistent YouTube Player Bar -->
+<div id="ytPlayerBar" style="display:none;" role="region" aria-label="Music player">
+  <div style="display:flex;align-items:center;padding:6px 12px;background:#1a1a3a;gap:4px;">
+    <span style="font-size:16px;">&#x1F3B5;</span>
+    <span class="yt-bar-title" id="ytBarTitle">Now Playing</span>
+    <button id="ytBarPrev" onclick="ytSeekRelative(-10)" title="Back 10s" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:15px;padding:0 4px;">&#x23EE;</button>
+    <button id="ytBarPlayPause" onclick="ytTogglePlay()" title="Play/Pause" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:17px;padding:0 4px;">&#x23F8;</button>
+    <button id="ytBarMinBtn" onclick="ytToggleMinimize()" title="Minimize" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;padding:0 6px;">&#x2015;</button>
+    <button onclick="ytClose()" title="Close player" style="background:none;border:none;color:#888;cursor:pointer;font-size:16px;padding:0 6px;">&#x2715;</button>
+  </div>
+  <div id="ytFrameWrap" style="position:relative;width:100%;height:0;padding-bottom:30%;overflow:hidden;background:#000;"></div>
+</div>
+
+<div class="chat-input-area">
+
+<form class="chat-input-form" onsubmit="sendMessage(event)">
+
+<textarea id="chatInput" class="chat-input" placeholder="Type your message... ✨" autocomplete="off" required rows="2"></textarea>
+
+<div class="chat-input-controls">
+
+    <label style="font-size:0.85em;color:#ccc;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="autoContinueToggle"> <span id="autoContinueLabel">Auto-continue</span></label>
+
+    <label style="font-size:0.85em;color:#ccc;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="saveToFileToggle"> <span id="saveToFileLabel">Save to file</span></label>
+
+    <label style="font-size:0.85em;color:#ccc;display:flex;align-items:center;gap:6px;">
+
+        Size:
+
+        <select id="imageSizeSelect" style="margin-left:6px;">
+
+            <option value="512x512">512×512</option>
+
+            <option value="640x640">640×640</option>
+
+            <option value="768x512">768×512</option>
+
+        </select>
+
+    </label>
+
+    <label style="font-size:0.85em;color:#ccc;display:flex;align-items:center;gap:6px;">
+
+        Style:
+
+        <select id="imageStyleSelect" style="margin-left:6px;">
+
+            <option value="photorealistic">Photorealistic</option>
+
+            <option value="illustration">Illustration</option>
+
+            <option value="digital-art">Digital Art</option>
+
+        </select>
+
+    </label>
+
+    <button type="submit" class="send-btn">Send 💜</button>
+    <button type="button" id="voiceMicBtn" title="Voice input" onclick="toggleVoiceListening()" style="background:none;border:1px solid #6b46c1;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background 0.2s;">🎤</button>
+    <button type="button" id="voiceTtsBtn" title="Speak Echo's replies" onclick="toggleTTS()" style="background:none;border:1px solid #444;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background 0.2s;">🔇</button>
+    <button type="button" title="Echo and voice commands" onclick="toggleVoicePanel()" style="background:none;border:1px solid #444;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:13px;color:#ccc;">⚡ Commands</button>
+    <button type="button" title="Interactive function-by-function script wizard" onclick="openEchoScriptWizard()" style="background:#6b46c1;border:1px solid #9370db;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:13px;color:#fff;">🧙 Code Wizard</button>
+
+    </div>
+
+</form>
+
+<!-- Voice Commands Panel -->
+<div id="voiceCommandsPanel" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:#1a1a2e;border:1px solid #6b46c1;border-radius:8px 8px 0 0;padding:16px;z-index:200;max-height:60vh;overflow-y:auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <strong style="color:#c9b0ff;">⚡ Voice Commands</strong>
+    <button onclick="toggleVoicePanel()" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:18px;">✕</button>
+  </div>
+  <div id="vcList" style="margin-bottom:12px;"></div>
+  <div style="border-top:1px solid #333;padding-top:12px;">
+    <div style="color:#aaa;font-size:0.8em;margin-bottom:8px;">Add new command — say the phrase to trigger the action</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:end;">
+      <div><label style="font-size:0.75em;color:#999;">Phrase (what you say)</label><input id="vcPhrase" placeholder="e.g. run docker" style="width:100%;background:#0d0d1a;border:1px solid #444;color:#fff;padding:5px 8px;border-radius:4px;font-size:0.85em;"></div>
+      <div><label style="font-size:0.75em;color:#999;">Action</label><select id="vcAction" onchange="vcActionChanged()" style="width:100%;background:#0d0d1a;border:1px solid #444;color:#fff;padding:5px 8px;border-radius:4px;font-size:0.85em;"><option value="send_message">Send message to Echo</option><option value="play_youtube">Play YouTube song</option><option value="clear_chat">Clear chat</option><option value="echo_image">Show Echo image</option></select></div>
+      <div id="vcParamWrap"><label style="font-size:0.75em;color:#999;">Message (for send)</label><input id="vcParam" placeholder="Message text" style="width:100%;background:#0d0d1a;border:1px solid #444;color:#fff;padding:5px 8px;border-radius:4px;font-size:0.85em;"></div>
+      <button onclick="addVoiceCommand()" style="background:#6b46c1;color:#fff;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;white-space:nowrap;">+ Add</button>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-size:0.78em;color:#666;">💡 Tip: click the 🎤 mic button then speak a phrase to execute it, or just chat naturally.</div>
+  <div style="border-top:1px solid #333;padding-top:12px;margin-top:12px;">
+    <strong style="color:#c9b0ff;">Echo Code &amp; Admin Commands</strong>
+    <div style="font-size:0.78em;color:#aaa;margin:6px 0 10px;">Click a command to put it in chat; review it and press Send to execute. `!run` runs with the MasterChief server account's operating-system permissions.</div>
+    <div id="echoCommandCatalog" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px;">
+      <button type="button" onclick="insertEchoCommand('!help')" class="btn btn-sm">!help — script-writing help</button>
+      <button type="button" onclick="insertEchoCommand('!commands')" class="btn btn-sm">!commands — full command list</button>
+      <button type="button" onclick="insertEchoCommand('!OP')" class="btn btn-sm">!OP — request admin operator mode</button>
+      <button type="button" onclick="insertEchoCommand('!masterchief')" class="btn btn-sm">!masterchief — operator alias</button>
+      <button type="button" onclick="insertEchoCommand('!deop')" class="btn btn-sm">!deop — leave operator mode</button>
+      <button type="button" onclick="insertEchoCommand('!status')" class="btn btn-sm">!status — auth and operator status</button>
+      <button type="button" onclick="insertEchoCommand('!library find ')" class="btn btn-sm">!library find — locate source</button>
+      <button type="button" onclick="openEchoScriptWizard()" class="btn btn-sm">!write — open function-by-function wizard</button>
+      <button type="button" onclick="insertEchoCommand('!run data/scripts/')" class="btn btn-sm">!run — run a named project script</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div id="echoScriptWizard" role="dialog" aria-modal="true" aria-labelledby="echoWizardTitle" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:10000;align-items:center;justify-content:center;padding:18px;">
+  <div style="width:min(760px,100%);max-height:90vh;overflow:auto;background:#20202b;color:#eee;border:1px solid #9370db;border-radius:12px;padding:20px;box-shadow:0 18px 60px #000;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 id="echoWizardTitle" style="margin:0;color:#c9b0ff;">Interactive Script Wizard</h2>
+      <button type="button" class="btn btn-sm" onclick="closeEchoScriptWizard()">Close</button>
+    </div>
+    <div id="echoWizardStep1">
+      <label for="echoWizardLanguage">1. Choose a language</label>
+      <select id="echoWizardLanguage" style="display:block;width:100%;margin:8px 0 16px;padding:10px;">
+        <option value="python">Python</option><option value="powershell">PowerShell</option><option value="bash">Bash</option><option value="terraform">Terraform</option>
+      </select>
+      <label for="echoWizardFilename">Script filename</label>
+      <input id="echoWizardFilename" value="new_echo_script.py" maxlength="80" style="display:block;width:100%;margin:8px 0 16px;">
+      <label for="echoWizardGoal">2. What should the script do?</label>
+      <textarea id="echoWizardGoal" rows="3" maxlength="1200" placeholder="Describe the outcome, inputs and environment..." style="display:block;width:100%;margin:8px 0 16px;"></textarea>
+    </div>
+    <div id="echoWizardStep2" style="display:none;">
+      <h3 style="color:#c9b0ff;">3. Define the functions</h3>
+      <p style="color:#aaa;font-size:.9em;">Enter one function per line as <code>function_name: responsibility</code>. Echo will include these in the script-generation request.</p>
+      <textarea id="echoWizardFunctions" rows="7" maxlength="2500" placeholder="load_config: read and validate settings&#10;build_worker: create a second worker instance&#10;main: coordinate startup and graceful shutdown" style="display:block;width:100%;margin:8px 0 16px;"></textarea>
+      <label for="echoWizardConstraints">4. Requirements and safety checks</label>
+      <textarea id="echoWizardConstraints" rows="3" maxlength="1200" placeholder="Tests, logging, dry-run behavior, permissions, rollback..."></textarea>
+    </div>
+    <div id="echoWizardStep3" style="display:none;">
+      <h3 style="color:#c9b0ff;">Review your request</h3>
+      <pre id="echoWizardPreview" style="white-space:pre-wrap;background:#111;padding:12px;border-radius:6px;max-height:320px;overflow:auto;"></pre>
+      <p style="color:#ffca80;">Echo will draft the code only. It will not save or run it unless you explicitly choose a separate action.</p>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;">
+      <button id="echoWizardBack" type="button" class="btn btn-sm" onclick="echoWizardBack()" style="display:none;">Back</button>
+      <span style="flex:1;"></span>
+      <button id="echoWizardNext" type="button" class="btn btn-primary" onclick="echoWizardNext()">Next</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+let sessionId='web_'+Date.now();
+
+let messageCount=0;
+let pendingScriptDraftFilename=null;
+let echoWizardStep=1;
+
+// Simple client-side translations (expandable)
+
+const TRANSLATIONS = {
+
+    en: {
+
+        auto_continue: 'Auto-continue',
+
+        save_to_file: 'Save to file',
+
+        saved_outputs: 'Saved Outputs',
+
+        download: 'Download',
+
+        delete: 'Delete',
+
+        no_saved: 'No saved outputs',
+
+        saved_prefix: 'Saved:'
+
+    },
+
+    es: {
+
+        auto_continue: 'Auto-continuar',
+
+        save_to_file: 'Guardar en archivo',
+
+        saved_outputs: 'Salidas guardadas',
+
+        download: 'Descargar',
+
+        delete: 'Borrar',
+
+        no_saved: 'No hay salidas guardadas',
+
+        saved_prefix: 'Guardado:'
+
+    }
+
+};
+
+let CURRENT_LANG = 'en';
+
+function insertEchoCommand(command){
+    const input=document.getElementById('chatInput');
+    if(!input)return;
+    input.value=command;
+    input.focus();
+    if(command.endsWith(' ')) input.setSelectionRange(command.length,command.length);
+}
+
+function echoWizardSetStep(step){
+    echoWizardStep=Math.max(1,Math.min(3,step));
+    for(let i=1;i<=3;i++){
+        const section=document.getElementById('echoWizardStep'+i);
+        if(section) section.style.display=i===echoWizardStep?'':'none';
+    }
+    document.getElementById('echoWizardBack').style.display=echoWizardStep===1?'none':'';
+    document.getElementById('echoWizardNext').textContent=echoWizardStep===3?'Draft with Echo':'Next';
+}
+
+function openEchoScriptWizard(){
+    const modal=document.getElementById('echoScriptWizard');
+    if(modal) modal.style.display='flex';
+    echoWizardSetStep(1);
+}
+
+function closeEchoScriptWizard(){
+    const modal=document.getElementById('echoScriptWizard');
+    if(modal) modal.style.display='none';
+}
+
+function echoWizardBack(){
+    echoWizardSetStep(echoWizardStep-1);
+}
+
+function echoWizardRequest(){
+    const language=document.getElementById('echoWizardLanguage').value;
+    const goal=document.getElementById('echoWizardGoal').value.trim();
+    const functions=document.getElementById('echoWizardFunctions').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    const requirements=document.getElementById('echoWizardConstraints').value.trim();
+    const filename=document.getElementById('echoWizardFilename').value.trim();
+    const extension={python:'.py',powershell:'.ps1',bash:'.sh',terraform:'.tf'}[language];
+    const safeName=filename.split(/[\\/]/).pop().replace(/[^\w.-]/g,'_').replace(/^\.+/,'');
+    if(!safeName)return {language,scriptName:'',task:goal};
+    const scriptName=safeName.toLowerCase().endsWith(extension)?safeName:safeName.replace(/\.[^.]+$/,'')+extension;
+    const sections=['Create a script named '+scriptName+'. Goal: '+goal];
+    if(functions.length) sections.push('Implement these functions, each with a clear responsibility: '+functions.join('; '));
+    if(requirements) sections.push('Requirements and safety checks: '+requirements.replace(/\s+/g,' '));
+    return {language,scriptName,task:sections.join('. ')};
+}
+
+function echoWizardNext(){
+    if(echoWizardStep===1){
+        const goal=document.getElementById('echoWizardGoal').value.trim();
+        if(!goal){alert('Describe what the script should do first.');return;}
+        echoWizardSetStep(2);
+        return;
+    }
+    if(echoWizardStep===2){
+        const request=echoWizardRequest();
+        if(!request.scriptName){alert('Enter a valid script filename.');return;}
+        const lineBreak=String.fromCharCode(10);
+        document.getElementById('echoWizardPreview').textContent=
+            'Language: '+request.language+lineBreak+'Filename: data/scripts/'+request.scriptName+lineBreak+lineBreak+request.task;
+        echoWizardSetStep(3);
+        return;
+    }
+    const request=echoWizardRequest();
+    pendingScriptDraftFilename=request.scriptName;
+    closeEchoScriptWizard();
+    insertEchoCommand('!write '+request.language+' '+request.task);
+    const form=document.getElementById('chatInput').closest('form');
+    form.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
+}
+
+function offerSaveGeneratedScript(messageElement,responseText,filename){
+    const match=String(responseText||'').match(/```(?:[\w+#.-]+)?[ \t]*\r?\n([\s\S]*?)```/);
+    if(!match)return;
+    const saveButton=document.createElement('button');
+    saveButton.type='button';
+    saveButton.className='btn btn-sm btn-success';
+    saveButton.style.marginTop='8px';
+    saveButton.textContent='Save draft to data/scripts/'+filename;
+    saveButton.addEventListener('click',async()=>{
+        const path='data/scripts/'+filename;
+        if(!window.confirm('Save this generated draft to '+path+'? An existing file with this name will be overwritten.'))return;
+        saveButton.disabled=true;
+        try{
+            const response=await fetch('/api/ide/save',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({filename:path,content:match[1]})
+            });
+            const result=await response.json();
+            if(!result.ok)throw new Error(result.error||'Save failed');
+            saveButton.textContent='Saved '+path+' — open Code UI';
+            saveButton.onclick=()=>window.open('/masterchief_code_ui','_blank');
+        }catch(error){
+            saveButton.disabled=false;
+            alert('Could not save the script. Sign in with Code UI permission and try again. '+error.message);
+        }
+    });
+    messageElement.appendChild(saveButton);
+}
+
+document.getElementById('chatInput').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}));}});
+
+function sendMessage(e){
+
+e.preventDefault();
+
+const input=document.getElementById('chatInput');
+
+const message=input.value.trim();
+
+if(!message)return;
+const draftFilename=pendingScriptDraftFilename;
+pendingScriptDraftFilename=null;
+
+// Run client-side action manager first (for actions like 'clear chat' that don't need the server)
+if(echoActionManager.dispatch(message, 'text')){ input.value=''; return; }
+
+addUserMessage(message);
+
+input.value='';
+
+showTyping();
+
+// read toggles (per-session overrides)
+
+const autoContinue = document.getElementById('autoContinueToggle') ? document.getElementById('autoContinueToggle').checked : false;
+
+const saveToFile = document.getElementById('saveToFileToggle') ? document.getElementById('saveToFileToggle').checked : false;
+
+fetch('/api/echo/chat',{
+
+method:'POST',
+
+headers:{'Content-Type':'application/json'},
+
+body:JSON.stringify({message:message,session_id:sessionId,auto_continue:autoContinue,save_to_file:saveToFile})
+
+}).then(r=>r.json()).then(data=>{
+
+hideTyping();
+
+const echoMessage=addEchoMessage(data.response,data.message_id);
+if(draftFilename) offerSaveGeneratedScript(echoMessage,data.response,draftFilename);
+
+updateStats();
+
+messageCount++;
+
+document.getElementById('session-messages').textContent=messageCount;
+
+// auto-generate image when the chat endpoint signals it (e.g. Echo appearance requests)
+if(data && data.generate_image && data.image_prompt){
+    setTimeout(()=>generateImage(data.image_prompt), 300);
+}
+// YouTube play
+if(data && data.play_youtube && data.youtube_query){
+    setTimeout(()=>playYouTube(data.youtube_query), 200);
+}
+// TTS: speak Echo's reply
+if(data && data.response){ voiceTTSSpeak(data.response); }
+
+// if server returned saved path, show small link
+
+if(data && data.saved_to){
+
+    try{ const el = document.createElement('div'); el.style.fontSize='0.85em'; el.style.marginTop='6px'; const t = TRANSLATIONS[CURRENT_LANG] || TRANSLATIONS['en']; el.innerHTML = t.saved_prefix + ' <a href="/'+data.saved_to+'" target="_blank">'+data.saved_to.split('/').slice(-1)[0]+'</a>'; document.getElementById('chatMessages').appendChild(el);}catch(e){}
+
+    try{ if(typeof fetchSavedOutputs==='function') fetchSavedOutputs(); }catch(e){}
+
+}
+
+}).catch(err=>{
+
+hideTyping();
+
+console.error('Error:',err);
+
+addEchoMessage('Sorry... something went wrong... 💜',null);
+
+});
+
+}
+
+// ============================================================
+// ECHO ACTION HANDLER MANAGER
+// Single pipeline for voice AND text input.
+//
+// Register custom handlers anywhere:
+//   echoActionManager.register({
+//     name:     'my_handler',
+//     priority: 50,                  // lower = runs first
+//     sources:  ['text','voice'],    // which inputs trigger this
+//     detect:   (tl, source) => paramsOrNull,
+//     execute:  (params, rawText, source) => void,
+//   });
+// ============================================================
+class EchoActionManager {
+    constructor() { this.handlers = []; this._log = []; }
+
+    register({ name, priority = 50, sources = ['text', 'voice'], detect, execute }) {
+        this.handlers = this.handlers.filter(h => h.name !== name);
+        this.handlers.push({ name, priority, sources, detect, execute });
+        this.handlers.sort((a, b) => a.priority - b.priority);
+        return this;
+    }
+
+    unregister(name) {
+        this.handlers = this.handlers.filter(h => h.name !== name);
+        return this;
+    }
+
+    dispatch(text, source = 'text') {
+        if (!text || !text.trim()) return false;
+        const tl = text.trim().toLowerCase();
+        for (const h of this.handlers) {
+            if (!h.sources.includes(source) && !h.sources.includes('*')) continue;
+            try {
+                const params = h.detect(tl, source);
+                if (params !== null && params !== undefined && params !== false) {
+                    this._log.unshift({ ts: new Date().toLocaleTimeString(), handler: h.name, source, text: text.slice(0, 80) });
+                    if (this._log.length > 50) this._log.pop();
+                    h.execute(params, text, source);
+                    return true;
+                }
+            } catch (err) { console.error('[ActionManager]', h.name, err); }
+        }
+        return false;
+    }
+
+    listHandlers() { return this.handlers.map(h => ({ name: h.name, priority: h.priority, sources: h.sources })); }
+    getLog()       { return [...this._log]; }
+}
+
+const echoActionManager = new EchoActionManager();
+
+// ---- Built-in: Clear chat (text + voice) ----
+echoActionManager.register({
+    name: 'clear_chat', priority: 10, sources: ['text', 'voice'],
+    detect: (tl) => /^(clear(\s+the)?\s+chat|clear\s+screen|wipe(\s+the)?\s+chat)$/.test(tl) ? {} : null,
+    execute: () => {
+        const c = document.getElementById('chatMessages');
+        if (c) { while (c.firstChild) c.removeChild(c.firstChild); }
+        addEchoMessage('Chat cleared. 🌙', null);
+        voiceTTSSpeak('Chat cleared.');
+    }
+});
+
+// ---- Built-in: YouTube play (voice only — text goes to server) ----
+echoActionManager.register({
+    name: 'youtube_play', priority: 15, sources: ['voice'],
+    detect: (tl) => {
+        const m = tl.match(/^(?:play\s+(?:(?:this\s+)?(?:song|music)|me)?\s*[:\-]?\s*|put\s+on\s+|queue\s+up\s+|can\s+you\s+play\s+)(.+)/i);
+        return (m && m[1] && m[1].trim().length > 1) ? { query: m[1].trim().replace(/[.!?]+$/, '') } : null;
+    },
+    execute: ({ query }) => {
+        playYouTube(query);
+    }
+});
+
+// ---- Built-in: Echo selfie (voice only — text goes to server) ----
+echoActionManager.register({
+    name: 'echo_selfie', priority: 20, sources: ['voice'],
+    detect: (tl) => {
+        const vis  = /(look|face|show|pic|picture|image|selfie|photo|draw|see|appearance|portrait)/.test(tl);
+        const self = /(you|your|yourself|echo|u)/.test(tl);
+        const strong = /how (do )?you look|show (me )?your face|let me see you|show (me )?echo|what (do )?you look like/.test(tl);
+        return (strong || (vis && self)) ? {} : null;
+    },
+    execute: () => {
+        const p = 'Echo Starlite, a beautiful angel with large soft purple wings, gentle face, soft smile, silver hair, glowing violet eyes, golden halo, crescent moon symbol, ethereal purple and blue glow, floating in a night sky with stars, digital art, fantasy illustration';
+        addEchoMessage('Here I am… 🌙✨', null);
+        setTimeout(() => generateImage(p), 300);
+    }
+});
+
+// ---- Built-in: TTS toggle (voice only) ----
+echoActionManager.register({
+    name: 'tts_toggle', priority: 25, sources: ['voice'],
+    detect: (tl) => /(mute echo|unmute echo|silence echo|stop (talking|speaking)|speak up|turn (on|off) (voice|tts|speech|audio))/.test(tl) ? {} : null,
+    execute: () => toggleTTS()
+});
+
+// ============================================================
+// VOICE CONTROL SYSTEM  (powered by EchoActionManager)
+// ============================================================
+let _voiceListening  = false;
+let _voiceTTSEnabled = false;
+let _voiceRecog      = null;
+let _voiceSynth      = window.speechSynthesis || null;
+let _voiceCommands   = [];
+let _voicePanelOpen  = false;
+let _vcActiveTab     = 'commands';
+
+(function initVoice() {
+    _loadVoiceCommandHandlers();
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+        const b = document.getElementById('voiceMicBtn');
+        if (b) { b.title = 'Speech recognition not supported (needs Chrome/Edge)'; b.style.opacity = '0.4'; b.onclick = () => alert('Needs Chrome or Edge.'); }
+    }
+    if (!_voiceSynth) { const b = document.getElementById('voiceTtsBtn'); if (b) b.style.opacity = '0.4'; }
+})();
+
+function _loadVoiceCommandHandlers() {
+    fetch('/api/echo/voice_commands').then(r => r.json()).then(j => {
+        _voiceCommands = j.commands || [];
+        echoActionManager.handlers = echoActionManager.handlers.filter(h => !h.name.startsWith('vcmd_'));
+        for (const cmd of _voiceCommands) {
+            const phrase = (cmd.phrase || '').toLowerCase().trim();
+            if (!phrase) continue;
+            ((c, p) => echoActionManager.register({
+                name: 'vcmd_' + c.id, priority: 50, sources: ['text', 'voice'],
+                detect: (tl) => {
+                    if (tl.includes(p) || p.includes(tl)) return { cmd: c };
+                    const pw = p.split(/\s+/), tw = new Set(tl.split(/\s+/));
+                    const ov = pw.filter(w => tw.has(w)).length / Math.max(pw.length, 1);
+                    return ov >= 0.6 ? { cmd: c } : null;
+                },
+                execute: ({ cmd }, rawText) => _runVoiceCommandAction(cmd, rawText)
+            }))(cmd, phrase);
+        }
+        renderVoiceCommands();
+    }).catch(() => {});
+}
+
+function _runVoiceCommandAction(cmd, rawText) {
+    addEchoMessage('⚡ ' + escapeHtml(cmd.label || cmd.phrase), null);
+    switch (cmd.action) {
+        case 'play_youtube': playYouTube(cmd.param || rawText); break;
+        case 'clear_chat':
+            const cc = document.getElementById('chatMessages');
+            if (cc) { while (cc.firstChild) cc.removeChild(cc.firstChild); }
+            voiceTTSSpeak('Chat cleared.'); break;
+        case 'echo_image':
+            const ep = 'Echo Starlite, a beautiful angel with large soft purple wings, gentle face, soft smile, silver hair, glowing violet eyes, golden halo, crescent moon symbol, ethereal purple and blue glow, floating in a night sky with stars, digital art, fantasy illustration';
+            addEchoMessage('Here I am… 🌙✨', null);
+            setTimeout(() => generateImage(ep), 300); break;
+        case 'send_message': default:
+            const sm = cmd.param || rawText;
+            const si = document.getElementById('chatInput');
+            if (si) { si.value = sm; const sf = si.closest('form'); if (sf) sf.dispatchEvent(new Event('submit', { cancelable: true })); }
+    }
+}
+
+function toggleVoiceListening() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Speech recognition requires Chrome or Edge.'); return; }
+    if (_voiceListening) { _stopVoiceRecog(); return; }
+    _voiceListening = true;
+    const btn = document.getElementById('voiceMicBtn');
+    if (btn) { btn.style.background = '#6b46c1'; btn.title = 'Listening… click to stop'; }
+    _voiceRecog = new SR();
+    _voiceRecog.continuous = false; _voiceRecog.interimResults = false; _voiceRecog.lang = 'en-US';
+    _voiceRecog.onresult = (e) => { const t = e.results[0][0].transcript.trim(); _stopVoiceRecog(); _dispatchVoiceInput(t); };
+    _voiceRecog.onerror  = () => _stopVoiceRecog();
+    _voiceRecog.onend    = () => _stopVoiceRecog();
+    _voiceRecog.start();
+}
+
+function _stopVoiceRecog() {
+    _voiceListening = false;
+    const btn = document.getElementById('voiceMicBtn');
+    if (btn) { btn.style.background = 'none'; btn.title = 'Voice input'; }
+    try { if (_voiceRecog) _voiceRecog.stop(); } catch (e) {}
+    _voiceRecog = null;
+}
+
+function _dispatchVoiceInput(text) {
+    if (!text) return;
+    // Run through action manager; fall through to server chat if nothing matched
+    if (echoActionManager.dispatch(text, 'voice')) return;
+    const inp = document.getElementById('chatInput');
+    if (inp) { inp.value = text; const frm = inp.closest('form'); if (frm) frm.dispatchEvent(new Event('submit', { cancelable: true })); }
+}
+
+function toggleTTS() {
+    _voiceTTSEnabled = !_voiceTTSEnabled;
+    const btn = document.getElementById('voiceTtsBtn');
+    if (btn) {
+        btn.textContent  = _voiceTTSEnabled ? '🔊' : '🔇';
+        btn.style.border = _voiceTTSEnabled ? '1px solid #6b46c1' : '1px solid #444';
+        btn.title        = _voiceTTSEnabled ? 'TTS on — click to mute' : 'TTS off — click to enable';
+    }
+    if (!_voiceTTSEnabled && _voiceSynth) _voiceSynth.cancel();
+}
+
+function voiceTTSSpeak(text) {
+    if (!_voiceTTSEnabled || !_voiceSynth) return;
+    _voiceSynth.cancel();
+    const clean = text.replace(/```[\s\S]*?```/g, ' code block ').replace(/`[^`]+`/g, '').replace(/[*_#]/g, '').replace(/https?:\/\/\S+/g, 'link').slice(0, 600);
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.rate = 1.0; utt.pitch = 1.1; utt.volume = 0.9;
+    const voices = _voiceSynth.getVoices();
+    const female = voices.find(v => /female|woman|girl|zira|hazel|susan|karen|samantha/i.test(v.name));
+    if (female) utt.voice = female;
+    _voiceSynth.speak(utt);
+}
+
+function toggleVoicePanel() {
+    _voicePanelOpen = !_voicePanelOpen;
+    const p = document.getElementById('voiceCommandsPanel');
+    if (p) p.style.display = _voicePanelOpen ? 'block' : 'none';
+    if (_voicePanelOpen) { vcSwitchTab(_vcActiveTab); }
+}
+
+function vcSwitchTab(tab) {
+    _vcActiveTab = tab;
+    ['commands', 'handlers', 'log'].forEach(t => {
+        const btn  = document.getElementById('vcTab_' + t);
+        const pane = document.getElementById('vcPane_' + t);
+        if (btn)  btn.style.borderBottom = t === tab ? '2px solid #9d70ff' : '2px solid transparent';
+        if (pane) pane.style.display = t === tab ? '' : 'none';
+    });
+    if (tab === 'commands') renderVoiceCommands();
+    if (tab === 'handlers') renderHandlerList();
+    if (tab === 'log')      renderActionLog();
+}
+
+function vcActionChanged() {
+    const a = document.getElementById('vcAction');
+    const w = document.getElementById('vcParamWrap');
+    const v = a ? a.value : '';
+    if (w) w.style.display = (v === 'send_message' || v === 'play_youtube') ? '' : 'none';
+}
+
+function renderVoiceCommands() {
+    const el = document.getElementById('vcList');
+    if (!el) return;
+    if (!_voiceCommands.length) { el.innerHTML = '<div style="color:#666;font-size:0.85em;">No commands yet. Add one below.</div>'; return; }
+    el.innerHTML = _voiceCommands.map(c => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin-bottom:4px;background:#0d0d1a;border-radius:4px;font-size:0.85em;">
+          <span><span style="color:#9d70ff;">"${escapeHtml(c.phrase)}"</span>
+          <span style="color:#555;margin:0 5px;">&rarr;</span>
+          <span style="color:#ccc;">${escapeHtml(c.label||c.action)}${c.param?' <span style="color:#666;">('+escapeHtml(c.param.slice(0,40))+')</span>':''}</span></span>
+          <button onclick="deleteVoiceCommand('${c.id}')" style="background:none;border:none;color:#a00;cursor:pointer;font-size:13px;">&#x2715;</button>
+        </div>`).join('');
+}
+
+function renderHandlerList() {
+    const el = document.getElementById('vcHandlerList');
+    if (!el) return;
+    const client = echoActionManager.listHandlers();
+    fetch('/api/echo/action_handlers').then(r => r.json()).then(j => {
+        const server = (j.handlers || []).map(h => ({ ...h, side: 'server' }));
+        const all = [...client.map(h => ({ ...h, side: 'client' })), ...server];
+        el.innerHTML = all.map(h =>
+            `<div style="display:flex;align-items:center;padding:4px 8px;margin-bottom:3px;background:#0d0d1a;border-radius:4px;font-size:0.8em;gap:8px;">
+              <span style="color:${h.side==='client'?'#6be':'#b9f'};min-width:140px;">${escapeHtml(h.name)}</span>
+              <span style="color:#555;">p:${h.priority}</span>
+              <span style="color:#666;">[${h.side==='client'?(h.sources||[]).join('|'):'server'}]</span>
+            </div>`).join('') || '<div style="color:#666;font-size:0.82em;">No handlers found.</div>';
+    }).catch(() => {
+        el.innerHTML = client.map(h =>
+            `<div style="padding:4px 8px;margin-bottom:3px;background:#0d0d1a;border-radius:4px;font-size:0.8em;">
+              <span style="color:#6be;">${escapeHtml(h.name)}</span>
+              <span style="color:#555;margin:0 5px;">p:${h.priority}</span>
+              <span style="color:#666;">[${(h.sources||[]).join('|')}]</span>
+            </div>`).join('');
+    });
+}
+
+function renderActionLog() {
+    const el = document.getElementById('vcLogList');
+    if (!el) return;
+    const log = echoActionManager.getLog();
+    el.innerHTML = log.length ? log.map(e =>
+        `<div style="padding:3px 8px;font-size:0.78em;border-bottom:1px solid #111;">
+          <span style="color:#555;">${escapeHtml(e.ts)}</span>
+          <span style="color:#9d70ff;margin:0 5px;">${escapeHtml(e.handler)}</span>
+          <span style="color:#555;">[${escapeHtml(e.source)}]</span>
+          <span style="color:#aaa;"> ${escapeHtml(e.text)}</span>
+        </div>`).join('') : '<div style="color:#555;font-size:0.8em;padding:8px;">No actions logged yet.</div>';
+}
+
+function addVoiceCommand() {
+    const phrase = (document.getElementById('vcPhrase')||{}).value||'';
+    const action = (document.getElementById('vcAction')||{}).value||'send_message';
+    const param  = (document.getElementById('vcParam') ||{}).value||'';
+    if (!phrase.trim()) { alert('Please enter a trigger phrase.'); return; }
+    fetch('/api/echo/voice_commands', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase: phrase.trim().toLowerCase(), action, param, label: phrase.trim() })
+    }).then(r => r.json()).then(j => {
+        if (j.ok) {
+            document.getElementById('vcPhrase').value = '';
+            document.getElementById('vcParam').value  = '';
+            _loadVoiceCommandHandlers();
+        } else alert(j.error || 'Failed to save command');
+    }).catch(e => alert('Error: ' + e));
+}
+
+function deleteVoiceCommand(id) {
+    fetch('/api/echo/voice_commands/' + encodeURIComponent(id), { method: 'DELETE' })
+        .then(r => r.json()).then(j => {
+            if (j.ok) { _voiceCommands = _voiceCommands.filter(c => c.id !== id); echoActionManager.unregister('vcmd_' + id); renderVoiceCommands(); }
+        }).catch(() => {});
+}
+// ============================================================
+// END VOICE CONTROL SYSTEM
+// ============================================================
+
+// --- Initialise on load ---
+(function initVoice(){
+    // Load commands from server
+    fetch('/api/echo/voice_commands').then(r=>r.json()).then(j=>{
+        _voiceCommands = j.commands || [];
+        renderVoiceCommands();
+    }).catch(()=>{});
+
+    // Check browser support
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRec){
+        const btn = document.getElementById('voiceMicBtn');
+        if(btn){ btn.title='Speech recognition not supported in this browser'; btn.style.opacity='0.4'; btn.onclick=()=>alert('Speech recognition requires Chrome, Edge or Safari.'); }
+    }
+    if(!_voiceSynth){
+        const btn = document.getElementById('voiceTtsBtn');
+        if(btn){ btn.style.opacity='0.4'; }
+    }
+})();
+
+function toggleVoiceListening(){
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRec){ alert('Speech recognition not supported in this browser (try Chrome or Edge).'); return; }
+
+    if(_voiceListening){
+        _stopVoiceRecog();
+        return;
+    }
+
+    _voiceListening = true;
+    const btn = document.getElementById('voiceMicBtn');
+    if(btn){ btn.style.background='#6b46c1'; btn.title='Listening… click to stop'; }
+
+    _voiceRecog = new SpeechRec();
+    _voiceRecog.continuous    = false;
+    _voiceRecog.interimResults = false;
+    _voiceRecog.lang          = 'en-US';
+
+    _voiceRecog.onresult = (e) => {
+        const transcript = e.results[0][0].transcript.trim();
+        _stopVoiceRecog();
+        _dispatchVoiceInput(transcript);
+    };
+    _voiceRecog.onerror = (e) => { console.warn('Voice error', e.error); _stopVoiceRecog(); };
+    _voiceRecog.onend   = ()  => { _stopVoiceRecog(); };
+    _voiceRecog.start();
+}
+
+function _stopVoiceRecog(){
+    _voiceListening = false;
+    const btn = document.getElementById('voiceMicBtn');
+    if(btn){ btn.style.background='none'; btn.title='Voice input'; }
+    try{ if(_voiceRecog) _voiceRecog.stop(); }catch(e){}
+    _voiceRecog = null;
+}
+
+function _dispatchVoiceInput(text){
+    if(!text) return;
+    // 0. Early-catch: "play ..." voice shortcut — extract query and play directly
+    const _playMatch = text.match(/^(?:play\s+(?:(?:this\s+)?song|music|me)?\s*[:\-]?\s*|put\s+on\s+|queue\s+up\s+|can\s+you\s+play\s+)(.+)/i);
+    if(_playMatch && _playMatch[1] && _playMatch[1].trim().length > 1){
+        const _pq = _playMatch[1].trim().replace(/[.!?]+$/, '');
+        playYouTube(_pq);
+        return;
+    }
+    const tl = text.toLowerCase();
+    let matched = null;
+    let bestScore = 0;
+    for(const cmd of _voiceCommands){
+        const phrase = (cmd.phrase||'').toLowerCase();
+        if(!phrase) continue;
+        // exact containment
+        if(tl.includes(phrase) || phrase.includes(tl)){
+            const score = phrase.length;
+            if(score > bestScore){ bestScore = score; matched = cmd; }
+        } else {
+            // word overlap score
+            const pw = new Set(phrase.split(/\s+/));
+            const tw = new Set(tl.split(/\s+/));
+            let overlap = 0;
+            pw.forEach(w=>{ if(tw.has(w)) overlap++; });
+            const score = overlap / Math.max(pw.size, 1);
+            if(score >= 0.6 && score > bestScore){ bestScore = score; matched = cmd; }
+        }
+    }
+    if(matched){
+        _executeVoiceCommand(matched, text);
+        return;
+    }
+    // 2. Fall through: treat as normal chat message
+    const input = document.getElementById('chatInput');
+    if(input){
+        input.value = text;
+        // trigger submit
+        const form = input.closest('form');
+        if(form) form.dispatchEvent(new Event('submit', {cancelable:true}));
+    }
+}
+
+function _executeVoiceCommand(cmd, rawText){
+    addEchoMessage('🎤 Command: ' + (cmd.label || cmd.phrase), null);
+    switch(cmd.action){
+        case 'play_youtube':
+            const _ytQuery = cmd.param || rawText;
+            playYouTube(_ytQuery);
+            break;
+        case 'clear_chat':
+            const cont = document.getElementById('chatMessages');
+            if(cont){ while(cont.firstChild) cont.removeChild(cont.firstChild); }
+            voiceTTSSpeak('Chat cleared.');
+            break;
+        case 'echo_image':
+            const selfPrompt = 'Echo Starlite, a beautiful angel with large soft purple wings, gentle face, soft smile, silver hair, glowing violet eyes, golden halo, crescent moon symbol, ethereal purple and blue glow, floating in a night sky with stars, digital art, fantasy illustration';
+            addEchoMessage("Here I am... 🌙✨", null);
+            setTimeout(()=>generateImage(selfPrompt), 300);
+            break;
+        case 'send_message':
+        default:
+            const msg = cmd.param || rawText;
+            const inp = document.getElementById('chatInput');
+            if(inp){
+                inp.value = msg;
+                const frm = inp.closest('form');
+                if(frm) frm.dispatchEvent(new Event('submit',{cancelable:true}));
+            }
+    }
+}
+
+function toggleTTS(){
+    _voiceTTSEnabled = !_voiceTTSEnabled;
+    const btn = document.getElementById('voiceTtsBtn');
+    if(btn){
+        btn.textContent  = _voiceTTSEnabled ? '🔊' : '🔇';
+        btn.style.border = _voiceTTSEnabled ? '1px solid #6b46c1' : '1px solid #444';
+        btn.title        = _voiceTTSEnabled ? 'TTS on — click to mute Echo' : 'TTS off — click to hear Echo';
+    }
+    if(!_voiceTTSEnabled && _voiceSynth) _voiceSynth.cancel();
+}
+
+function voiceTTSSpeak(text){
+    if(!_voiceTTSEnabled || !_voiceSynth) return;
+    _voiceSynth.cancel();
+    // strip markdown-ish syntax for cleaner speech
+    const clean = text.replace(/```[\s\S]*?```/g,' code block ').replace(/`[^`]+`/g,'').replace(/[*_#]/g,'').replace(/https?:\/\/\S+/g,'link').slice(0,600);
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.rate   = 1.0;
+    utt.pitch  = 1.1;
+    utt.volume = 0.9;
+    // prefer a female voice if available
+    const voices = _voiceSynth.getVoices();
+    const female = voices.find(v=>/female|woman|girl|zira|hazel|susan|karen|samantha/i.test(v.name));
+    if(female) utt.voice = female;
+    _voiceSynth.speak(utt);
+}
+
+function toggleVoicePanel(){
+    _voicePanelOpen = !_voicePanelOpen;
+    const p = document.getElementById('voiceCommandsPanel');
+    if(p) p.style.display = _voicePanelOpen ? 'block' : 'none';
+    if(_voicePanelOpen) renderVoiceCommands();
+}
+
+function vcActionChanged(){
+    const a = document.getElementById('vcAction');
+    const w = document.getElementById('vcParamWrap');
+    if(w) w.style.display = (a && a.value === 'send_message') ? '' : 'none';
+}
+
+function renderVoiceCommands(){
+    const el = document.getElementById('vcList');
+    if(!el) return;
+    if(!_voiceCommands.length){ el.innerHTML = '<div style="color:#666;font-size:0.85em;">No commands yet.</div>'; return; }
+    el.innerHTML = _voiceCommands.map(c=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin-bottom:4px;background:#0d0d1a;border-radius:4px;font-size:0.85em;">
+          <span><span style="color:#9d70ff;">"${escapeHtml(c.phrase)}"</span>
+          <span style="color:#666;margin:0 6px;">→</span>
+          <span style="color:#ccc;">${escapeHtml(c.label||c.action)}${c.param?' <span style="color:#777;">('+escapeHtml(c.param.slice(0,40))+')</span>':''}</span></span>
+          <button onclick="deleteVoiceCommand('${c.id}')" style="background:none;border:none;color:#c00;cursor:pointer;font-size:14px;padding:0 4px;">✕</button>
+        </div>`).join('');
+}
+
+function addVoiceCommand(){
+    const phrase = (document.getElementById('vcPhrase')||{}).value||'';
+    const action = (document.getElementById('vcAction')||{}).value||'send_message';
+    const param  = (document.getElementById('vcParam') ||{}).value||'';
+    if(!phrase.trim()){ alert('Please enter a trigger phrase.'); return; }
+    fetch('/api/echo/voice_commands',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({phrase:phrase.trim().toLowerCase(), action, param, label:phrase.trim()})
+    }).then(r=>r.json()).then(j=>{
+        if(j.ok){
+            document.getElementById('vcPhrase').value='';
+            document.getElementById('vcParam').value='';
+            return fetch('/api/echo/voice_commands').then(r2=>r2.json()).then(j2=>{ _voiceCommands=j2.commands||[]; renderVoiceCommands(); });
+        } else alert(j.error||'Failed to save command');
+    }).catch(e=>alert('Error: '+e));
+}
+
+function deleteVoiceCommand(id){
+    fetch('/api/echo/voice_commands/'+encodeURIComponent(id),{method:'DELETE'})
+    .then(r=>r.json()).then(j=>{
+        if(j.ok){ _voiceCommands=_voiceCommands.filter(c=>c.id!==id); renderVoiceCommands(); }
+    }).catch(()=>{});
+}
+// ============================================================
+// END VOICE CONTROL SYSTEM
+// ============================================================
+
+// ---- YouTube Player ----
+let _ytMinimized = false;
+let _ytPlaying   = true;
+
+// Auto-load a default lofi track when the page opens
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => playYouTube('crazy train ozzy osbourne', true), 1500);
+});
+
+// ---- YouTube IFrame Player API ----
+// Load the official YT API script once — onYouTubeIframeAPIReady fires when done.
+(function() {
+    if (document.getElementById('yt-api-script')) return;
+    const s = document.createElement('script');
+    s.id  = 'yt-api-script';
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+})();
+
+let _ytApiReady = false;
+let _ytApiQueue = [];
+window.onYouTubeIframeAPIReady = function() {
+    _ytApiReady = true;
+    _ytApiQueue.forEach(fn => fn());
+    _ytApiQueue = [];
+};
+
+// Run fn immediately if API loaded, otherwise queue it.
+function _ytWhenReady(fn) {
+    if (_ytApiReady) fn();
+    else _ytApiQueue.push(fn);
+}
+
+// Create a YT.Player on divId, autoplay muted → unmute in onReady.
+// This is the ONLY approach Chrome/Edge allow for cross-origin iframe autoplay.
+function _ytMakePlayer(divId, videoId, onCreated) {
+    _ytWhenReady(function() {
+        const player = new YT.Player(divId, {
+            videoId: videoId,
+            playerVars: { autoplay: 1, mute: 1, rel: 0, modestbranding: 1, enablejsapi: 1 },
+            events: {
+                onReady: function(e) {
+                    try { e.target.playVideo(); } catch(x) {}
+                    setTimeout(function() {
+                        try { e.target.unMute(); e.target.setVolume(100); } catch(x) {}
+                    }, 400);
+                    if (onCreated) onCreated(e.target);
+                }
+            }
+        });
+    });
+}
+
+// ---- Bar player ----
+let _ytBarPlayer = null;
+
+function _ytEmbed(videoId, title) {
+    const bar = document.getElementById('ytPlayerBar');
+    const lbl = document.getElementById('ytBarTitle');
+    if (!bar) return;
+    if (lbl) lbl.textContent = title || videoId;
+    _ytMinimized = false;
+    _ytPlaying   = true;
+    bar.style.display = 'block';
+    bar.classList.remove('yt-minimized');
+    const wrap = document.getElementById('ytFrameWrap');
+    if (wrap) wrap.style.display = 'block';
+    const pb = document.getElementById('ytBarPlayPause');
+    if (pb) pb.textContent = '⏸';
+
+    if (_ytBarPlayer && typeof _ytBarPlayer.loadVideoById === 'function') {
+        // Reuse existing player instance — just load the new video.
+        try {
+            _ytBarPlayer.loadVideoById(videoId);
+            setTimeout(function() {
+                try { _ytBarPlayer.unMute(); _ytBarPlayer.setVolume(100); } catch(x) {}
+            }, 600);
+            return;
+        } catch(e) { _ytBarPlayer = null; }
+    }
+    // First time or player was destroyed — create fresh.
+    const wrap2 = document.getElementById('ytFrameWrap');
+    if (!wrap2) return;
+    const divId = 'ytbd_' + Date.now();
+    wrap2.innerHTML = '<div id="' + divId + '" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>';
+    _ytMakePlayer(divId, videoId, function(p) { _ytBarPlayer = p; });
+}
+
+function playYouTube(query, _silent) {
+    if (!query || !query.trim()) return;
+
+    // Update the persistent player bar immediately (shows searching state)
+    const bar = document.getElementById('ytPlayerBar');
+    const lbl = document.getElementById('ytBarTitle');
+    if (bar) bar.style.display = 'block';
+    if (lbl) lbl.textContent = '⏳ ' + escapeHtml(query) + '…';
+
+    // Show a loading placeholder in chat immediately (skip on silent auto-load)
+    const FALLBACK_ID = 'jfKfPfyJRdk';
+    let chatSlot = null;
+    let chatTitleEl = null;
+    if (!_silent) {
+        const msgs = document.getElementById('chatMessages');
+        if (msgs) {
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-message echo';
+            const uid = 'ytchat_' + Date.now();
+            bubble.innerHTML =
+                '<div class="chat-icon">🎵</div>'
+                + '<div><div class="chat-bubble" style="padding:8px;max-width:440px;">'
+                + '<div id="' + uid + '_title" style="font-size:0.82em;color:#c9b0ff;margin-bottom:6px;'
+                + 'overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">🎵 '
+                + escapeHtml(query) + '</div>'
+                + '<div id="' + uid + '_slot" style="position:relative;padding-bottom:56.25%;height:0;'
+                + 'overflow:hidden;border-radius:6px;background:#111;display:flex;align-items:center;justify-content:center;">'
+                + '<span style="color:#888;font-size:0.9em;">⏳ Loading…</span>'
+                + '</div></div></div>';
+            msgs.appendChild(bubble);
+            msgs.scrollTop = msgs.scrollHeight;
+            chatSlot     = document.getElementById(uid + '_slot');
+            chatTitleEl  = document.getElementById(uid + '_title');
+        }
+    }
+
+    function _insertChatPlayer(videoId, title) {
+        if (!chatSlot) return;
+        // Use YT.Player API — the only reliable way to autoplay in Chrome/Edge.
+        // YT.Player creates its own <iframe> inside the target div and calls
+        // playVideo()+unMute() from onReady, which bypasses the autoplay block.
+        const divId = 'ytchatd_' + Date.now();
+        chatSlot.innerHTML = '<div id="' + divId
+            + '" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>';
+        _ytMakePlayer(divId, videoId, null);
+        if (chatTitleEl) chatTitleEl.textContent = '🎵 ' + escapeHtml(title || query);
+        const msgs = document.getElementById('chatMessages');
+        if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    // Resolve the real video ID then insert a fresh iframe in one shot
+    fetch('/api/echo/youtube_search?q=' + encodeURIComponent(query))
+        .then(r => r.json())
+        .then(j => {
+            _ytEmbed(j.videoId, j.title || query);
+            _insertChatPlayer(j.videoId, j.title || query);
+        })
+        .catch(() => {
+            _ytEmbed(FALLBACK_ID, 'Lofi Hip Hop Radio');
+            _insertChatPlayer(FALLBACK_ID, 'Lofi Hip Hop Radio');
+        });
+}
+
+function ytClose() {
+    const bar = document.getElementById('ytPlayerBar');
+    try { if (_ytBarPlayer && _ytBarPlayer.stopVideo) _ytBarPlayer.stopVideo(); } catch(e) {}
+    _ytBarPlayer = null;
+    const wrap = document.getElementById('ytFrameWrap');
+    if (wrap) wrap.innerHTML = '';
+    if (bar) bar.style.display = 'none';
+    _ytPlaying = false;
+}
+
+function ytToggleMinimize() {
+    const bar  = document.getElementById('ytPlayerBar');
+    const wrap = document.getElementById('ytFrameWrap');
+    const btn  = document.getElementById('ytBarMinBtn');
+    if (!bar) return;
+    _ytMinimized = !_ytMinimized;
+    if (_ytMinimized) {
+        bar.classList.add('yt-minimized');
+        if (wrap) wrap.style.display = 'none';
+        if (btn)  btn.textContent = '□';
+    } else {
+        bar.classList.remove('yt-minimized');
+        if (wrap) wrap.style.display = 'block';
+        if (btn)  btn.textContent = '―';
+    }
+}
+
+function ytTogglePlay() {
+    const btn = document.getElementById('ytBarPlayPause');
+    if (!_ytBarPlayer) return;
+    try {
+        if (_ytPlaying) {
+            _ytBarPlayer.pauseVideo();
+            if (btn) btn.textContent = '▶';
+        } else {
+            _ytBarPlayer.playVideo();
+            if (btn) btn.textContent = '⏸';
+        }
+        _ytPlaying = !_ytPlaying;
+    } catch(e) {}
+}
+
+function ytSeekRelative(secs) {
+    if (!_ytBarPlayer) return;
+    try {
+        const cur = _ytBarPlayer.getCurrentTime() || 0;
+        _ytBarPlayer.seekTo(cur + secs, true);
+    } catch(e) {}
+}
+// ---- End YouTube Player ----
+
+// Image generation UI helper
+
+function openImagePrompt(){
+
+    const p = prompt('Enter image prompt (what do you want to generate)?');
+
+    if(!p) return;
+
+    generateImage(p);
+
+}
+
+function generateImage(promptText){
+    // non-blocking enqueue + polling flow
+    const size = document.getElementById('imageSizeSelect') ? document.getElementById('imageSizeSelect').value : '512x512';
+    const style = document.getElementById('imageStyleSelect') ? document.getElementById('imageStyleSelect').value : 'photorealistic';
+
+    showTyping();
+    fetch('/api/echo/generate_image_async',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({prompt:promptText, session_id:sessionId, size:size, style:style})
+    }).then(r=>r.json()).then(j=>{
+        hideTyping();
+        if(!j.ok || !j.job_id){
+            addEchoMessage('Image enqueue failed: '+(j.error||'unknown'), null);
+            return;
+        }
+
+        const jobId = j.job_id;
+        const container = document.getElementById('chatMessages');
+        const jobDiv = document.createElement('div');
+        jobDiv.className = 'chat-message echo image-job';
+        jobDiv.id = 'image-job-'+jobId;
+        jobDiv.innerHTML = '<div class="chat-icon">🖼️</div><div><div class="chat-bubble">'
+            +'<div><strong>Generating image…</strong></div>'
+            +'<div class="image-progress" style="margin-top:6px;"><div class="image-progress-bar" style="height:10px;background:#eee;border-radius:6px;overflow:hidden;"><div class="image-progress-inner" style="width:0%;height:100%;background:#6b46c1;"></div></div><div class="image-progress-text" style="font-size:12px;margin-top:4px;">Queued</div></div>'
+            +'<div class="image-prompt" style="margin-top:8px;color:#444;">'+escapeHtml(promptText)+'</div>'
+            +'</div></div>';
+        container.appendChild(jobDiv);
+        container.scrollTop = container.scrollHeight;
+
+        // poll status
+        const poll = setInterval(()=>{
+            fetch('/api/echo/image_status?job_id='+encodeURIComponent(jobId)).then(r=>r.json()).then(s=>{
+                if(s.error){
+                    const txt = jobDiv.querySelector('.image-progress-text');
+                    if(txt) txt.textContent = 'Error: '+s.error;
+                    clearInterval(poll);
+                    return;
+                }
+                const pct = s.progress || 0;
+                const inner = jobDiv.querySelector('.image-progress-inner');
+                const txt = jobDiv.querySelector('.image-progress-text');
+                if(inner) inner.style.width = Math.min(100, pct)+'%';
+                if(txt) txt.textContent = (s.status || 'working') + (pct ? (' — '+pct+'%') : '');
+                if(s.status === 'done' || s.status === 'error'){
+                    clearInterval(poll);
+                    if(s.status === 'done' && s.url){
+                        // replace job div with final image message
+                        const imgHtml = '<div class="chat-icon">🖼️</div><div><div class="chat-bubble"><img src="'+s.url+'" style="max-width:480px;display:block;margin-bottom:6px;">'+escapeHtml(promptText)+'</div></div>';
+                        jobDiv.outerHTML = '<div class="chat-message echo">'+imgHtml+'</div>';
+                        try{ fetchSavedOutputs(); }catch(e){}
+                    }
+                }
+            }).catch(err=>{
+                console.error('status poll error',err);
+                clearInterval(poll);
+            });
+        }, 2000);
+
+    }).catch(e=>{ hideTyping(); addEchoMessage('Image enqueue failed', null); console.error(e); });
+
+}
+
+function addUserMessage(text){
+
+const container=document.getElementById('chatMessages');
+
+const msgDiv=document.createElement('div');
+
+msgDiv.className='chat-message user';
+
+msgDiv.innerHTML='<div class="chat-icon">👤</div><div><div class="chat-bubble">'+escapeHtml(text)+'</div></div>';
+
+container.appendChild(msgDiv);
+
+container.scrollTop=container.scrollHeight;
+
+messageCount++;
+
+}
+
+function addEchoMessage(text,messageId){
+
+const container=document.getElementById('chatMessages');
+
+const msgDiv=document.createElement('div');
+
+msgDiv.className='chat-message echo';
+
+msgDiv.dataset.messageId=messageId;
+
+let html='<div class="chat-icon">🌙</div><div><div class="chat-bubble">'+escapeHtml(text)+'<div class="training-buttons">';
+
+html+='<button class="training-btn excellent" onclick="rateResponse(this,&quot;excellent&quot;)">👍 Excellent</button>';
+
+html+='<button class="training-btn good" onclick="rateResponse(this,&quot;good&quot;)">✨ Good</button>';
+
+html+='<button class="training-btn fair" onclick="rateResponse(this,&quot;acceptable&quot;)">👌 Fair</button>';
+
+html+='<button class="training-btn poor" onclick="rateResponse(this,&quot;poor&quot;)">👎 Poor</button>';
+
+html+='</div></div></div>';
+
+msgDiv.innerHTML=html;
+
+container.appendChild(msgDiv);
+
+container.scrollTop=container.scrollHeight;
+return msgDiv;
+
+}
+
+function rateResponse(btn,quality){
+
+const msgDiv=btn.closest('.chat-message');
+
+const messageId=msgDiv.dataset.messageId;
+
+const buttons=msgDiv.querySelectorAll('.training-btn');
+
+buttons.forEach(b=>b.classList.remove('selected'));
+
+btn.classList.add('selected');
+
+const chatBubble=msgDiv.querySelector('.chat-bubble');
+
+const responseText=chatBubble.childNodes[0].textContent;
+
+const prevUserMsg=msgDiv.previousElementSibling;
+
+const userText=prevUserMsg?prevUserMsg.querySelector('.chat-bubble').textContent:'';
+
+fetch('/api/echo/train',{
+
+method:'POST',
+
+headers:{'Content-Type':'application/json'},
+
+body:JSON.stringify({
+
+user_message:userText,
+
+bot_response:responseText,
+
+quality:quality,
+
+message_id:messageId
+
+})
+
+}).then(r=>r.json()).then(data=>{
+
+if(data.success){
+
+updateStats();
+
+console.log('Training feedback submitted');
+
+}
+
+}).catch(err=>console.error('Training error:',err));
+
+}
+
+function updateStats(){
+
+fetch('/api/echo/stats').then(r=>r.json()).then(data=>{
+
+document.getElementById('patterns-count').textContent=data.patterns_learned||0;
+
+document.getElementById('total-examples').textContent=data.total_examples||0;
+
+}).catch(err=>console.error('Stats error:',err));
+
+}
+
+function fetchModel(){
+
+    const url = '/api/echo/model?ts='+Date.now();
+
+    console.debug('fetchModel ->', url);
+
+    fetch(url, {cache: 'no-store'}).then(r=>r.json()).then(j=>{
+
+        const el=document.getElementById('current-model');
+
+        if(!el) return;
+
+        if(j && j.model){
+
+            try{
+
+                const idx1 = j.model.lastIndexOf('/');
+
+                const idx2 = j.model.lastIndexOf(String.fromCharCode(92));
+
+                const idx = Math.max(idx1, idx2);
+
+                el.textContent = idx >= 0 ? j.model.substring(idx+1) : j.model;
+
+            }catch(e){ el.textContent = j.model; }
+
+        } else {
+
+            el.textContent='(none)';
+
+        }
+
+    }).catch(e=>{ console.error('Failed to fetch model',e); });
+
+}
+
+function fetchSessions(){
+
+    fetch('/api/echo/sessions').then(r=>r.json()).then(j=>{
+
+        const list=document.getElementById('session-list');
+
+        if(!list) return;
+
+        list.innerHTML='';
+
+        (j.sessions||[]).forEach(s=>{
+
+            const div=document.createElement('div');
+
+            div.style.display='flex';
+
+            div.style.alignItems='center';
+
+            div.style.justifyContent='space-between';
+
+            div.style.padding='6px';
+
+            div.style.borderBottom='1px solid #333';
+
+            const title=document.createElement('div');
+
+            title.style.flex='1';
+
+            title.style.cursor='pointer';
+
+            title.textContent = s.title || s.session_id;
+
+            title.onclick = ()=>{ loadSession(s.session_id); };
+
+            const actions=document.createElement('div');
+
+            actions.style.display='flex';
+
+            actions.style.gap='6px';
+
+            const fav=document.createElement('button');
+
+            fav.className='btn btn-sm';
+
+            fav.textContent = s.favorite? '★' : '☆';
+
+            fav.onclick = (e)=>{ e.stopPropagation(); toggleFavorite(s.session_id); };
+
+            const del=document.createElement('button');
+
+            del.className='btn btn-sm btn-danger';
+
+            del.textContent='Delete';
+
+            del.onclick = (e)=>{ e.stopPropagation(); if(confirm('Delete session '+s.session_id+'?')) deleteSession(s.session_id); };
+
+            actions.appendChild(fav);
+
+            actions.appendChild(del);
+
+            div.appendChild(title);
+
+            div.appendChild(actions);
+
+            list.appendChild(div);
+
+        });
+
+    }).catch(e=>console.error('Failed to fetch sessions',e));
+
+}
+
+
+// Resources in sidebar
+
+function fetchResourcesForSidebar(){
+
+    fetch('/api/resources/list').then(r=>r.json()).then(idx=>{
+
+        window._resource_index = idx || {};
+
+        populateResourceList();
+
+    }).catch(e=>{ console.error('Failed to fetch resources',e); document.getElementById('resource-list').textContent='Failed to load'; });
+
+}
+
+
+function populateResourceList(){
+
+    const sel = document.getElementById('resourceCategory');
+
+    const cat = sel?sel.value:'all';
+
+    const list = document.getElementById('resource-list');
+
+    list.innerHTML='';
+
+    const idx = window._resource_index || {};
+
+    Object.keys(idx).forEach(k=>{
+
+        const r = idx[k];
+
+        if(cat!=='all' && r.category!==cat) return;
+
+        const row = document.createElement('div');
+
+        row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='6px'; row.style.borderBottom='1px solid #333';
+
+        const left = document.createElement('div'); left.style.flex='1'; left.textContent = r.filename + ' ['+r.category+']';
+
+        const preview = document.createElement('div'); preview.style.color='#999'; preview.style.fontSize='0.9em'; preview.style.marginTop='6px';
+
+        const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
+
+        const loadBtn = document.createElement('button'); loadBtn.className='btn btn-sm'; loadBtn.textContent='Load';
+
+        loadBtn.onclick = ()=>{ fetch('/api/resources/load',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:k, session_id:sessionId})}).then(r=>r.json()).then(j=>{ alert(j.message||JSON.stringify(j)); }).catch(e=>console.error(e)); };
+
+        right.appendChild(loadBtn);
+
+        row.appendChild(left); row.appendChild(right);
+
+        // fetch inline preview for text resources
+
+        fetch('/resources/preview?id='+encodeURIComponent(k)).then(rp=>{
+
+            if(!rp.ok) return;
+
+            return rp.text();
+
+        }).then(txt=>{ if(txt){ preview.innerHTML = txt; left.appendChild(preview); } }).catch(()=>{});
+
+        list.appendChild(row);
+
+    });
+
+}
+
+
+// fetch initial resources for sidebar
+
+function loadSessionPrefs(){
+
+    fetch('/api/echo/session_prefs?session_id='+encodeURIComponent(sessionId)).then(r=>r.json()).then(j=>{
+
+        const prefs = j.prefs || {};
+
+        const ac = document.getElementById('autoContinueToggle');
+
+        const st = document.getElementById('saveToFileToggle');
+
+        if(ac && typeof prefs.auto_continue !== 'undefined') ac.checked = !!prefs.auto_continue;
+
+        if(st && typeof prefs.save_to_file !== 'undefined') st.checked = !!prefs.save_to_file;
+
+        // language
+
+        const ls = document.getElementById('langSelect');
+
+        if(ls){ CURRENT_LANG = prefs.lang || 'en'; ls.value = CURRENT_LANG; ls.addEventListener('change', ()=>{ CURRENT_LANG = ls.value; saveSessionPrefs(); applyTranslations(); }); }
+
+        applyTranslations();
+
+        // attach change listeners to persist
+
+        if(ac) ac.addEventListener('change', ()=> saveSessionPrefs());
+
+        if(st) st.addEventListener('change', ()=> saveSessionPrefs());
+
+    }).catch(e=>{console.error('Failed to load session prefs',e);});
+
+}
+
+
+function applyTranslations(){
+
+    const t = TRANSLATIONS[CURRENT_LANG] || TRANSLATIONS['en'];
+
+    const acLabel = document.querySelector('label[for="autoContinueToggle"]');
+
+    // our labels are inline, locate by input id parent
+
+    const acWrap = document.getElementById('autoContinueToggle');
+
+    if(acWrap && acWrap.parentElement) {
+
+        acWrap.parentElement.childNodes.forEach(n=>{});
+
+        // set text node after checkbox
+
+        acWrap.parentElement.childNodes[1] && (acWrap.parentElement.childNodes[1].textContent = ' ' + t.auto_continue);
+
+    }
+
+    const stWrap = document.getElementById('saveToFileToggle');
+
+    if(stWrap && stWrap.parentElement){ stWrap.parentElement.childNodes[1] && (stWrap.parentElement.childNodes[1].textContent = ' ' + t.save_to_file); }
+
+    // Saved outputs header
+
+    const so = document.querySelector('#savedOutputs') ? document.querySelector('#savedOutputs').previousElementSibling : null;
+
+    if(so && so.tagName === 'H4') so.textContent = t.saved_outputs;
+
+}
+
+
+function saveSessionPrefs(){
+
+    try{
+
+        const ac = document.getElementById('autoContinueToggle') ? document.getElementById('autoContinueToggle').checked : null;
+
+        const st = document.getElementById('saveToFileToggle') ? document.getElementById('saveToFileToggle').checked : null;
+
+        fetch('/api/echo/session_prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId,prefs:{auto_continue:ac,save_to_file:st}})}).then(()=>{}).catch(e=>console.error('Failed to save prefs',e));
+
+    }catch(e){console.error(e)}
+
+}
+
+
+function fetchSavedOutputs(){
+
+    fetch('/api/echo/outputs').then(r=>r.json()).then(j=>{
+
+        const files = j.files || [];
+
+        const el = document.getElementById('savedOutputs');
+
+        if(!el) return;
+
+        el.innerHTML = '';
+
+        const t = TRANSLATIONS[CURRENT_LANG] || TRANSLATIONS['en'];
+
+        if(files.length === 0){ el.innerHTML = '<div style="color:#999">'+t.no_saved+'</div>'; return; }
+
+        files.forEach(f=>{
+
+            const row = document.createElement('div');
+
+            row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='6px'; row.style.borderBottom='1px solid #333';
+
+            const left = document.createElement('div'); left.textContent = f.name;
+
+            const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
+
+            const a = document.createElement('a'); a.href = '/' + f.path; a.target = '_blank'; a.textContent = t.download;
+
+            const del = document.createElement('button'); del.className='btn btn-sm btn-danger'; del.textContent = t.delete;
+
+            del.onclick = ()=>{ if(!confirm(t.delete+' '+f.name+'?')) return; fetch('/api/echo/outputs/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:f.name})}).then(r=>r.json()).then(j2=>{ if(j2.ok) fetchSavedOutputs(); else alert('Delete failed'); }).catch(()=>alert('Delete failed')); };
+
+            right.appendChild(a); right.appendChild(del);
+
+            row.appendChild(left); row.appendChild(right);
+
+            el.appendChild(row);
+
+        });
+
+    }).catch(e=>{ console.error('Failed to fetch saved outputs', e); });
+
+}
+
+
+loadSessionPrefs();
+
+fetchSavedOutputs();
+
+fetchResourcesForSidebar();
+
+fetchModels();
+
+
+function fetchModels(){
+
+    fetch('/api/echo/models').then(r=>r.json()).then(j=>{
+
+        const sel = document.getElementById('modelSelect');
+
+        if(!sel) return;
+
+        sel.innerHTML='';
+
+        const models = (j.models||[]);
+
+        models.forEach(m=>{
+
+            const opt = document.createElement('option');
+
+            opt.value = m;
+
+            opt.textContent = String(m).split(String.fromCharCode(92)).pop().split('/').pop();
+
+            sel.appendChild(opt);
+
+        });
+
+        // preselect current-model if present
+
+        fetch('/api/echo/model').then(r=>r.json()).then(jm=>{
+
+            if(jm && jm.model){
+
+                const normalizeModelPath = value => String(value||'').split(String.fromCharCode(92)).join('/').toLowerCase();
+                const currentPath = normalizeModelPath(jm.model);
+                const idx = Array.from(sel.options).findIndex(o=>{
+                    const optionPath = normalizeModelPath(o.value);
+                    return currentPath === optionPath || currentPath.endsWith('/'+optionPath);
+                });
+
+                if(idx>=0) sel.selectedIndex = idx;
+
+            }
+
+        }).catch(()=>{});
+
+    }).catch(e=>{console.error('Failed to fetch models',e);});
+
+}
+
+
+function selectModel(){
+
+    const sel = document.getElementById('modelSelect');
+
+    if(!sel || !sel.value) return appendEcho('No model selected');
+
+    fetch('/api/echo/select_model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:sel.value})}).then(r=>r.json()).then(j=>{
+
+        if(j.ok){ appendEcho('Model selected: '+j.model); fetchModel(); }
+
+        else appendEcho('Select model failed: '+(j.error||JSON.stringify(j)));
+
+    }).catch(e=>{ appendEcho('Select model request failed'); console.error(e); });
+
+}
+
+
+function appendEcho(msg){
+
+    const list = document.getElementById('chatMessages');
+
+    if(!list) return;
+
+    const d=document.createElement('div'); d.className='chat-message echo'; d.innerHTML='<div class="chat-icon">🌙</div><div><div class="chat-bubble">'+escapeHtml(msg)+'</div></div>';
+
+    list.appendChild(d); list.scrollTop=list.scrollHeight;
+
+}
+
+
+function uploadPersona(file){
+
+    if(!file) return;
+
+    const fd = new FormData(); fd.append('file', file); fd.append('type', 'personality'); fd.append('name', file.name);
+
+    fetch('/api/echo/upload_ingest',{method:'POST',body:fd}).then(r=>r.json()).then(j=>{ if(j.ok) appendEcho('Persona uploaded: '+j.saved); else appendEcho('Upload failed: '+(j.error||JSON.stringify(j))); }).catch(e=>{ appendEcho('Upload failed'); console.error(e); });
+
+}
+
+
+function uploadTraining(file){
+
+    if(!file) return;
+
+    const fd = new FormData(); fd.append('file', file); fd.append('type', 'training'); fd.append('name', file.name);
+
+    fetch('/api/echo/upload_ingest',{method:'POST',body:fd}).then(r=>r.json()).then(j=>{ if(j.ok) appendEcho('Training uploaded: '+j.saved); else appendEcho('Upload failed: '+(j.error||JSON.stringify(j))); }).catch(e=>{ appendEcho('Upload failed'); console.error(e); });
+
+}
+
+
+function fetchTrainingFiles(){
+
+    fetch('/api/echo/training_files').then(r=>r.json()).then(j=>{
+
+        const sel = document.getElementById('trainingFileSelect');
+
+        if(!sel) return;
+
+        sel.innerHTML='';
+
+        (j.files||[]).forEach(f=>{
+
+            const opt = document.createElement('option'); opt.value=f.name; opt.textContent=f.name; sel.appendChild(opt);
+
+        });
+
+    }).catch(e=>{console.error('Failed to fetch training files',e)});
+
+}
+
+
+function startTraining(){
+
+    const model = document.getElementById('modelSelect').value;
+
+    const training_file = document.getElementById('trainingFileSelect').value;
+
+    const epochs = parseInt(document.getElementById('tf_epochs').value || '1');
+
+    const batch_size = parseInt(document.getElementById('tf_batch').value || '8');
+
+    const lr = document.getElementById('tf_lr').value || '1e-4';
+
+    const output_name = document.getElementById('tf_output').value || '';
+
+    if(!model || !training_file){ appendEcho('Select a model and training file first'); return; }
+
+    appendEcho('Starting training job...');
+
+    fetch('/api/echo/train_model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:model, training_file:training_file, output_name:output_name, epochs:epochs, batch_size:batch_size, lr:lr})}).then(r=>r.json()).then(j=>{
+
+        if(j.ok){ appendEcho('Started training job: '+j.job_id); addTrainingJobToList(j.job_id); }
+
+        else appendEcho('Failed to start: '+(j.error||JSON.stringify(j)));
+
+    }).catch(e=>{ appendEcho('Start training request failed'); console.error(e); });
+
+}
+
+
+function addTrainingJobToList(job_id){
+
+    const container = document.getElementById('trainingJobs');
+
+    const row = document.createElement('div'); row.id = 'train_'+job_id; row.style.padding='6px'; row.style.borderBottom='1px solid #222'; row.textContent = job_id + ' - queued';
+
+    container.prepend(row);
+
+    // start polling
+
+    const iv = setInterval(()=>{
+
+        fetch('/api/echo/train_status?job_id='+encodeURIComponent(job_id)).then(r=>r.json()).then(j=>{
+
+            if(j.job){
+
+                const s = j.job.status || 'unknown';
+
+                row.textContent = job_id + ' - ' + s;
+
+                if(j.log_tail) row.title = j.log_tail.slice(-2000);
+
+                if(s==='finished' || s==='error'){
+
+                    clearInterval(iv);
+
+                    row.textContent = job_id + ' - ' + s + ' (click to view logs)';
+
+                    row.style.cursor='pointer';
+
+                    row.onclick = ()=>{ const w = window.open('/data/models_output/'+job_id+'/train.log','_blank'); };
+
+                }
+
+            }
+
+        }).catch(e=>{console.error('Train status err',e);});
+
+    },2000);
+
+}
+
+
+// refresh jobs on load
+
+fetchTrainingFiles();
+
+
+function loadSession(sid){
+
+    fetch('/api/echo/session/'+encodeURIComponent(sid)).then(r=>r.json()).then(j=>{
+
+        if(j.error){ alert('Failed to load session: '+j.error); return; }
+
+        // replace chat messages with loaded history
+
+        const container=document.getElementById('chatMessages');
+
+        container.innerHTML='';
+
+        const hist = j.history || [];
+
+        hist.forEach(m=>{
+
+            if(m.role==='user'){
+
+                addUserMessage(m.content);
+
+            } else {
+
+                addEchoMessage(m.content,m.get('message_id')||m.message_id||null);
+
+            }
+
+        });
+
+        sessionId = sid;
+
+        document.getElementById('session-messages').textContent = hist.filter(x=>x.role==='user').length || 0;
+
+    }).catch(e=>console.error('Load session failed',e));
+
+}
+
+
+function deleteSession(sid){
+
+    fetch('/api/echo/session/'+encodeURIComponent(sid),{method:'DELETE'}).then(r=>r.json()).then(j=>{
+
+        if(j.deleted){ fetchSessions(); if(sessionId===sid){ clearChat(); } }
+
+    }).catch(e=>console.error('Delete session failed',e));
+
+}
+
+
+function toggleFavorite(sid){
+
+    fetch('/api/echo/session/favorite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})}).then(r=>r.json()).then(j=>{ fetchSessions(); }).catch(e=>console.error('Toggle favorite failed',e));
+
+}
+
+
+function createSession(){
+
+    // create a new session id and switch to it
+
+    const sid = 'web_'+Date.now();
+
+    fetch('/api/echo/session/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,title:'Session '+sid})}).then(r=>r.json()).then(j=>{
+
+        if(j.ok){ fetchSessions(); sessionId=sid; clearChat(); }
+
+    }).catch(e=>console.error('Create session failed',e));
+
+}
+
+function clearChat(){
+
+if(!confirm('Clear chat history?'))return;
+
+document.getElementById('chatMessages').innerHTML='<div class="chat-message echo"><div class="chat-icon">🌙</div><div><div class="chat-bubble">Hello... I am Echo 🌙<br>I\'m here to help with DevOps tasks and learn from our conversations... 💜</div></div></div>';
+
+sessionId='web_'+Date.now();
+
+messageCount=1;
+
+document.getElementById('session-messages').textContent='0';
+
+}
+
+function searchMemory(){
+
+const query=prompt('Search Echo\'s memory:');
+
+if(!query)return;
+
+fetch('/api/echo/search?q='+encodeURIComponent(query)).then(r=>r.json()).then(data=>{
+
+if(data.results&&data.results.length>0){
+
+let results='Found '+data.results.length+' results:'+String.fromCharCode(10)+String.fromCharCode(10);
+
+data.results.slice(0,5).forEach((r,i)=>{
+
+results+=(i+1)+'. '+r.message.substring(0,100)+'...'+String.fromCharCode(10);
+
+});
+
+alert(results);
+
+}else{
+
+alert('No results found for: '+query);
+
+}
+
+}).catch(err=>{
+
+console.error('Search error:',err);
+
+alert('Search failed');
+
+});
+
+}
+
+function showTyping(){document.getElementById('typingIndicator').classList.add('active');}
+
+function hideTyping(){document.getElementById('typingIndicator').classList.remove('active');}
+
+function escapeHtml(text){
+
+const div=document.createElement('div');
+
+div.textContent=text;
+
+return div.innerHTML;
+
+}
+
+// fetch once immediately and then poll periodically to avoid stale cached JS
+
+fetchModel();
+
+setInterval(fetchModel, 5000);
+
+updateStats();
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,263 @@
+{# MasterChief template: addons
+   Used by: HTML for /addons.
+   Loaded in main.py as ADDONS_TEMPLATE = load_template('addons') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="section">
+
+<h2>Addon Manager</h2>
+
+<div style="display:flex;gap:20px;margin-bottom:30px;">
+
+<div class="file-upload" onclick="document.getElementById('fileInput').click();" style="flex:1;">
+
+<h3>📦 Upload Addon Package</h3>
+
+<p>Click to select a .zip file</p>
+
+<form method="POST" action="/addons/upload" enctype="multipart/form-data" id="uploadForm">
+
+<input type="file" id="fileInput" name="file" accept=".zip" style="display:none;" onchange="document.getElementById('uploadForm').submit();">
+
+</form>
+
+</div>
+
+<div class="file-upload" onclick="showBlankModuleWizard()" style="flex:1;border-color:#2196F3;">
+
+<h3>🆕 Create Blank Module</h3>
+
+<p>Start with an empty module and build it live</p>
+
+</div>
+
+</div>
+
+{% if uploaded_files %}
+
+<h3>Uploaded Addons ({{ uploaded_files|length }} files)</h3>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Filename</th>
+
+<th>Size</th>
+
+<th>Uploaded</th>
+
+<th>Actions</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for file in uploaded_files %}
+
+<tr>
+
+<td>{{ file.name }}</td>
+
+<td>{{ (file.size/1024)|round(2) }} KB</td>
+
+<td>{{ file.modified }}</td>
+
+<td>
+
+<form method="POST" action="/addons/install/{{ file.name }}" style="display:inline;">
+
+<input type="text" name="source_dir" placeholder="Source dir (optional)" style="width:120px;margin-right:5px;padding:2px;" title="Subdirectory containing source code (e.g., 'src' for inspircd)">
+
+<button type="submit" class="btn">Install</button>
+
+</form>
+
+<a href="/addons/build/{{ file.name }}" class="btn" style="background:#FF5722;color:white;">🔨 Build</a>
+
+<a href="/addons/load/{{ file.name|replace('.zip', '') }}" class="btn" style="background:#28a745;color:white;">Load</a>
+
+<a href="/addons/register_features/{{ file.name|replace('.zip', '') }}" class="btn" style="background:#17a2b8;color:white;">Register Features</a>
+
+<a href="/addons/delete/{{ file.name }}" class="btn btn-danger" onclick="return confirmDelete('{{ file.name }}');">Delete</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+{% else %}
+
+<h3>Uploaded Addons</h3>
+
+<p>No uploaded addon files found. Upload a .zip file to get started.</p>
+
+{% endif %}
+
+</div>
+
+<!-- Blank Module Creation Wizard Modal -->
+<div id="blankModuleWizard" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;overflow-y:auto;">
+    <div class="modal-content" style="background:#2d2d2d;margin:40px auto;padding:30px;border-radius:10px;max-width:760px;position:relative;">
+        <span class="close" style="position:absolute;top:15px;right:20px;font-size:30px;cursor:pointer;color:#888;" onclick="closeModal('blankModuleWizard')">&times;</span>
+        <h2 style="color: #4CAF50; margin-bottom: 20px;">🆕 Create Blank Module</h2>
+
+        <div class="form-group" style="margin-bottom:20px;">
+            <label for="moduleName" style="display:block;margin-bottom:8px;color:#4CAF50;font-weight:bold;">Module Name *</label>
+            <input type="text" id="moduleName" placeholder="e.g., my_custom_module" required style="width:100%;padding:12px;background:#1a1a1a;border:1px solid #3a3a3a;color:#e0e0e0;border-radius:5px;font-size:1em;">
+            <small style="color: #888;">Must start with a letter, can contain letters, numbers, underscores, and hyphens</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px;">
+            <label for="moduleType" style="display:block;margin-bottom:8px;color:#4CAF50;font-weight:bold;">Module Type</label>
+            <select id="moduleType" style="width:100%;padding:12px;background:#1a1a1a;border:1px solid #3a3a3a;color:#e0e0e0;border-radius:5px;font-size:1em;">
+                <option value="python">Python Module</option>
+                <option value="web">Web Application</option>
+                <option value="api">API Service</option>
+                <option value="tool">DevOps Tool</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px;">
+            <label for="moduleDescription" style="display:block;margin-bottom:8px;color:#4CAF50;font-weight:bold;">Description (Optional)</label>
+            <textarea id="moduleDescription" rows="3" placeholder="Describe what this module will do..." style="width:100%;padding:12px;background:#1a1a1a;border:1px solid #3a3a3a;color:#e0e0e0;border-radius:5px;font-size:1em;"></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:10px;color:#4CAF50;font-weight:bold;">⚡ Capabilities (select any that apply)</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="web_ui" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    🌐 <span><strong>Web UI</strong><br><small style="color:#888;">Flask Blueprint with routes + HTML template</small></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="rest_api" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    🔌 <span><strong>REST API</strong><br><small style="color:#888;">JSON endpoints with GET/POST stubs</small></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="echo_hook" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    🌙 <span><strong>Echo Chat Hook</strong><br><small style="color:#888;">Register intent handler with Echo</small></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="rbac" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    🔒 <span><strong>RBAC-Aware</strong><br><small style="color:#888;">Role checks on protected routes</small></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="background_jobs" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    ⚙️ <span><strong>Background Jobs</strong><br><small style="color:#888;">Thread-based async job runner</small></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="settings_page" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    ⚙️ <span><strong>Settings Page</strong><br><small style="color:#888;">Persistent key/value settings UI</small></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="scheduled_task" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    ⏰ <span><strong>Scheduled Task</strong><br><small style="color:#888;">Cron-style background scheduler</small></span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                    <input type="checkbox" name="capabilities" value="sqlite" style="width:16px;height:16px;accent-color:#4CAF50;">
+                    🗄️ <span><strong>SQLite DB</strong><br><small style="color:#888;">Local database with db.py helper</small></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px;">
+            <label style="display:flex;align-items:center;gap:8px;color:#ccc;cursor:pointer;background:#1a1a1a;padding:10px;border-radius:6px;border:1px solid #3a3a3a;">
+                <input type="checkbox" id="autoLoadModule" style="width:16px;height:16px;accent-color:#4CAF50;">
+                🚀 <span><strong>Auto-load on startup</strong><br><small style="color:#888;">Register this module every time MasterChief starts</small></span>
+            </label>
+        </div>
+
+        <div style="background: #1a1a1a; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h4 style="color: #4CAF50; margin: 0 0 10px 0;">What happens next?</h4>
+            <ul style="color: #ccc; margin: 0; padding-left: 20px;">
+                <li>A new directory structure will be created for your module</li>
+                <li>Selected capabilities generate ready-to-edit scaffold files</li>
+                <li>Use the Build, Load, and Register Features buttons to activate your module</li>
+                <li>Access your module at: <code style="background: #2d2d2d; padding: 2px 4px; border-radius: 3px;">/addons/modules/{module_name}</code></li>
+            </ul>
+        </div>
+
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn btn-info" onclick="closeModal('blankModuleWizard')" style="background:#2196F3;color:#fff;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;text-decoration:none;display:inline-block;margin:5px;">Cancel</button>
+            <button id="createModuleBtn" class="btn" onclick="createBlankModule()" style="background:#4CAF50;color:#fff;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;text-decoration:none;display:inline-block;margin:5px;margin-left:10px;">Create Module</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showBlankModuleWizard() {
+    document.getElementById('blankModuleWizard').style.display = 'block';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+function createBlankModule() {
+    const moduleName = document.getElementById('moduleName').value.trim();
+    const moduleType = document.getElementById('moduleType').value;
+    const description = document.getElementById('moduleDescription').value.trim();
+    const autoLoad = document.getElementById('autoLoadModule').checked;
+    const capabilities = Array.from(document.querySelectorAll('input[name="capabilities"]:checked')).map(c => c.value);
+
+    if (!moduleName) {
+        alert('Please enter a module name');
+        return;
+    }
+
+    if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(moduleName)) {
+        alert('Module name must start with a letter and contain only letters, numbers, underscores, and hyphens');
+        return;
+    }
+
+    const btn = document.getElementById('createModuleBtn');
+    const originalText = btn.textContent;
+    btn.textContent = 'Creating...';
+    btn.disabled = true;
+
+    fetch('/addons/create_blank_module', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: moduleName,
+            type: moduleType,
+            description: description,
+            capabilities: capabilities,
+            auto_load: autoLoad
+        })
+    })
+    .then(r => r.json())
+    .then(j => {
+        if (j.success) {
+            const caps = capabilities.length ? ' with: ' + capabilities.join(', ') : '';
+            alert('Module "' + moduleName + '" created' + caps + '!');
+            closeModal('blankModuleWizard');
+            location.reload();
+        } else {
+            alert('Error creating module: ' + (j.error || 'Unknown error'));
+        }
+    })
+    .catch(e => {
+        alert('Error: ' + e);
+    })
+    .finally(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    });
+}
+</script>
+
+{% endblock %}

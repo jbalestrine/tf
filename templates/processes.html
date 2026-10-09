@@ -1,0 +1,68 @@
+{# MasterChief template: processes
+   Used by: HTML for /processes.
+   Loaded in main.py as PROCESSES_TEMPLATE = load_template('processes') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="section">
+
+<h2>Process Monitor</h2>
+
+<p>Top 50 processes by CPU usage</p>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>PID</th>
+
+<th>Name</th>
+
+<th>CPU %</th>
+
+<th>Memory %</th>
+
+<th>Status</th>
+
+<th>Actions</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for proc in processes %}
+
+<tr>
+
+<td>{{ proc.pid }}</td>
+
+<td>{{ proc.name }}</td>
+
+<td>{{ proc.cpu_percent }}%</td>
+
+<td>{{ proc.memory_percent|round(2) }}%</td>
+
+<td>{{ proc.status }}</td>
+
+<td>
+
+<a href="/processes/kill/{{ proc.pid }}" class="btn btn-danger btn-sm" onclick="return confirmDelete('PID {{ proc.pid }}');">Kill</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+{% endblock %}

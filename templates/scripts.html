@@ -1,0 +1,118 @@
+{# MasterChief template: scripts
+   Status: Not used by any route in main.py (the pages actually served use the copy in templates/pages.py). Kept so nothing is lost.
+   Loaded in main.py as SCRIPTS_TEMPLATE = load_template('scripts') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="section">
+
+<h2>Script Manager</h2>
+
+<div style="display:flex;gap:8px;align-items:center;">
+
+<button onclick="openModal('addScriptModal')" class="btn">Add New Script</button>
+
+<button onclick="refreshIndex()" class="btn">Refresh Index</button>
+
+</div>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Name</th>
+
+<th>Type</th>
+
+<th>Size</th>
+
+<th>Modified</th>
+
+<th>Actions</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for script in scripts %}
+
+<tr>
+
+<td>{{ script.name }}</td>
+
+<td>{{ script.type }}</td>
+
+<td>{{ (script.size/1024)|round(2) }} KB</td>
+
+<td>{{ script.modified[:16] }}</td>
+
+<td>
+
+{% if script.source=='repo' %}
+
+<a href="/scripts/edit/{{ script.path | b64encode }}" class="btn btn-info">Edit</a>
+
+<a href="/scripts/exec_path/{{ script.path | b64encode }}" class="btn">Execute</a>
+
+{% else %}
+
+<a href="/scripts/view/{{ script.name }}" class="btn btn-info">View</a>
+
+<a href="/scripts/execute/{{ script.name }}" class="btn">Execute</a>
+
+<a href="/scripts/delete/{{ script.name }}" class="btn btn-danger" onclick="return confirmDelete('{{ script.name }}');">Delete</a>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+<div id="addScriptModal" class="modal">
+
+<div class="modal-content">
+
+<span class="close" onclick="closeModal('addScriptModal')">&times;</span>
+
+<h2>Add New Script</h2>
+
+<form method="POST" action="/scripts/add">
+
+<div class="form-group">
+
+<label>Script Name (include extension: .sh, .py, .ps1)</label>
+
+<input type="text" name="filename" required placeholder="backup.sh">
+
+</div>
+
+<div class="form-group">
+
+<label>Script Content</label>
+
+<textarea name="content" rows="15" required placeholder="#!/bin/bash&#10;echo 'Hello World'"></textarea>
+
+</div>
+
+<button type="submit" class="btn">Add Script</button>
+
+</form>
+
+</div>
+
+</div>
+
+{% endblock %}

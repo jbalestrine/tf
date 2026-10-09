@@ -1,0 +1,153 @@
+{# MasterChief template: script_edit
+   Used by: HTML for /scripts/edit/<b64path>.
+   Loaded in main.py as SCRIPT_EDIT_TEMPLATE = load_template('script_edit') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="section">
+
+<h2>Edit Script: {{ filepath }}</h2>
+
+<div style="display:flex;gap:8px;margin-bottom:8px;">
+
+    <button class="btn" onclick="doBackup();return false;">Create Backup</button>
+
+    <button class="btn" onclick="doSuggest();return false;">Suggest Commit Message</button>
+
+    <button class="btn btn-primary" onclick="doSmartSave();return false;">Smart Save</button>
+
+    <a href="/scripts" class="btn btn-warning">Cancel</a>
+
+</div>
+
+<form method="POST" action="/scripts/save/{{ b64path }}" id="saveForm">
+
+<div class="form-group">
+
+<label>Content</label>
+
+<textarea name="content" rows="25" style="width:100%;font-family:monospace;">{{ content }}</textarea>
+
+</div>
+
+<input type="hidden" name="commit_message" id="commit_message" value="">
+
+</form>
+
+<div id="suggestion" style="margin-top:12px;color:#bada55;font-family:monospace;"></div>
+
+{% if message %}
+
+<div class="alert">{{ message }}</div>
+
+{% endif %}
+
+</div>
+
+<script>
+
+async function doBackup(){
+
+    const b64='{{ b64path }}';
+
+    const r=await fetch('/scripts/backup/'+b64,{method:'POST'});
+
+    const j=await r.json();
+
+    alert(j.success?('Backup created: '+j.backup):('Backup failed: '+(j.error||'unknown')));
+
+}
+
+async function doSuggest(){
+
+    const b64='{{ b64path }}';
+
+    const r=await fetch('/scripts/suggest_commit/'+b64);
+
+    const j=await r.json();
+
+    if(j.success){
+
+        document.getElementById('suggestion').innerText = j.suggestion;
+
+        document.getElementById('commit_message').value = j.suggestion;
+
+    } else {
+
+        alert('Suggestion failed: '+(j.error||'unknown'));
+
+    }
+
+}
+
+async function doSmartSave(){
+
+    // show diff preview first, then on confirm do backup->suggest->save
+
+    const b64='{{ b64path }}';
+
+    const content = document.querySelector('textarea[name="content"]').value;
+
+    const r = await fetch('/scripts/diff/'+b64, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({content})});
+
+    const j = await r.json();
+
+    if(!j.success){
+
+        alert('Diff failed: '+(j.error||'unknown'));
+
+        return;
+
+    }
+
+    document.getElementById('diffContent').innerText = j.diff || '(no changes)';
+
+    document.getElementById('diffModal').style.display='block';
+
+}
+
+function closeDiff(){ document.getElementById('diffModal').style.display='none'; }
+
+async function confirmSave(){
+
+    // backup, suggest, then submit
+
+    await doBackup();
+
+    await doSuggest();
+
+    document.getElementById('saveForm').submit();
+
+}
+
+</script>
+
+<style>
+
+#diffModal{position:fixed;left:10%;top:8%;width:80%;height:80%;background:#111;padding:12px;border:2px solid #666;overflow:auto;color:#ddd;z-index:9999}
+
+#diffModal pre{white-space:pre-wrap;font-family:monospace;font-size:12px}
+
+#diffModal .actions{margin-top:12px}
+
+</style>
+
+<div id="diffModal" style="display:none">
+
+    <h3>Pre-save Diff Preview</h3>
+
+    <pre id="diffContent">(loading...)</pre>
+
+    <div class="actions">
+
+        <button class="btn" onclick="closeDiff();">Cancel</button>
+
+        <button class="btn btn-primary" onclick="confirmSave();">Confirm Save</button>
+
+    </div>
+
+</div>
+
+{% endblock %}
+

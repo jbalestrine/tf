@@ -1,0 +1,825 @@
+{# MasterChief template: modules
+   Used by: HTML for /modules.
+   Loaded in main.py as MODULES_TEMPLATE = load_template('modules') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>🧩 Module Management</h2>
+
+<p>Enable or disable MasterChief modules. Changes take effect immediately for most modules; full restart may be needed for newly enabled ones.</p>
+
+{% set module_meta = {
+  'rbac':         {'url': '/rbac',          'icon': '🔐', 'desc': 'Role-based access control — manage users, roles, and permissions.'},
+  'vault':        {'url': '/secrets',       'icon': '🔒', 'desc': 'Encrypted secrets vault — store and retrieve credentials securely.'},
+  'notification': {'url': '/notifications', 'icon': '🔔', 'desc': 'Alerts and notification channels — email, webhook, and in-app.'},
+  'pipeline':     {'url': '/pipelines',     'icon': '⚙️', 'desc': 'CI/CD pipelines — build, test, and deploy automation workflows.'},
+  'cloud':        {'url': '/cloud',         'icon': '☁️', 'desc': 'Cloud account manager — AWS, Azure, GCP resource control.'},
+  'memory':       {'url': '/echo',          'icon': '🧠', 'desc': 'Echo memory — persistent AI conversation history and context.'},
+  'marketplace':  {'url': '/marketplace',   'icon': '🛒', 'desc': 'Addon marketplace — browse and install community modules.'},
+  'script':       {'url': '/scripts',       'icon': '📜', 'desc': 'Script runner — manage and execute automation scripts.'}
+} %}
+
+<div class="modules-grid">
+{% for name, config in enabled_modules.items() %}
+{% set meta = module_meta.get(name, {'url': None, 'icon': '🧩', 'desc': ''}) %}
+<div class="module-card {{ 'module-enabled' if config.enabled else 'module-disabled' }}">
+  <div class="module-card-header">
+    <span class="module-icon">{{ meta.icon }}</span>
+    <h3 class="module-title">{{ name|title }}</h3>
+    <span class="module-badge {{ 'badge-enabled' if config.enabled else 'badge-disabled' }}">
+      {{ 'Enabled' if config.enabled else 'Disabled' }}
+    </span>
+  </div>
+  <p class="module-desc">{{ meta.desc }}</p>
+  <p class="module-manager">Manager: <code>{{ managers[name].__class__.__name__ if managers.get(name) else 'Not loaded' }}</code></p>
+  <div class="module-actions">
+    <form method="POST" action="/api/modules/toggle" style="display:inline;">
+      <input type="hidden" name="module" value="{{ name }}">
+      <button type="submit" class="btn {{ 'btn-danger' if config.enabled else 'btn-success' }}">
+        {{ '⏸ Disable' if config.enabled else '▶ Enable' }}
+      </button>
+    </form>
+    {% if config.enabled and meta.url %}
+    <a href="{{ meta.url }}" class="btn btn-primary module-view-btn">🔗 View</a>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ECHO CHAT  — built-in AI module management
+     ═══════════════════════════════════════════════════════════ -->
+<h2 style="margin-top:40px;">🤖 Echo Chat</h2>
+<p style="color:#aaa;font-size:.9rem;margin-bottom:18px;">
+  Manage every aspect of the built-in Echo AI assistant — model selection, training, saved outputs, session history and live stats.
+</p>
+
+<div class="echo-mgmt-grid">
+
+  <!-- ── Quick-launch card ── -->
+  <div class="echo-card echo-launch">
+    <div class="echo-card-header"><span class="echo-icon">💬</span><h3>Open Chat</h3></div>
+    <p class="echo-card-desc">Launch the full Echo Chat interface in your browser.</p>
+    <div class="echo-actions">
+      <a href="/echo-chat" target="_blank" class="btn btn-primary">🚀 Open Echo Chat</a>
+      <a href="/echo-train" target="_blank" class="btn btn-secondary">🎓 Training Studio</a>
+    </div>
+  </div>
+
+  <!-- ── Live stats card ── -->
+  <div class="echo-card" id="echo-stats-card">
+    <div class="echo-card-header"><span class="echo-icon">📊</span><h3>Live Stats</h3></div>
+    <div id="echo-stats-body" style="font-size:.85rem;color:#aaa;line-height:1.8;">Loading…</div>
+    <button class="btn btn-sm btn-secondary" onclick="loadEchoStats()" style="margin-top:8px;width:fit-content;">↻ Refresh</button>
+  </div>
+
+  <!-- ── Model selector card ── -->
+  <div class="echo-card" id="echo-model-card">
+    <div class="echo-card-header"><span class="echo-icon">🧠</span><h3>Active Model</h3></div>
+    <p class="echo-card-desc" id="echo-current-model" style="color:#7ec8e3;">Fetching…</p>
+    <select id="echo-model-select" class="echo-select" onchange="echoSelectModel(this.value)">
+      <option value="">— select a model —</option>
+    </select>
+    <div id="echo-model-status" style="font-size:.8rem;color:#aaa;margin-top:6px;min-height:1.2em;"></div>
+    <button class="btn btn-sm btn-primary" onclick="loadEchoModels()" style="margin-top:6px;width:fit-content;">↻ Reload list</button>
+  </div>
+
+  <!-- ── Sessions card ── -->
+  <div class="echo-card" id="echo-sessions-card">
+    <div class="echo-card-header"><span class="echo-icon">💬</span><h3>Sessions</h3></div>
+    <div id="echo-sessions-list" style="max-height:200px;overflow-y:auto;font-size:.82rem;"></div>
+    <button class="btn btn-sm btn-secondary" onclick="loadEchoSessions()" style="margin-top:8px;width:fit-content;">↻ Refresh</button>
+  </div>
+
+  <!-- ── Saved outputs card ── -->
+  <div class="echo-card" id="echo-outputs-card">
+    <div class="echo-card-header"><span class="echo-icon">📁</span><h3>Saved Outputs</h3></div>
+    <div id="echo-outputs-list" style="max-height:220px;overflow-y:auto;font-size:.82rem;"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-secondary" onclick="loadEchoOutputs()">↻ Refresh</button>
+      <button class="btn btn-sm btn-danger"    onclick="echoDeleteAllOutputs()" id="echo-del-all-btn" style="display:none;">🗑 Delete All</button>
+    </div>
+  </div>
+
+  <!-- ── Training jobs card ── -->
+  <div class="echo-card" id="echo-train-card" style="grid-column:span 2;">
+    <div class="echo-card-header">
+      <span class="echo-icon">🎯</span><h3>Training Studio</h3>
+      <a href="/echo-train" target="_blank" class="btn btn-sm btn-primary" style="margin-left:auto;">🎓 Open Full Studio</a>
+    </div>
+    <!-- quick fine-tune form -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:.78rem;color:#888;display:block;margin-bottom:3px;">Base Model</label>
+        <select id="mod-ft-model" class="echo-select" style="width:100%;"></select>
+      </div>
+      <div>
+        <label style="font-size:.78rem;color:#888;display:block;margin-bottom:3px;">Training File</label>
+        <select id="mod-ft-file" class="echo-select" style="width:100%;"></select>
+      </div>
+      <div>
+        <label style="font-size:.78rem;color:#888;display:block;margin-bottom:3px;">Engine</label>
+        <select id="mod-ft-engine" class="echo-select">
+          <option value="stub">stub (dry-run)</option>
+          <option value="peft">peft / LoRA</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;align-items:flex-end;">
+        <div style="flex:1;">
+          <label style="font-size:.78rem;color:#888;display:block;margin-bottom:3px;">Epochs</label>
+          <input id="mod-ft-epochs" value="1" type="number" min="1" class="echo-select" style="width:100%;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:.78rem;color:#888;display:block;margin-bottom:3px;">Batch</label>
+          <input id="mod-ft-batch" value="8" type="number" min="1" class="echo-select" style="width:100%;">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+      <button class="btn btn-sm btn-success" onclick="modStartTrainJob()">🚀 Start Job</button>
+      <button class="btn btn-sm btn-secondary" onclick="modLoadTrainData()">↻ Reload lists</button>
+      <span id="mod-ft-status" style="font-size:.8rem;color:#aaa;"></span>
+    </div>
+    <!-- job list -->
+    <div style="font-size:.78rem;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Recent Jobs</div>
+    <div id="echo-train-list" style="max-height:240px;overflow-y:auto;font-size:.82rem;margin-bottom:6px;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-secondary" onclick="loadEchoTrainJobs()">↻ Refresh Jobs</button>
+    </div>
+    <div id="mod-train-log-wrap" style="display:none;margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span id="mod-train-log-title" style="font-size:.78rem;color:#888;"></span>
+        <button class="btn btn-xs btn-secondary" onclick="document.getElementById('mod-train-log-wrap').style.display='none'">✕ Close</button>
+      </div>
+      <pre id="mod-train-log-content" style="background:#0a0a0a;border:1px solid #222;border-radius:5px;padding:8px;font-size:.72rem;color:#99c;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin:0;"></pre>
+    </div>
+  </div>
+
+  <!-- ── Upload / ingest card ── -->
+  <div class="echo-card" id="echo-upload-card">
+    <div class="echo-card-header"><span class="echo-icon">📤</span><h3>Upload &amp; Ingest</h3></div>
+    <p class="echo-card-desc">Upload a .txt / .json persona or training file for Echo to ingest.</p>
+    <input type="file" id="echo-upload-file" accept=".txt,.json,.jsonl,.md" style="font-size:.82rem;margin-bottom:8px;">
+    <select id="echo-upload-type" class="echo-select" style="margin-bottom:8px;">
+      <option value="persona">persona</option>
+      <option value="training">training</option>
+    </select>
+    <button class="btn btn-sm btn-success" onclick="echoUpload()">⬆ Ingest</button>
+    <div id="echo-upload-status" style="font-size:.8rem;color:#aaa;margin-top:6px;min-height:1.2em;"></div>
+  </div>
+
+  <!-- ── Session preferences card ── -->
+  <div class="echo-card" id="echo-prefs-card">
+    <div class="echo-card-header"><span class="echo-icon">⚙️</span><h3>Session Prefs</h3></div>
+    <div id="echo-prefs-body" style="font-size:.85rem;color:#aaa;line-height:1.8;">Loading…</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-secondary" onclick="loadEchoPrefs()">↻ Refresh</button>
+      <button class="btn btn-sm btn-primary"   onclick="saveEchoPrefs()">💾 Save</button>
+    </div>
+    <div id="echo-prefs-status" style="font-size:.8rem;color:#aaa;margin-top:6px;min-height:1.2em;"></div>
+  </div>
+
+</div><!-- /echo-mgmt-grid -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     MASTERCHIEF CODE UI  — Web IDE management
+     ═══════════════════════════════════════════════════════════ -->
+<h2 style="margin-top:40px;">🖥️ MasterChief Code UI</h2>
+<p style="color:#aaa;font-size:.9rem;margin-bottom:18px;">
+  Manage the built-in Web IDE — browse the project file tree, run code snippets synchronously or asynchronously, load/save files, monitor jobs, and store remote execution credentials.
+</p>
+
+<div class="codeui-mgmt-grid">
+
+  <!-- ── Launch card ── -->
+  <div class="codeui-card codeui-launch">
+    <div class="codeui-card-header"><span class="codeui-icon">🖥️</span><h3>Open IDE</h3></div>
+    <p class="codeui-card-desc">Launch the full Web IDE or the alternate CAF-based view in a new tab.</p>
+    <div class="codeui-actions">
+      <a href="/masterchief_code_ui" target="_blank" class="btn btn-primary">🚀 Open Code UI</a>
+      <a href="/web_ide"             target="_blank" class="btn btn-secondary">📄 Web IDE</a>
+    </div>
+  </div>
+
+  <!-- ── File Explorer card ── -->
+  <div class="codeui-card" id="codeui-tree-card">
+    <div class="codeui-card-header"><span class="codeui-icon">📁</span><h3>File Explorer</h3></div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;">
+      <input id="codeui-tree-path" value="" placeholder="Relative path (empty = root)"
+             style="flex:1;background:#121212;border:1px solid #444;color:#eee;padding:4px 8px;border-radius:4px;font-size:.82rem;">
+      <button class="btn btn-sm btn-secondary" onclick="loadIdeTree()">Browse</button>
+    </div>
+    <div id="codeui-tree-list" style="max-height:220px;overflow-y:auto;font-size:.8rem;font-family:monospace;"></div>
+  </div>
+
+  <!-- ── Quick Execute card ── -->
+  <div class="codeui-card" id="codeui-exec-card">
+    <div class="codeui-card-header"><span class="codeui-icon">▶️</span><h3>Quick Execute</h3></div>
+    <select id="codeui-exec-shell" class="echo-select" style="margin-bottom:6px;">
+      <option value="python">python</option>
+      <option value="powershell">powershell</option>
+      <option value="bash">bash / sh</option>
+    </select>
+    <textarea id="codeui-exec-content" rows="5" placeholder="Paste code here…"
+              style="width:100%;background:#121212;border:1px solid #444;color:#eee;padding:6px 8px;border-radius:4px;font-size:.8rem;font-family:monospace;resize:vertical;box-sizing:border-box;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-success"    onclick="ideExecSync()">▶ Run (sync)</button>
+      <button class="btn btn-sm btn-secondary"  onclick="ideExecAsync()">⏳ Run (async)</button>
+      <button class="btn btn-sm btn-danger"     onclick="document.getElementById('codeui-exec-output').style.display='none';document.getElementById('codeui-exec-output').textContent='';document.getElementById('codeui-exec-content').value=''">🗑 Clear</button>
+    </div>
+    <div id="codeui-exec-spinner" style="display:none;font-size:.8rem;color:#7ec8e3;margin-top:4px;">⏳ Running…</div>
+    <pre id="codeui-exec-output" style="max-height:180px;overflow-y:auto;background:#0d0d0d;border:1px solid #333;border-radius:4px;padding:8px;font-size:.75rem;color:#ccc;margin-top:6px;white-space:pre-wrap;word-break:break-all;display:none;"></pre>
+  </div>
+
+  <!-- ── Async Jobs card ── -->
+  <div class="codeui-card" id="codeui-jobs-card">
+    <div class="codeui-card-header"><span class="codeui-icon">⚙️</span><h3>Async Jobs</h3></div>
+    <div id="codeui-jobs-list" style="max-height:200px;overflow-y:auto;font-size:.8rem;">
+      <em style="color:#666">No jobs yet — use Run (async) above.</em>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-sm btn-secondary" onclick="refreshIdeJobs()">↻ Refresh</button>
+    </div>
+    <div id="codeui-jobs-status" style="font-size:.78rem;color:#aaa;margin-top:4px;min-height:1em;"></div>
+  </div>
+
+  <!-- ── Load / Save File card ── -->
+  <div class="codeui-card" id="codeui-filesave-card">
+    <div class="codeui-card-header"><span class="codeui-icon">💾</span><h3>Load / Save File</h3></div>
+    <input id="codeui-file-name" placeholder="Relative path (e.g. scripts/hello.py)"
+           style="background:#121212;border:1px solid #444;color:#eee;padding:4px 8px;border-radius:4px;font-size:.82rem;width:100%;box-sizing:border-box;margin-bottom:6px;">
+    <textarea id="codeui-file-content" rows="5" placeholder="File content…"
+              style="width:100%;background:#121212;border:1px solid #444;color:#eee;padding:6px 8px;border-radius:4px;font-size:.8rem;font-family:monospace;resize:vertical;box-sizing:border-box;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-secondary" onclick="ideLoadFile()">📂 Load</button>
+      <button class="btn btn-sm btn-primary"   onclick="ideSaveFile()">💾 Save</button>
+    </div>
+    <div id="codeui-filesave-status" style="font-size:.8rem;color:#aaa;margin-top:6px;min-height:1.2em;"></div>
+  </div>
+
+  <!-- ── Remote Credentials card ── -->
+  <div class="codeui-card" id="codeui-creds-card">
+    <div class="codeui-card-header"><span class="codeui-icon">🔐</span><h3>Remote Credentials</h3></div>
+    <p class="codeui-card-desc">Store credentials for remote script execution targets.</p>
+    <input id="codeui-creds-target" placeholder="Target (host or alias)"
+           style="background:#121212;border:1px solid #444;color:#eee;padding:4px 8px;border-radius:4px;font-size:.82rem;width:100%;box-sizing:border-box;margin-bottom:4px;">
+    <input id="codeui-creds-user" placeholder="Username"
+           style="background:#121212;border:1px solid #444;color:#eee;padding:4px 8px;border-radius:4px;font-size:.82rem;width:100%;box-sizing:border-box;margin-bottom:4px;">
+    <input id="codeui-creds-pass" placeholder="Password" type="password"
+           style="background:#121212;border:1px solid #444;color:#eee;padding:4px 8px;border-radius:4px;font-size:.82rem;width:100%;box-sizing:border-box;margin-bottom:6px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-secondary" onclick="ideLoadCreds()">📥 Load</button>
+      <button class="btn btn-sm btn-primary"   onclick="ideSaveCreds()">💾 Save</button>
+    </div>
+    <div id="codeui-creds-status" style="font-size:.8rem;color:#aaa;margin-top:6px;min-height:1.2em;"></div>
+  </div>
+
+</div><!-- /codeui-mgmt-grid -->
+
+<script>
+// ─── Echo Chat management helpers ───────────────────────────────────────────
+
+// Stats
+function loadEchoStats(){
+  document.getElementById('echo-stats-body').textContent = 'Loading…';
+  fetch('/api/echo/stats').then(r=>r.json()).then(j=>{
+    const rows = Object.entries(j).map(([k,v])=>`<b>${k}</b>: ${JSON.stringify(v)}`);
+    document.getElementById('echo-stats-body').innerHTML = rows.join('<br>') || '(no data)';
+  }).catch(e=>{ document.getElementById('echo-stats-body').textContent='Error: '+e; });
+}
+
+// Models
+function loadEchoModels(){
+  fetch('/api/echo/models').then(r=>r.json()).then(j=>{
+    const sel = document.getElementById('echo-model-select');
+    sel.innerHTML = '<option value="">— select a model —</option>';
+    const models = Array.isArray(j) ? j : (j.models || []);
+    models.forEach(m=>{
+      const opt=document.createElement('option');
+      opt.value = typeof m==='string' ? m : m.id || m.name || JSON.stringify(m);
+      opt.textContent = opt.value;
+      sel.appendChild(opt);
+    });
+  }).catch(console.error);
+  fetch('/api/echo/model').then(r=>r.json()).then(j=>{
+    const name = j.model || j.active_model || j.current_model || JSON.stringify(j);
+    document.getElementById('echo-current-model').textContent = '▶ ' + name;
+    const sel = document.getElementById('echo-model-select');
+    [...sel.options].forEach(o=>{ if(o.value===name) o.selected=true; });
+  }).catch(console.error);
+}
+
+function echoSelectModel(model){
+  if(!model) return;
+  document.getElementById('echo-model-status').textContent = 'Selecting…';
+  fetch('/api/echo/select_model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model})})
+    .then(r=>r.json()).then(j=>{
+      document.getElementById('echo-model-status').textContent = j.ok ? '✅ Model set: '+model : '❌ '+(j.error||JSON.stringify(j));
+      document.getElementById('echo-current-model').textContent = '▶ '+model;
+    }).catch(e=>{ document.getElementById('echo-model-status').textContent='Error: '+e; });
+}
+
+// Sessions
+function loadEchoSessions(){
+  const el = document.getElementById('echo-sessions-list');
+  el.innerHTML = 'Loading…';
+  fetch('/api/echo/sessions').then(r=>r.json()).then(j=>{
+    const sessions = Array.isArray(j) ? j : (j.sessions || Object.keys(j));
+    if(!sessions.length){ el.innerHTML='<em style="color:#666">No sessions.</em>'; return; }
+    el.innerHTML = sessions.map(s=>{
+      const id = typeof s==='string'?s:(s.id||s.session_id||JSON.stringify(s));
+      const ts = s.created_at||s.timestamp||'';
+      return `<div class="echo-session-row"><span>${id}</span><small style="color:#666;margin-left:8px;">${ts}</small></div>`;
+    }).join('');
+  }).catch(e=>{ el.innerHTML='Error: '+e; });
+}
+
+// Outputs
+function loadEchoOutputs(){
+  const el = document.getElementById('echo-outputs-list');
+  el.innerHTML = 'Loading…';
+  fetch('/api/echo/outputs').then(r=>r.json()).then(j=>{
+    const files = Array.isArray(j)?j:(j.files||j.outputs||[]);
+    if(!files.length){ el.innerHTML='<em style="color:#666">No saved outputs.</em>'; document.getElementById('echo-del-all-btn').style.display='none'; return; }
+    document.getElementById('echo-del-all-btn').style.display='';
+    el.innerHTML = files.map(f=>{
+      const name = typeof f==='string'?f:(f.name||f.filename||JSON.stringify(f));
+      const url  = '/data/echo_chat_outputs/'+encodeURIComponent(name);
+      return `<div class="echo-output-row">
+        <a href="${url}" target="_blank" class="echo-file-link" title="${name}">${name}</a>
+        <button class="btn btn-xs btn-danger" onclick="echoDeleteOutput(${JSON.stringify(name)},this)">🗑</button>
+      </div>`;
+    }).join('');
+  }).catch(e=>{ el.innerHTML='Error: '+e; });
+}
+
+function echoDeleteOutput(fname,btn){
+  if(!confirm('Delete '+fname+'?')) return;
+  btn.disabled=true;
+  fetch('/api/echo/outputs/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:fname})})
+    .then(r=>r.json()).then(j=>{ if(j.ok) loadEchoOutputs(); else alert(j.error||'Delete failed'); })
+    .catch(e=>{ alert('Error: '+e); btn.disabled=false; });
+}
+
+function echoDeleteAllOutputs(){
+  if(!confirm('Delete ALL saved outputs? This cannot be undone.')) return;
+  const btn = document.getElementById('echo-del-all-btn');
+  btn.disabled=true;
+  fetch('/api/echo/outputs').then(r=>r.json()).then(j=>{
+    const files = Array.isArray(j)?j:(j.files||j.outputs||[]);
+    return Promise.all(files.map(f=>{
+      const name=typeof f==='string'?f:(f.name||f.filename||JSON.stringify(f));
+      return fetch('/api/echo/outputs/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name})}).then(r=>r.json());
+    }));
+  }).then(()=>loadEchoOutputs()).catch(e=>{ alert('Error: '+e); btn.disabled=false; });
+}
+
+// Training jobs
+function loadEchoTrainJobs(){
+  const el = document.getElementById('echo-train-list');
+  el.innerHTML = 'Loading…';
+  fetch('/api/echo/train_list').then(r=>r.json()).then(j=>{
+    const jobs = (Array.isArray(j)?j:(j.jobs||[])).slice().reverse();
+    if(!jobs.length){ el.innerHTML='<em style="color:#666">No training jobs yet.</em>'; return; }
+    el.innerHTML = jobs.slice(0,20).map(job=>{
+      const id     = job.job_id||job.id||'?';
+      const status = job.status||'unknown';
+      const model  = (job.model||'').split(/[/\\]/).pop()||'—';
+      const tfile  = (job.training_file||'').split(/[/\\]/).pop()||'—';
+      const sc = status==='done'?'#4CAF50':status==='running'?'#7ec8e3':['error','failed'].includes(status)?'#f55':'#aaa';
+      const dur = job.started_at&&job.finished_at ? ((job.finished_at-job.started_at)/60).toFixed(1)+'m' : '';
+      return `<div style="border:1px solid #2a2a2a;border-radius:5px;padding:7px 9px;margin-bottom:5px;background:#16161e;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-family:monospace;font-size:.73rem;color:#555;">${id.slice(0,12)}</span>
+          <span style="flex:1;font-size:.78rem;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${job.model||''}">${model}</span>
+          <span style="font-size:.73rem;font-weight:600;padding:1px 7px;border-radius:8px;background:#1a1a2a;color:${sc};">${status}</span>
+        </div>
+        <div style="font-size:.72rem;color:#555;margin-top:2px;">data: ${tfile} &nbsp;|&nbsp; engine: ${job.engine||'—'}${dur?' | '+dur:''}</div>
+        <div style="display:flex;gap:5px;margin-top:5px;">
+          <button class="btn btn-xs btn-secondary" onclick="modViewJobLog(${JSON.stringify(id)},true)">📋 Logs</button>
+          ${['queued','running'].includes(status)?`<button class="btn btn-xs btn-danger" onclick="echoCancelJob(${JSON.stringify(id)})">✕ Cancel</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }).catch(e=>{ el.innerHTML='Error: '+e; });
+}
+
+function echoCancelJob(job_id){
+  if(!confirm('Cancel job '+job_id.slice(0,12)+'?')) return;
+  fetch('/api/echo/train_cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id})})
+    .then(r=>r.json()).then(j=>{
+      if(!j.ok) alert('Cancel failed: '+(j.error||'?'));
+      loadEchoTrainJobs();
+    }).catch(console.error);
+}
+
+function modViewJobLog(job_id, show){
+  const wrap = document.getElementById('mod-train-log-wrap');
+  if(show) wrap.style.display='';
+  document.getElementById('mod-train-log-title').textContent = 'Log: '+job_id.slice(0,16)+'…';
+  const pre = document.getElementById('mod-train-log-content');
+  pre.textContent='Loading…';
+  fetch('/api/echo/train_status?job_id='+encodeURIComponent(job_id))
+    .then(r=>r.json()).then(j=>{
+      pre.textContent = j.log_tail||'(no log output yet)';
+      pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
+    }).catch(e=>{ pre.textContent='Error: '+e; });
+}
+
+// Quick job launcher in modules card
+function modLoadTrainData(){
+  // populate model select
+  fetch('/api/echo/models').then(r=>r.json()).then(j=>{
+    const sel=document.getElementById('mod-ft-model');
+    const models=j.models||[];
+    sel.innerHTML='<option value="">— model —</option>'+models.map(m=>`<option value="${m}">${m.split(/[/\\]/).pop()}</option>`).join('');
+  }).catch(()=>{});
+  // populate training file select
+  fetch('/api/echo/training_files').then(r=>r.json()).then(j=>{
+    const sel=document.getElementById('mod-ft-file');
+    const files=j.files||[];
+    sel.innerHTML='<option value="">— training file —</option>'+files.map(f=>`<option value="${f.name}">${f.name}</option>`).join('');
+  }).catch(()=>{});
+}
+
+function modStartTrainJob(){
+  const model  = document.getElementById('mod-ft-model').value;
+  const tfile  = document.getElementById('mod-ft-file').value;
+  const engine = document.getElementById('mod-ft-engine').value;
+  const epochs = parseInt(document.getElementById('mod-ft-epochs').value)||1;
+  const batch  = parseInt(document.getElementById('mod-ft-batch').value)||8;
+  const status = document.getElementById('mod-ft-status');
+  if(!model){ status.textContent='⚠ Select a model'; return; }
+  if(!tfile){ status.textContent='⚠ Select a training file'; return; }
+  status.textContent='Submitting…';
+  fetch('/api/echo/train_model',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model,training_file:tfile,engine,epochs,batch_size:batch,lr:0.0001})})
+    .then(r=>r.json()).then(j=>{
+      if(j.ok||j.job_id){
+        status.textContent='✅ Job '+j.job_id.slice(0,12)+'… started';
+        setTimeout(loadEchoTrainJobs, 800);
+      } else {
+        status.textContent='❌ '+(j.error||JSON.stringify(j));
+      }
+    }).catch(e=>{ status.textContent='Error: '+e; });
+}
+
+
+// Upload / ingest
+function echoUpload(){
+  const file = document.getElementById('echo-upload-file').files[0];
+  const type = document.getElementById('echo-upload-type').value;
+  const status = document.getElementById('echo-upload-status');
+  if(!file){ status.textContent='⚠ No file selected.'; return; }
+  status.textContent='Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('type', type);
+  fetch('/api/echo/upload_ingest',{method:'POST',body:fd})
+    .then(r=>r.json()).then(j=>{
+      status.textContent = j.ok ? '✅ Ingested: '+(j.saved||file.name) : '❌ '+(j.error||JSON.stringify(j));
+    }).catch(e=>{ status.textContent='Error: '+e; });
+}
+
+// Session prefs
+let _echoPrefData = {};
+function loadEchoPrefs(){
+  const el = document.getElementById('echo-prefs-body');
+  el.innerHTML='Loading…';
+  fetch('/api/echo/session_prefs').then(r=>r.json()).then(j=>{
+    _echoPrefData = (typeof j==='object'&&j!==null&&j.prefs) ? j.prefs : {};
+    if(!Object.keys(_echoPrefData).length){ el.innerHTML='<em style="color:#666">No preferences set.</em>'; return; }
+    el.innerHTML = Object.entries(_echoPrefData).map(([k,v])=>{
+      const isBool = typeof v==='boolean';
+      const inputHtml = isBool
+        ? `<input class="echo-pref-input" type="checkbox" data-key="${k}" data-bool="1" ${v?'checked':''}
+               style="width:16px;height:16px;accent-color:#7ec8e3;">`
+        : `<input class="echo-pref-input" data-key="${k}" value="${String(v).replace(/"/g,'&quot;')}"
+               style="flex:1;background:#121212;border:1px solid #333;color:#eee;padding:3px 6px;border-radius:4px;font-size:.82rem;">`;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <label style="color:#888;min-width:130px;font-size:.8rem;">${k}</label>
+        ${inputHtml}
+      </div>`;
+    }).join('');
+  }).catch(e=>{ el.innerHTML='Error: '+e; });
+}
+
+function saveEchoPrefs(){
+  const inputs = document.querySelectorAll('.echo-pref-input');
+  const prefs = {};
+  inputs.forEach(inp=>{ prefs[inp.dataset.key] = inp.dataset.bool ? inp.checked : inp.value; });
+  document.getElementById('echo-prefs-status').textContent='Saving…';
+  fetch('/api/echo/session_prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:'default',prefs})})
+    .then(r=>r.json()).then(j=>{
+      document.getElementById('echo-prefs-status').textContent = j.ok ? '✅ Saved' : '❌ '+(j.error||JSON.stringify(j));
+    }).catch(e=>{ document.getElementById('echo-prefs-status').textContent='Error: '+e; });
+}
+
+// ─── Code UI / Web IDE management helpers ─────────────────────────────────
+
+// File tree
+function loadIdeTree(){
+  const path = document.getElementById('codeui-tree-path').value;
+  const el   = document.getElementById('codeui-tree-list');
+  el.innerHTML='Loading…';
+  fetch('/api/ide/tree?path='+encodeURIComponent(path))
+    .then(r=>r.json()).then(j=>{
+      if(!j.ok){ el.innerHTML='<span style="color:#f55">'+j.error+'</span>'; return; }
+      const nodes=j.nodes||[];
+      if(!nodes.length){ el.innerHTML='<em style="color:#666">Empty directory.</em>'; return; }
+      el.innerHTML=nodes.map(n=>{
+        const icon =n.type==='dir'?'📁':'📄';
+        const extra=n.type==='file'?`<span style="color:#555;margin-left:6px;">${(n.size/1024).toFixed(1)}KB</span>`:'';
+        const np   =n.path.replace(/\\/g,'/');
+        const click=n.type==='dir'
+          ?`onclick="document.getElementById('codeui-tree-path').value='${np}';loadIdeTree()" style="cursor:pointer;"`
+          :`onclick="document.getElementById('codeui-file-name').value='${np}';ideLoadFile()" style="cursor:pointer;"`;
+        return `<div class="codeui-tree-row" ${click}>${icon} <span>${n.name}</span>${extra}</div>`;
+      }).join('');
+    }).catch(e=>{ el.innerHTML='Error: '+e; });
+}
+
+// Sync execute
+function ideExecSync(){
+  const content=document.getElementById('codeui-exec-content').value.trim();
+  const shell  =document.getElementById('codeui-exec-shell').value;
+  if(!content) return;
+  const out    =document.getElementById('codeui-exec-output');
+  const spinner=document.getElementById('codeui-exec-spinner');
+  out.style.display='none'; spinner.style.display='';
+  fetch('/api/ide/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content,shell})})
+    .then(r=>r.json()).then(j=>{
+      spinner.style.display='none'; out.style.display='';
+      out.textContent=(j.stdout||'')+(j.stderr?'\n[stderr]\n'+j.stderr:'')+(j.ok===false?'\n❌ '+j.error:'');
+    }).catch(e=>{ spinner.style.display='none'; out.style.display=''; out.textContent='Error: '+e; });
+}
+
+// Async execute
+const _ideAsyncJobs={};
+function ideExecAsync(){
+  const content=document.getElementById('codeui-exec-content').value.trim();
+  const shell  =document.getElementById('codeui-exec-shell').value;
+  if(!content) return;
+  document.getElementById('codeui-jobs-status').textContent='Submitting…';
+  fetch('/api/ide/exec_async',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content,shell})})
+    .then(r=>r.json()).then(j=>{
+      if(!j.ok){ document.getElementById('codeui-jobs-status').textContent='❌ '+j.error; return; }
+      const id=j.exec_id;
+      document.getElementById('codeui-jobs-status').textContent='Started '+id;
+      _ideAsyncJobs[id]={id,status:'queued'};
+      renderIdeJobs();
+      const poll=setInterval(()=>{
+        fetch('/api/ide/exec_status?exec_id='+encodeURIComponent(id)).then(r=>r.json()).then(s=>{
+          _ideAsyncJobs[s.id||id]=s;
+          renderIdeJobs();
+          if(['done','error','failed'].includes(s.status)){
+            clearInterval(poll);
+            document.getElementById('codeui-jobs-status').textContent='Job '+id+' → '+s.status;
+          }
+        });
+      },2000);
+    }).catch(e=>{ document.getElementById('codeui-jobs-status').textContent='Error: '+e; });
+}
+
+function refreshIdeJobs(){
+  if(!Object.keys(_ideAsyncJobs).length) return;
+  Promise.all(Object.keys(_ideAsyncJobs).map(id=>
+    fetch('/api/ide/exec_status?exec_id='+encodeURIComponent(id)).then(r=>r.json()).then(j=>{ _ideAsyncJobs[j.id||id]=j; }).catch(()=>{})
+  )).then(renderIdeJobs);
+}
+
+function renderIdeJobs(){
+  const el=document.getElementById('codeui-jobs-list');
+  const jobs=Object.values(_ideAsyncJobs);
+  if(!jobs.length){ el.innerHTML='<em style="color:#666">No jobs yet.</em>'; return; }
+  el.innerHTML=jobs.map(j=>{
+    const sc=j.status==='done'?'#4CAF50':j.status==='running'?'#7ec8e3':['error','failed'].includes(j.status)?'#f55':'#aaa';
+    const prev=j.stdout?`<pre style="font-size:.7rem;color:#aaa;margin:2px 0 0;max-height:60px;overflow:auto;background:#0d0d0d;padding:4px;border-radius:3px;">${j.stdout.slice(-300)}</pre>`:'';
+    return `<div class="codeui-job-row"><span style="font-family:monospace;font-size:.75rem;color:#ccc">${j.id||j.exec_id||'?'}</span><span style="color:${sc};margin-left:6px;">${j.status||'?'}</span>${prev}</div>`;
+  }).join('');
+}
+
+// File load / save
+function ideLoadFile(){
+  const fname=document.getElementById('codeui-file-name').value.trim();
+  if(!fname) return;
+  document.getElementById('codeui-filesave-status').textContent='Loading…';
+  fetch('/api/ide/load',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fname})})
+    .then(r=>r.json()).then(j=>{
+      document.getElementById('codeui-filesave-status').textContent=j.ok?'✅ Loaded':'❌ '+(j.error||'failed');
+      if(j.ok) document.getElementById('codeui-file-content').value=j.content||'';
+    }).catch(e=>{ document.getElementById('codeui-filesave-status').textContent='Error: '+e; });
+}
+
+function ideSaveFile(){
+  const fname  =document.getElementById('codeui-file-name').value.trim();
+  const content=document.getElementById('codeui-file-content').value;
+  if(!fname){ document.getElementById('codeui-filesave-status').textContent='⚠ No filename.'; return; }
+  document.getElementById('codeui-filesave-status').textContent='Saving…';
+  fetch('/api/ide/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fname,content})})
+    .then(r=>r.json()).then(j=>{
+      document.getElementById('codeui-filesave-status').textContent=j.ok?'✅ Saved':'❌ '+(j.error||'failed');
+    }).catch(e=>{ document.getElementById('codeui-filesave-status').textContent='Error: '+e; });
+}
+
+// Remote credentials
+function ideLoadCreds(){
+  const target=document.getElementById('codeui-creds-target').value.trim();
+  if(!target){ document.getElementById('codeui-creds-status').textContent='⚠ Enter a target first.'; return; }
+  document.getElementById('codeui-creds-status').textContent='Loading…';
+  fetch('/api/ide/remote/creds?target='+encodeURIComponent(target))
+    .then(r=>r.json()).then(j=>{
+      if(!j.ok){ document.getElementById('codeui-creds-status').textContent='❌ '+j.error; return; }
+      if(j.cred){
+        document.getElementById('codeui-creds-user').value=j.cred.username||'';
+        document.getElementById('codeui-creds-pass').value=j.cred.password||'';
+        document.getElementById('codeui-creds-status').textContent='✅ Loaded (saved '+j.cred.saved_at+')';
+      } else {
+        document.getElementById('codeui-creds-status').textContent='(no credentials for this target)';
+      }
+    }).catch(e=>{ document.getElementById('codeui-creds-status').textContent='Error: '+e; });
+}
+
+function ideSaveCreds(){
+  const target  =document.getElementById('codeui-creds-target').value.trim();
+  const username=document.getElementById('codeui-creds-user').value.trim();
+  const password=document.getElementById('codeui-creds-pass').value;
+  if(!target||!username||!password){ document.getElementById('codeui-creds-status').textContent='⚠ Fill all fields.'; return; }
+  document.getElementById('codeui-creds-status').textContent='Saving…';
+  fetch('/api/ide/remote/creds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target,username,password})})
+    .then(r=>r.json()).then(j=>{
+      document.getElementById('codeui-creds-status').textContent=j.ok?'✅ Saved':'❌ '+(j.error||'failed');
+    }).catch(e=>{ document.getElementById('codeui-creds-status').textContent='Error: '+e; });
+}
+
+// ── Auto-load on page ready ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  loadEchoStats();
+  loadEchoModels();
+  loadEchoSessions();
+  loadEchoOutputs();
+  loadEchoTrainJobs();
+  loadEchoPrefs();
+  loadIdeTree();
+  modLoadTrainData();
+});
+</script>
+
+<style>
+.echo-mgmt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 6px;
+}
+.echo-card {
+  background: var(--card-bg, #1e1e2e);
+  border: 1px solid var(--border-color, #333);
+  border-left: 4px solid #7ec8e3;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.echo-launch { border-left-color: #4CAF50; }
+.echo-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.echo-card-header h3 { margin: 0; font-size: 1.05rem; }
+.echo-icon { font-size: 1.3rem; }
+.echo-card-desc { font-size: .86rem; color: #aaa; margin: 0; line-height: 1.4; }
+.echo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.echo-select {
+  background: #121212;
+  border: 1px solid #444;
+  color: #eee;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: .85rem;
+}
+.echo-session-row, .echo-output-row, .echo-job-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: .8rem;
+  color: #ccc;
+}
+.echo-file-link {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #7ec8e3;
+  text-decoration: none;
+  font-family: monospace;
+  font-size: .78rem;
+}
+.echo-file-link:hover { text-decoration: underline; }
+.btn-xs { padding: 1px 6px; font-size: .75rem; }
+.btn-sm { padding: 4px 10px; font-size: .82rem; }
+
+/* ── Code UI styles ── */
+.codeui-mgmt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 6px;
+}
+.codeui-card {
+  background: var(--card-bg, #1e1e2e);
+  border: 1px solid var(--border-color, #333);
+  border-left: 4px solid #c792ea;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.codeui-launch { border-left-color: #4CAF50; }
+.codeui-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.codeui-card-header h3 { margin: 0; font-size: 1.05rem; }
+.codeui-icon { font-size: 1.3rem; }
+.codeui-card-desc { font-size: .86rem; color: #aaa; margin: 0; line-height: 1.4; }
+.codeui-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.codeui-tree-row {
+  padding: 3px 4px;
+  border-bottom: 1px solid #1a1a1a;
+  user-select: none;
+  color: #ccc;
+  border-radius: 3px;
+}
+.codeui-tree-row:hover { background: #252535; }
+.codeui-job-row {
+  padding: 4px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+/* ── original modules styles ── */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+.module-card {
+  background: var(--card-bg, #1e1e2e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+.module-enabled { border-left: 4px solid #4CAF50; }
+.module-disabled { border-left: 4px solid #555; opacity: 0.75; }
+.module-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.module-icon { font-size: 1.4rem; }
+.module-title { margin: 0; font-size: 1.1rem; flex: 1; }
+.module-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-enabled  { background: #1b4d2e; color: #4CAF50; }
+.badge-disabled { background: #2d2d2d; color: #888; }
+.module-desc {
+  font-size: 0.88rem;
+  color: #aaa;
+  margin: 0;
+  line-height: 1.4;
+}
+.module-manager {
+  font-size: 0.8rem;
+  color: #777;
+  margin: 0;
+}
+.module-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.module-view-btn { text-decoration: none; }
+</style>
+
+{% endblock %}

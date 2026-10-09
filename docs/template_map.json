@@ -1,0 +1,113 @@
+[
+  {
+    "file": "templates/layout.html",
+    "constant": "HTML_TEMPLATE",
+    "app": "layout",
+    "routes": [
+      "/",
+      "/addons",
+      "/addons/modules/<module_name>/manager",
+      "/echo-chat",
+      "/modules",
+      "/processes",
+      "/scripts/edit/<b64path>",
+      "/services"
+    ],
+    "description": "Site layout: sidebar, header and nav shared by every page. Other pages are inserted into it."
+  },
+  {
+    "file": "templates/scripts.html",
+    "constant": "SCRIPTS_TEMPLATE",
+    "app": "scripts",
+    "routes": [],
+    "description": "Not used by any route in main.py (the pages actually served use the copy in templates/pages.py). Kept so nothing is lost."
+  },
+  {
+    "file": "templates/script_view.html",
+    "constant": "SCRIPT_VIEW_TEMPLATE",
+    "app": "script_view",
+    "routes": [],
+    "description": "Not used by any route in main.py (the pages actually served use the copy in templates/pages.py). Kept so nothing is lost."
+  },
+  {
+    "file": "templates/script_execute.html",
+    "constant": "SCRIPT_EXECUTE_TEMPLATE",
+    "app": "script_execute",
+    "routes": [],
+    "description": "Not used by any route in main.py (the pages actually served use the copy in templates/pages.py). Kept so nothing is lost."
+  },
+  {
+    "file": "templates/script_edit.html",
+    "constant": "SCRIPT_EDIT_TEMPLATE",
+    "app": "script_edit",
+    "routes": [
+      "/scripts/edit/<b64path>"
+    ],
+    "description": "HTML for /scripts/edit/<b64path>."
+  },
+  {
+    "file": "templates/processes.html",
+    "constant": "PROCESSES_TEMPLATE",
+    "app": "processes",
+    "routes": [
+      "/processes"
+    ],
+    "description": "HTML for /processes."
+  },
+  {
+    "file": "templates/services.html",
+    "constant": "SERVICES_TEMPLATE",
+    "app": "services",
+    "routes": [
+      "/services"
+    ],
+    "description": "HTML for /services."
+  },
+  {
+    "file": "templates/addons.html",
+    "constant": "ADDONS_TEMPLATE",
+    "app": "addons",
+    "routes": [
+      "/addons"
+    ],
+    "description": "HTML for /addons."
+  },
+  {
+    "file": "templates/echo_chat.html",
+    "constant": "ECHO_CHAT_TEMPLATE",
+    "app": "echo_chat",
+    "routes": [
+      "/echo-chat"
+    ],
+    "description": "HTML for /echo-chat."
+  },
+  {
+    "file": "templates/modules.html",
+    "constant": "MODULES_TEMPLATE",
+    "app": "modules",
+    "routes": [
+      "/modules"
+    ],
+    "description": "HTML for /modules."
+  },
+  {
+    "file": "templates/okta.html",
+    "constant": "",
+    "loaded_by": "blueprints/okta_routes.py",
+    "app": "okta",
+    "routes": [
+      "/okta"
+    ],
+    "description": "HTML for the Okta app."
+  },
+  {
+    "file": "templates/teams.html",
+    "constant": "",
+    "loaded_by": "blueprints/teams_routes.py",
+    "app": "teams",
+    "routes": [
+      "/teams"
+    ],
+    "description": "HTML for the Teams app."
+  }
+]

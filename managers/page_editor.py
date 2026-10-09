@@ -149,6 +149,29 @@ class PageEditor:
                         mapping[alias.asname or alias.name] = candidate
         return mapping
 
+    def _read_map_rows(self) -> list[dict]:
+        try:
+            return [r for r in json.loads((self.root / "docs" / "template_map.json").read_text(encoding="utf-8")) if isinstance(r, dict)]
+        except (OSError, ValueError):
+            return []
+
+    def _template_map(self) -> dict[str, dict]:
+        """docs/template_map.json: which templates/*.html file holds the HTML for which app."""
+        try:
+            data = json.loads((self.root / "docs" / "template_map.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return {row["constant"]: row for row in data if isinstance(row, dict) and row.get("constant")}
+
+    def _template_segment(self, row: dict, layout: bool = False) -> dict | None:
+        where = ", ".join(row.get("routes") or []) or row["app"]
+        if layout:
+            label, role, note = "Layout: header, logo and menu", "layout", "Shared by every page. HTML file: " + row["file"]
+        else:
+            label, role = f"HTML for {row['app']} ({where})", "template"
+            note = f"The HTML for the {row['app']} app. Used by: {where}. File: {row['file']}"
+        return self._whole_file(row["file"], label, role) and {**self._whole_file(row["file"], label, role), "note": note}
+
     # ---------- segments for a page ----------
     def _segment(self, path: str, start: int, end: int, label: str, role: str, note: str = "") -> dict:
         return {
@@ -201,9 +224,16 @@ class PageEditor:
                 pass
 
         texts = [route_text]
+        tmap = self._template_map()
         imports = self._imported_modules(row["file"]) if row["file"] and not row["file"].startswith(("<", "/")) else {}
         for ident in sorted(set(IDENT_RE.findall(route_text))):
             if ident == "HTML_TEMPLATE":
+                continue
+            if ident in tmap:
+                seg = self._template_segment(tmap[ident])
+                add(seg)
+                if seg:
+                    texts.append(self._read_lines(seg["path"], seg["start"], seg["end"]))
                 continue
             defs = self._find_definitions(ident)
             if len(defs) > 1:
@@ -222,14 +252,21 @@ class PageEditor:
                 if index == 0:
                     texts.append(self._read_lines(d["path"], d["start"], d["end"]))
 
+        by_file = {r["file"]: r for r in self._read_map_rows()}
         for rel in row["files"]:
-            add(self._whole_file(rel, rel, "file"))
+            add(self._template_segment(by_file[rel]) if rel in by_file else self._whole_file(rel, rel, "file"))
             try:
                 texts.append(self._safe(rel).read_text(encoding="utf-8", errors="replace"))
             except PageEditorError:
                 pass
 
-        layout_defs = [d for d in self._find_definitions("HTML_TEMPLATE")]
+        layout_row = tmap.get("HTML_TEMPLATE")
+        layout_defs = [] if layout_row else [d for d in self._find_definitions("HTML_TEMPLATE")]
+        if layout_row:
+            seg = self._template_segment(layout_row, layout=True)
+            add(seg)
+            if seg:
+                texts.append(self._read_lines(seg["path"], seg["start"], seg["end"]))
         live = next((d for d in layout_defs if d["path"] == "main.py"), layout_defs[0] if layout_defs else None)
         for d in layout_defs:
             is_live = live is not None and d is live

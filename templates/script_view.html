@@ -1,0 +1,20 @@
+{# MasterChief template: script_view
+   Status: Not used by any route in main.py (the pages actually served use the copy in templates/pages.py). Kept so nothing is lost.
+   Loaded in main.py as SCRIPT_VIEW_TEMPLATE = load_template('script_view') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="section">
+
+<h2>Script: {{ filename }}</h2>
+
+<pre><code>{{ content }}</code></pre>
+
+<a href="/scripts" class="btn btn-warning">Back to Scripts</a>
+
+<a href="/scripts/execute/{{ filename }}" class="btn">Execute</a>
+
+</div>
+
+{% endblock %}

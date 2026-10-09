@@ -1,0 +1,70 @@
+{# MasterChief template: services
+   Used by: HTML for /services.
+   Loaded in main.py as SERVICES_TEMPLATE = load_template('services') #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="section">
+
+<h2>Windows Services Monitor</h2>
+
+{% if not is_windows %}
+
+<div class="alert alert-info">Windows services monitoring is only available on Windows platforms.</div>
+
+{% else %}
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Service Name</th>
+
+<th>Display Name</th>
+
+<th>State</th>
+
+<th>Actions</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for service in services %}
+
+<tr>
+
+<td>{{ service.name }}</td>
+
+<td>{{ service.display_name }}</td>
+
+<td>{{ service.state }}</td>
+
+<td>
+
+<a href="/services/start/{{ service.name }}" class="btn">Start</a>
+
+<a href="/services/stop/{{ service.name }}" class="btn btn-warning">Stop</a>
+
+<a href="/services/restart/{{ service.name }}" class="btn btn-info">Restart</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+{% endif %}
+
+</div>
+
+{% endblock %}

@@ -226,6 +226,7 @@ class CodeManager:
             "helper_count": len(helpers), "template_lines": sum(t["lines"] for t in out_templates),
             "blueprint_registration_lines": blueprint_regs,
             "groups": out_groups, "templates": out_templates, "hubs": hubs[:40],
+            "template_files": self.template_files(),
             "duplicates_within_main": dupes,
             "biggest_functions": sorted(
                 ({"name": n, **h} for n, h in helpers.items() if h["kind"] == "function"),
@@ -477,6 +478,19 @@ class CodeManager:
             second = second.func.value
             chain = True
         return (second.id, chain) if isinstance(second, ast.Name) else None
+
+    def template_files(self) -> list[dict]:
+        """HTML files already moved out of main.py, with the app each one belongs to (docs/template_map.json)."""
+        try:
+            rows = json.loads((self.root / "docs" / "template_map.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+        out = []
+        for row in rows:
+            path = self.root / row.get("file", "")
+            out.append({**row, "exists": path.is_file(),
+                        "lines": len(path.read_text(encoding="utf-8", errors="replace").splitlines()) if path.is_file() else 0})
+        return out
 
     def pages(self) -> list[dict]:
         """Pages still defined in main.py that can be moved whole into a blueprint."""

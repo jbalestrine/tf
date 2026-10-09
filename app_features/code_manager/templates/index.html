@@ -70,8 +70,17 @@
     }).join('');
   }
 
+  function templateFiles() {
+    var rows = state.analysis.template_files || [];
+    if (!rows.length) return '';
+    return '<div class="cm-box"><b>HTML files already moved out of main.py.</b> Each file is the page markup for the app shown. main.py loads it by name, so nothing else changed.</div><table><tr><th>App</th><th>HTML file</th><th>Lines</th><th>Pages (URLs) it serves</th><th>Name in main.py</th><th></th></tr>' +
+      rows.map(function (r) {
+        return '<tr><td><b>' + esc(r.app) + '</b></td><td><code>' + esc(r.file) + '</code>' + (r.exists ? '' : ' <span class="cm-pill cm-hard">missing</span>') + '</td><td>' + r.lines + '</td><td>' + (esc((r.routes || []).join(', ')) || 'loaded by another page') + '</td><td><code>' + esc(r.constant || ('read by ' + r.loaded_by)) + '</code></td><td><a href="' + ide(r.file, 1) + '">open</a></td></tr>';
+      }).join('') + '</table><br>';
+  }
+
   function templates() {
-    return '<p style="color:#9aa4b2">Large HTML strings inside main.py. "Safe" ones are plain text and can become a file in <code>templates/</code> without changing behavior.</p><table><tr><th>Name</th><th>Lines</th><th>Kind</th><th>Used by</th><th>Suggested file</th><th></th></tr>' +
+    return templateFiles() + '<p style="color:#9aa4b2">HTML strings still inside main.py (if the list below is empty, they have all been moved). "Safe" ones are plain text and can become a file in <code>templates/</code> without changing behavior.</p><table><tr><th>Name</th><th>Lines</th><th>Kind</th><th>Used by</th><th>Suggested file</th><th></th></tr>' +
       state.analysis.templates.map(function (t) {
         return '<tr><td>' + esc(t.name) + '</td><td>' + t.lines + '</td><td><span class="cm-pill ' + (t.safe_to_extract ? 'cm-easy' : 'cm-hard') + '">' + esc(t.kind) + '</span></td><td>' + (t.used_by.map(esc).join(', ') || 'not referenced by a route') + '</td><td>' + esc(t.suggested_file || t.note) + '</td><td><a href="' + ide('main.py', t.line) + '">open</a></td></tr>';
       }).join('') + '</table>';
