@@ -1,5 +1,5 @@
 {
-  "max_lines": 20578,
-  "max_routes": 262,
+  "max_lines": 18426,
+  "max_routes": 251,
   "note": "New features go in app_features/<name>/. Lower these numbers as main.py shrinks."
 }

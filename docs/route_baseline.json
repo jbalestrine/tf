@@ -1,6 +1,6 @@
 {
- "saved": "2026-10-09 04:17:29",
- "count": 531,
+ "saved": "2026-10-09 05:01:23",
+ "count": 541,
  "routes": [
   {
    "rule": "/",
@@ -2103,10 +2103,22 @@
    "file": "main.py"
   },
   {
+   "rule": "/api/teams/calendar",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_calendar",
+   "file": "blueprints/teams_routes.py"
+  },
+  {
    "rule": "/api/teams/chat/messages",
    "method": "POST",
    "endpoint": "api_teams_chat_messages",
    "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/chat/messages",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_chat_messages",
+   "file": "blueprints/teams_routes.py"
   },
   {
    "rule": "/api/teams/chat/send",
@@ -2115,10 +2127,22 @@
    "file": "main.py"
   },
   {
+   "rule": "/api/teams/chat/send",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_chat_send",
+   "file": "blueprints/teams_routes.py"
+  },
+  {
    "rule": "/api/teams/chats",
    "method": "POST",
    "endpoint": "api_teams_chats",
    "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/chats",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_chats",
+   "file": "blueprints/teams_routes.py"
   },
   {
    "rule": "/api/teams/connect",
@@ -2127,10 +2151,22 @@
    "file": "main.py"
   },
   {
+   "rule": "/api/teams/connect",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_connect",
+   "file": "blueprints/teams_routes.py"
+  },
+  {
    "rule": "/api/teams/device_poll",
    "method": "POST",
    "endpoint": "api_teams_device_poll",
    "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/device_poll",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_device_poll",
+   "file": "blueprints/teams_routes.py"
   },
   {
    "rule": "/api/teams/device_start",
@@ -2139,10 +2175,22 @@
    "file": "main.py"
   },
   {
+   "rule": "/api/teams/device_start",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_device_start",
+   "file": "blueprints/teams_routes.py"
+  },
+  {
    "rule": "/api/teams/ps_connect",
    "method": "POST",
    "endpoint": "api_teams_ps_connect",
    "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/ps_connect",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_ps_connect",
+   "file": "blueprints/teams_routes.py"
   },
   {
    "rule": "/api/teams/ps_status",
@@ -2151,10 +2199,22 @@
    "file": "main.py"
   },
   {
+   "rule": "/api/teams/ps_status",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_ps_status",
+   "file": "blueprints/teams_routes.py"
+  },
+  {
    "rule": "/api/teams/ps_teams",
    "method": "POST",
    "endpoint": "api_teams_ps_teams",
    "file": "main.py"
+  },
+  {
+   "rule": "/api/teams/ps_teams",
+   "method": "POST",
+   "endpoint": "teams_routes.api_teams_ps_teams",
+   "file": "blueprints/teams_routes.py"
   },
   {
    "rule": "/api/terraform/ci-validate",

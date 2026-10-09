@@ -6,10 +6,23 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, get_flashed_messages, jsonify, render_template_string, request
+
+from auth_module import requires_permission
 
 
 teams_bp = Blueprint('teams_routes', __name__)
+
+_CONTENT_MARKER = '{% block content %}{% endblock %}'
+
+
+@teams_bp.route('/teams')
+@requires_permission('dashboard')
+def teams_page():
+    """Teams page. Markup: templates/teams.html. The site layout comes from main.py via the feature loader."""
+    content = (Path(current_app.root_path) / 'templates' / 'teams.html').read_text(encoding='utf-8')
+    layout = current_app.config.get('_layout_template', _CONTENT_MARKER)
+    return render_template_string(layout.replace(_CONTENT_MARKER, content), request=request, get_flashed_messages=get_flashed_messages)
 
 
 @teams_bp.route('/api/teams/connect', methods=['POST'])

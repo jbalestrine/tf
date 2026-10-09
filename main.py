@@ -123,11 +123,6 @@ from templates.pages import (
 )
 
 
-
-
-
-
-
 # Add script dir back for local imports
 
 sys.path.insert(0, _script_dir)
@@ -139,9 +134,6 @@ from echo.conversation_storage import get_storage
 import re
 
 from collections import Counter
-
-
-
 
 
 from echo.identity import Echo
@@ -423,7 +415,6 @@ for folder in [app.config['UPLOAD_FOLDER'],app.config['SCRIPTS_FOLDER'],_data_di
     folder.mkdir(parents=True,exist_ok=True)
 
 
-
 # Initialize authentication modules if available
 if AUTH_MODULES_AVAILABLE:
     try:
@@ -482,7 +473,6 @@ with open('debug.log', 'a') as f:
     f.write("DEBUG: About to init chat...\n")
 
 
-
 # Helpers: environment boolean and generic value->bool parser
 
 def _env_bool(name, default=False):
@@ -494,7 +484,6 @@ def _env_bool(name, default=False):
         return default
 
     return str(v).strip().lower() in ('1', 'true', 'yes', 'on')
-
 
 
 def _parse_bool_val(v, default=None):
@@ -526,7 +515,6 @@ def _parse_bool_val(v, default=None):
     return default
 
 
-
 # Default for auto-continue (can be overridden by ECHO_AUTO_CONTINUE env var)
 
 app.config['ECHO_AUTO_CONTINUE'] = _env_bool('ECHO_AUTO_CONTINUE', True)
@@ -534,10 +522,8 @@ app.config['ECHO_AUTO_CONTINUE'] = _env_bool('ECHO_AUTO_CONTINUE', True)
 app.config['ECHO_CONTINUE_PROMPT'] = os.environ.get('ECHO_CONTINUE_PROMPT', 'Continue the previous answer to the user\'s question. Stay strictly on that topic and do not introduce unrelated facts or change the subject.')
 
 
-
     # Async image job tracker: job_id -> {'status','progress','path','error'}
 IMAGE_JOBS = {}
-
 
 
 def _start_output_cleanup_thread(retention_days=None, interval_hours=24):
@@ -581,7 +567,6 @@ def _start_output_cleanup_thread(retention_days=None, interval_hours=24):
     t.start()
 
 
-
 # start cleanup thread
 
 try:
@@ -591,7 +576,6 @@ try:
 except Exception:
 
     app.logger.exception('Failed to start echo output cleanup thread')
-
 
 
 # Optionally force a default model for debugging via ECHO_FORCE_MODEL.
@@ -687,13 +671,9 @@ except Exception:
 # Sessions index file (persistent metadata for chat sessions)
 
 
-
-
-
 # Runtime chat/model initialization
 
 chatbot = None
-
 
 
 def get_default_model_path():
@@ -717,13 +697,9 @@ def get_default_model_path():
     return str(candidate) if candidate.exists() else None
 
 
-
-
-
 def init_chat():
 
     """Initialize the Echo chat bot and (optionally) load the GGUF at runtime.
-
 
 
     Loading the heavy GGUF model is performed here so pytest collection
@@ -785,27 +761,9 @@ def init_chat():
         app.logger.exception('Chat initialization failed')
 
 
-
-
     except Exception:
 
         return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 enterprise_tf_gen = EnterpriseTerraformGenerator(_data_dir / 'terraform_enterprise')
@@ -818,30 +776,7 @@ ENTERPRISE_TF_JOBS = {}  # job_id -> generated project path
 # ---------------------------------------------------------------------------
 
 
-
-
 ###############################################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @app.route('/api/tf/apply', methods=['POST'])
@@ -870,21 +805,6 @@ def api_tf_apply():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @app.route('/api/tf/import', methods=['POST'])
 def api_tf_import():
     data = request.get_json(silent=True) or {}
@@ -904,9 +824,6 @@ def api_tf_import():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/tf/state')
 def api_tf_state():
     try:
@@ -915,9 +832,6 @@ def api_tf_state():
             return jsonify({'ok': False, 'error': 'state show not implemented for demo - requires state file'}), 501
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/tf/backup')
@@ -931,9 +845,6 @@ def api_tf_backup():
             return send_file(Path(tmpdir, 'terraform.tfstate'), as_attachment=True, download_name='terraform.tfstate.backup')
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 # ---------------------------------------------------------------------------  
@@ -982,16 +893,11 @@ def api_tf_enterprise_deploy_to_project():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
 # ---------------- Azure Resource Manager / Storage / ADO hooks ---------------------------------
 
 def _az_cli_available():
 
     return shutil.which('az') is not None
-
-
-
 
 
 @app.route('/api/azure/groups')
@@ -1021,9 +927,6 @@ def api_azure_groups():
         app.logger.exception('az group list failed')
 
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/azure/resources')
@@ -1069,9 +972,6 @@ def api_azure_resources():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/azure/storage/accounts')
 
 def api_azure_storage_accounts():
@@ -1099,9 +999,6 @@ def api_azure_storage_accounts():
         app.logger.exception('az storage account list failed')
 
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/azure/storage/containers', methods=['POST'])
@@ -1167,9 +1064,6 @@ def api_azure_storage_containers():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/azure/create_rg', methods=['POST'])
 
 def api_azure_create_rg():
@@ -1205,13 +1099,9 @@ def api_azure_create_rg():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
 # Simple CRUD for 3rd-party service hooks (Azure DevOps) stored locally and optionally executed via az devops
 
 HOOKS_FILE = Path(__file__).resolve().parent / 'data' / 'azure_hooks.json'
-
 
 
 def _load_hooks():
@@ -1229,7 +1119,6 @@ def _load_hooks():
     return {}
 
 
-
 def _save_hooks(h):
 
     try:
@@ -1241,9 +1130,6 @@ def _save_hooks(h):
     except Exception:
 
         app.logger.exception('Failed to save hooks file')
-
-
-
 
 
 @app.route('/api/ado/hooks', methods=['GET','POST','DELETE'])
@@ -1287,9 +1173,6 @@ def api_ado_hooks():
     return jsonify({'ok': True, 'hooks': hooks})
 
 
-
-
-
 @app.route('/api/ide/load', methods=['POST'])
 @requires_permission('web_ide')
 
@@ -1321,9 +1204,6 @@ def api_ide_load():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/ide/save', methods=['POST'])
 @requires_permission('web_ide')
 
@@ -1349,9 +1229,6 @@ def api_ide_save():
         return jsonify({'ok': False, 'error': str(e)}), 400
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/ide/execute', methods=['POST'])
@@ -1507,9 +1384,6 @@ def api_ide_execute():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
 # ---------------------------------------------------------------------------
 #  Marketplace API Routes
 # ---------------------------------------------------------------------------
@@ -1522,7 +1396,6 @@ def api_ide_execute():
 # Remote credential storage for IDE remote execution (basic, stored in data/ide_creds.json)
 
 CREDS_FILE = Path(__file__).resolve().parent / 'data' / 'ide_creds.json'
-
 
 
 @app.route('/api/ide/remote/creds', methods=['POST'])
@@ -1568,9 +1441,6 @@ def api_ide_remote_creds_save():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/ide/remote/creds', methods=['GET'])
 
 def api_ide_remote_creds_get():
@@ -1594,9 +1464,6 @@ def api_ide_remote_creds_get():
     except Exception as e:
 
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/ide/log', methods=['POST'])
@@ -1636,9 +1503,6 @@ def api_ide_log():
         app.logger.exception('Failed to write IDE client log')
 
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/ide/tree')
@@ -1817,9 +1681,6 @@ def api_ide_exec_async():
     return jsonify({'ok':True,'exec_id':exec_id})
 
 
-
-
-
 @app.route('/api/ide/exec_status')
 @requires_permission('web_ide')
 
@@ -1870,15 +1731,11 @@ def api_ide_exec_status():
     return jsonify({'ok':True,'job':res})
 
 
-
-
-
 def _resource_id_for(category: str, filename: str) -> str:
 
         # stable id to reference resources in index
 
         return f"{category}:{filename}"
-
 
 
 # Resources storage location and helpers
@@ -1892,13 +1749,11 @@ RESOURCES_INDEX_FILE = RESOURCES_DIR / 'index.json'
 INGEST_TASKS_FILE = RESOURCES_DIR / 'ingest_tasks.json'
 
 
-
 # Sessions index (persisted minimal session metadata)
 
 SESSIONS_INDEX_FILE = Path(__file__).resolve().parent / 'data' / 'sessions.json'
 
 SESSIONS_META_FILE = Path(__file__).resolve().parent / 'data' / 'sessions_meta.json'
-
 
 
 def _load_resources_index():
@@ -1950,7 +1805,6 @@ def _load_resources_index():
         return {}
 
 
-
 def _save_resources_index(idx: dict):
 
     try:
@@ -1962,7 +1816,6 @@ def _save_resources_index(idx: dict):
     except Exception:
 
         app.logger.exception('Failed to save resources index')
-
 
 
 def _load_ingest_tasks():
@@ -1986,7 +1839,6 @@ def _load_ingest_tasks():
         return {}
 
 
-
 def _save_ingest_tasks(tasks: dict):
 
     try:
@@ -1998,9 +1850,6 @@ def _save_ingest_tasks(tasks: dict):
     except Exception:
 
         app.logger.exception('Failed to save ingest tasks')
-
-
-
 
 
 def _load_sessions_index():
@@ -2024,9 +1873,6 @@ def _load_sessions_index():
         return {}
 
 
-
-
-
 def _save_sessions_index(idx: dict):
 
     try:
@@ -2040,13 +1886,9 @@ def _save_sessions_index(idx: dict):
         app.logger.exception('Failed to save sessions index')
 
 
-
-
-
 def _upsert_session_meta(sid: str, title: str = None):
 
     """Ensure a minimal session metadata entry exists and return it.
-
 
 
     Creates or updates `data/sessions.json` with `session_id`, `title`,
@@ -2116,11 +1958,6 @@ def _upsert_session_meta(sid: str, title: str = None):
         app.logger.exception('Upsert session meta failed')
 
         return {'session_id': sid, 'title': title or sid}
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -2211,11 +2048,6 @@ app.register_blueprint(diagnostics_routes.diagnostics_bp)
 app.register_blueprint(scm_routes.scm_bp)
 app.register_blueprint(wizard.wizard_bp)
 chatserv_routes.init_chatserv(app, Path(__file__).resolve().parent)
-
-
-
-
-
 
 
 def get_system_stats():
@@ -2309,7 +2141,6 @@ TRAIN_JOBS = {}
 TRAIN_JOBS_FILE = Path(__file__).parent / 'data' / 'models_output' / 'train_jobs.json'
 
 
-
 def _load_train_jobs():
 
     try:
@@ -2323,9 +2154,6 @@ def _load_train_jobs():
         app.logger.exception('Failed to load train jobs file')
 
     return {}
-
-
-
 
 
 def _start_cleanup_thread(retention_days=30):
@@ -2383,7 +2211,6 @@ def _start_cleanup_thread(retention_days=30):
     thread.start()
 
 
-
 def _save_train_jobs():
 
     try:
@@ -2395,7 +2222,6 @@ def _save_train_jobs():
     except Exception:
 
         app.logger.exception('Failed to save train jobs file')
-
 
 
 def _start_job_thread(exec_id, cmd, cwd=None):
@@ -2447,13 +2273,9 @@ def _start_job_thread(exec_id, cmd, cwd=None):
             job['finished_at'] = time.time()
 
 
-
     t = threading.Thread(target=runner, daemon=True)
 
     t.start()
-
-
-
 
 
 def _start_train_job(job_id, cmd, cwd=None):
@@ -2507,11 +2329,9 @@ def _start_train_job(job_id, cmd, cwd=None):
             _save_train_jobs()
 
 
-
     t = threading.Thread(target=runner, daemon=True)
 
     t.start()
-
 
 
 HTML_TEMPLATE="""<!DOCTYPE html>
@@ -2911,15 +2731,6 @@ function refreshIndex(){
     </body>
 
 </html>"""
-
-
-
-
-
-
-
-
-
 
 
 SCRIPTS_TEMPLATE="""{% extends "base.html" %}
@@ -5301,7 +5112,6 @@ function fetchSessions(){
 }
 
 
-
 // Resources in sidebar
 
 function fetchResourcesForSidebar(){
@@ -5315,7 +5125,6 @@ function fetchResourcesForSidebar(){
     }).catch(e=>{ console.error('Failed to fetch resources',e); document.getElementById('resource-list').textContent='Failed to load'; });
 
 }
-
 
 
 function populateResourceList(){
@@ -5371,7 +5180,6 @@ function populateResourceList(){
 }
 
 
-
 // fetch initial resources for sidebar
 
 function loadSessionPrefs(){
@@ -5407,7 +5215,6 @@ function loadSessionPrefs(){
 }
 
 
-
 function applyTranslations(){
 
     const t = TRANSLATIONS[CURRENT_LANG] || TRANSLATIONS['en'];
@@ -5441,7 +5248,6 @@ function applyTranslations(){
 }
 
 
-
 function saveSessionPrefs(){
 
     try{
@@ -5455,7 +5261,6 @@ function saveSessionPrefs(){
     }catch(e){console.error(e)}
 
 }
-
 
 
 function fetchSavedOutputs(){
@@ -5503,7 +5308,6 @@ function fetchSavedOutputs(){
 }
 
 
-
 loadSessionPrefs();
 
 fetchSavedOutputs();
@@ -5511,7 +5315,6 @@ fetchSavedOutputs();
 fetchResourcesForSidebar();
 
 fetchModels();
-
 
 
 function fetchModels(){
@@ -5562,7 +5365,6 @@ function fetchModels(){
 }
 
 
-
 function selectModel(){
 
     const sel = document.getElementById('modelSelect');
@@ -5580,7 +5382,6 @@ function selectModel(){
 }
 
 
-
 function appendEcho(msg){
 
     const list = document.getElementById('chatMessages');
@@ -5594,7 +5395,6 @@ function appendEcho(msg){
 }
 
 
-
 function uploadPersona(file){
 
     if(!file) return;
@@ -5606,7 +5406,6 @@ function uploadPersona(file){
 }
 
 
-
 function uploadTraining(file){
 
     if(!file) return;
@@ -5616,7 +5415,6 @@ function uploadTraining(file){
     fetch('/api/echo/upload_ingest',{method:'POST',body:fd}).then(r=>r.json()).then(j=>{ if(j.ok) appendEcho('Training uploaded: '+j.saved); else appendEcho('Upload failed: '+(j.error||JSON.stringify(j))); }).catch(e=>{ appendEcho('Upload failed'); console.error(e); });
 
 }
-
 
 
 function fetchTrainingFiles(){
@@ -5638,7 +5436,6 @@ function fetchTrainingFiles(){
     }).catch(e=>{console.error('Failed to fetch training files',e)});
 
 }
-
 
 
 function startTraining(){
@@ -5668,7 +5465,6 @@ function startTraining(){
     }).catch(e=>{ appendEcho('Start training request failed'); console.error(e); });
 
 }
-
 
 
 function addTrainingJobToList(job_id){
@@ -5714,11 +5510,9 @@ function addTrainingJobToList(job_id){
 }
 
 
-
 // refresh jobs on load
 
 fetchTrainingFiles();
-
 
 
 function loadSession(sid){
@@ -5758,7 +5552,6 @@ function loadSession(sid){
 }
 
 
-
 function deleteSession(sid){
 
     fetch('/api/echo/session/'+encodeURIComponent(sid),{method:'DELETE'}).then(r=>r.json()).then(j=>{
@@ -5770,13 +5563,11 @@ function deleteSession(sid){
 }
 
 
-
 function toggleFavorite(sid){
 
     fetch('/api/echo/session/favorite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})}).then(r=>r.json()).then(j=>{ fetchSessions(); }).catch(e=>console.error('Toggle favorite failed',e));
 
 }
-
 
 
 function createSession(){
@@ -6335,7 +6126,6 @@ function modStartTrainJob(){
 }
 
 
-
 // Upload / ingest
 function echoUpload(){
   const file = document.getElementById('echo-upload-file').files[0];
@@ -6701,1253 +6491,12 @@ def dashboard():
 
     return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}',DASHBOARD_TEMPLATE.replace('{% extends "base.html" %}','').replace('{% block content %}','').replace('{% endblock %}','')),stats=stats,request=request,get_flashed_messages=get_flashed_messages)
 
-TEAMS_TEMPLATE = """
-<style>
-.teams-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; margin-top: 16px; }
-@media(max-width:860px){ .teams-layout{ grid-template-columns:1fr; } }
-.teams-panel { background:#1e1e2e; border:1px solid #2a2a3a; border-radius:10px; padding:18px; }
-.teams-panel h3 { margin:0 0 14px; font-size:1rem; color:#7ec8e3; border-bottom:1px solid #2a2a3a; padding-bottom:8px; }
-.tm-field { margin-bottom:10px; }
-.tm-field label { display:block; font-size:.78rem; color:#888; margin-bottom:3px; }
-.tm-input { width:100%; background:#111; border:1px solid #333; color:#eee; padding:6px 9px; border-radius:5px; font-size:.83rem; box-sizing:border-box; }
-.tm-input:focus { outline:none; border-color:#7ec8e3; }
-.tm-btn { background:#7ec8e3; color:#111; border:none; padding:7px 16px; border-radius:5px; font-size:.85rem; font-weight:600; cursor:pointer; margin-top:4px; }
-.tm-btn:hover { background:#a0d8ef; }
-.tm-btn-danger { background:#c0392b; color:#fff; }
-.tm-btn-danger:hover { background:#e74c3c; }
-.tm-btn-sm { padding:3px 10px; font-size:.76rem; }
-.tm-status { font-size:.78rem; margin-top:6px; min-height:1.2em; }
-.cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-.cal-nav { background:#252535; border:1px solid #333; color:#eee; padding:4px 12px; border-radius:5px; cursor:pointer; font-size:.85rem; }
-.cal-nav:hover { background:#303045; }
-.cal-title { font-size:1.05rem; font-weight:600; color:#eee; }
-.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-.cal-day-label { text-align:center; font-size:.72rem; color:#666; padding:4px 0; font-weight:600; }
-.cal-cell { min-height:72px; background:#161620; border:1px solid #222; border-radius:4px; padding:4px; position:relative; cursor:pointer; transition:background .15s; }
-.cal-cell:hover { background:#1e1e30; }
-.cal-cell.today { border-color:#7ec8e3; background:#1a1a2e; }
-.cal-cell.other-month { opacity:.35; }
-.cal-num { font-size:.72rem; color:#666; margin-bottom:2px; }
-.cal-cell.today .cal-num { color:#7ec8e3; font-weight:700; }
-.cal-event { font-size:.68rem; background:#2a4a6a; color:#7ec8e3; border-radius:3px; padding:1px 4px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
-.cal-event.ev-teams { background:#1b3a6b; color:#7aadff; }
-.cal-event.ev-busy { background:#4a1a2a; color:#ff7a9a; }
-.cal-event.ev-tentative { background:#3a3a1a; color:#e0c050; }
-.detail-panel { background:#1a1a2e; border:1px solid #2a3a5a; border-radius:8px; padding:14px; margin-top:12px; }
-.detail-panel h4 { margin:0 0 8px; color:#7ec8e3; font-size:.92rem; }
-.detail-row { display:flex; gap:8px; margin-bottom:5px; font-size:.8rem; }
-.detail-row .dk { color:#666; min-width:80px; }
-.detail-row .dv { color:#ccc; flex:1; word-break:break-word; }
-.tag-online { background:#1a4a2a; color:#4caf50; padding:1px 7px; border-radius:10px; font-size:.72rem; }
-.tag-offline { background:#2a2a2a; color:#888; padding:1px 7px; border-radius:10px; font-size:.72rem; }
-.teams-connected { display:flex; align-items:center; gap:8px; font-size:.8rem; color:#4caf50; margin-bottom:8px; }
-.teams-dot { width:8px; height:8px; background:#4caf50; border-radius:50%; }
-.chat-item { padding:8px 10px; border-radius:6px; cursor:pointer; border:1px solid #2a2a3a; background:#161620; }
-.chat-item:hover { background:#1e1e30; }
-.chat-item.selected { border-color:#7ec8e3; background:#1a1a2e; }
-.chat-item-name { font-size:.82rem; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.chat-item-preview { font-size:.72rem; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-.msg-bubble { max-width:75%; padding:7px 12px; border-radius:10px; font-size:.82rem; line-height:1.45; }
-.msg-row { display:flex; }
-.msg-row.me { justify-content:flex-end; }
-.msg-row.them { justify-content:flex-start; }
-.msg-row.me .msg-bubble { background:#1b3a6b; color:#a8d4ff; border-bottom-right-radius:2px; }
-.msg-row.them .msg-bubble { background:#1e1e2e; color:#ddd; border:1px solid #2a2a3a; border-bottom-left-radius:2px; }
-.msg-sender { font-size:.68rem; color:#666; margin-bottom:2px; }
-.msg-time { font-size:.65rem; color:#444; margin-top:3px; text-align:right; }
-</style>
-
-<h2>📅 Microsoft Teams</h2>
-<p style="color:#888;font-size:.88rem;">Connect to Microsoft Graph to load your calendar, view events, and chat.</p>
-
-<!-- ── Page tabs ───────────────────────── -->
-<div style="display:flex;gap:0;margin-bottom:18px;border-radius:8px;overflow:hidden;border:1px solid #2a2a3a;width:fit-content;">
-  <button id="tc-main-cal" onclick="tcMainTab('cal')" style="padding:8px 22px;font-size:.88rem;font-weight:600;border:none;cursor:pointer;background:#252535;color:#7ec8e3;">📅 Calendar</button>
-  <button id="tc-main-chat" onclick="tcMainTab('chat')" style="padding:8px 22px;font-size:.88rem;font-weight:600;border:none;cursor:pointer;background:#161620;color:#666;">💬 Chat</button>
-</div>
-
-<!-- Calendar pane -->
-<div id="tc-pane-cal">
-<div class="teams-layout">
-
-  <!-- Left: connection panel -->
-  <div>
-    <div class="teams-panel">
-      <h3>🔑 Connection Settings</h3>
-      <div id="teams-connected-banner" style="display:none;" class="teams-connected">
-        <span class="teams-dot"></span> Connected
-        <span id="teams-connected-who" style="color:#aaa;"></span>
-        <button class="tm-btn tm-btn-danger tm-btn-sm" onclick="teamsDisconnect()" style="margin-top:0;">Disconnect</button>
-      </div>
-
-      <!-- ── Teams-only login card ── -->
-      <div id="tm-login-card" style="background:#0d0d1e;border:1px solid #2a2a4a;border-radius:10px;padding:18px;margin-bottom:10px;">
-
-        <!-- Okta SSO banner — auto-shown when Okta session is active -->
-        <div id="tm-sso-banner" style="display:none;background:#0a1a14;border:1px solid #2e7d52;border-radius:8px;padding:14px;margin-bottom:12px;text-align:center;">
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:1.1rem;">&#128274;</span>
-            <span style="font-size:.88rem;color:#4caf50;font-weight:700;">Okta SSO Connected</span>
-          </div>
-          <div id="tm-sso-who" style="font-size:.8rem;color:#aaa;margin-bottom:10px;word-break:break-all;"></div>
-          <button class="tm-btn" onclick="tmOktaSSO()" style="width:100%;padding:10px;font-size:.92rem;background:#1b5e20;border-color:#2e7d52;letter-spacing:.3px;">
-            &#128274;&nbsp; Login to Teams via Okta SSO
-          </button>
-          <div style="margin-top:8px;">
-            <button onclick="document.getElementById('tm-manual-section').style.display='';this.parentNode.style.display='none';"
-              style="background:none;border:none;color:#555;font-size:.72rem;cursor:pointer;padding:2px;">or use a different account ↓</button>
-          </div>
-        </div>
-
-        <!-- Manual sign-in section -->
-        <div id="tm-manual-section">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="7" fill="#5059C9"/>
-            <path d="M20.5 10h-4a.5.5 0 0 0-.5.5v1h4.5A2.5 2.5 0 0 1 23 14v5.5a.5.5 0 0 0 .5.5h.5A1.5 1.5 0 0 0 25.5 18.5v-6A2.5 2.5 0 0 0 23 10h-2.5z" fill="#fff" opacity=".7"/>
-            <rect x="8" y="12" width="13" height="12" rx="2" fill="#fff"/>
-            <path d="M14.5 15.5v5M12 17.5h5" stroke="#5059C9" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <div>
-            <div style="font-size:.95rem;font-weight:700;color:#e0e0ff;">Microsoft Teams</div>
-            <div style="font-size:.72rem;color:#555;">Sign in with your work or school account</div>
-          </div>
-        </div>
-
-        <!-- Email hint -->
-        <div class="tm-field">
-          <label style="color:#7ec8e3;">Work email <span style="color:#556;font-size:.71rem;">(optional)</span></label>
-          <input id="tm-quick-email" class="tm-input" type="email" placeholder="you@company.com (optional)" autocomplete="username"
-            style="font-size:.9rem;padding:9px 12px;"
-            onkeydown="if(event.key==='Enter')tmQuickLogin()">
-        </div>
-
-        <!-- Tenant hint (optional) -->
-        <div class="tm-field">
-          <label style="color:#7ec8e3;">Tenant ID <span style="color:#555;font-size:.71rem;">(optional — leave blank to auto-detect)</span></label>
-          <input id="tm-quick-tenant" class="tm-input" placeholder="common" autocomplete="off"
-            style="font-size:.87rem;padding:7px 12px;">
-        </div>
-
-        <!-- Client ID (Office 365 / Azure AD app registration) -->
-        <div class="tm-field">
-          <label style="color:#7ec8e3;">App Client ID <span style="color:#555;font-size:.71rem;">(from your Office 365 app registration)</span></label>
-          <input id="tm-quick-clientid" class="tm-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off"
-            style="font-size:.83rem;padding:7px 12px;letter-spacing:.3px;font-family:monospace;">
-        </div>
-
-        <button class="tm-btn" onclick="tmQuickLogin()" style="width:100%;margin-top:4px;padding:10px;font-size:.92rem;letter-spacing:.3px;">
-          &#128274;&nbsp; Sign in with Microsoft
-        </button>
-        </div><!-- /tm-manual-section -->
-
-        <div class="tm-status" id="tm-quick-status" style="margin-top:8px;text-align:center;"></div>
-
-        <!-- Device-code box (shown after button click) -->
-        <div id="tm-quick-device-box" style="display:none;margin-top:12px;background:#0a0a1a;border:1px solid #5059C9;border-radius:8px;padding:14px;text-align:center;">
-          <div style="font-size:.75rem;color:#aaa;margin-bottom:6px;">1. Open in any browser:</div>
-          <a id="tm-quick-url" href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" style="color:#7ec8e3;font-size:.85rem;font-weight:600;">microsoft.com/devicelogin ↗</a>
-          <div style="font-size:.75rem;color:#aaa;margin:10px 0 4px;">2. Enter this one-time code:</div>
-          <div id="tm-quick-code" style="font-size:2rem;font-weight:900;color:#7ec8e3;letter-spacing:8px;padding:6px 0;font-family:monospace;background:#111;border-radius:6px;margin:6px 0;"></div>
-          <div id="tm-quick-expires" style="font-size:.7rem;color:#555;margin-bottom:10px;"></div>
-          <button class="tm-btn tm-btn-sm" onclick="tmQuickPoll(false)">&#8635;&nbsp;I've signed in — check now</button>
-          <div id="tm-quick-poll-status" style="font-size:.75rem;margin-top:6px;min-height:1em;"></div>
-        </div>
-      </div>
-
-      <!-- Advanced toggle -->
-      <div style="text-align:center;margin-bottom:8px;">
-        <button onclick="tmToggleAdvanced()" style="background:none;border:none;color:#444;font-size:.75rem;cursor:pointer;padding:2px 6px;" id="tm-adv-toggle">⚙ Advanced auth options</button>
-      </div>
-
-      <div id="tm-advanced-panel" style="display:none;">
-        <!-- Auth mode tabs -->
-        <div style="display:flex;gap:0;margin-bottom:12px;border-radius:6px;overflow:hidden;border:1px solid #333;">
-          <button id="tm-tab-upw" onclick="tmSetMode('upw')" style="flex:1;padding:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:#252535;color:#7ec8e3;">&#128100; User &amp; Password</button>
-          <button id="tm-tab-mfa" onclick="tmSetMode('mfa')" style="flex:1;padding:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:#161620;color:#666;">&#128274; MFA Login</button>
-          <button id="tm-tab-app" onclick="tmSetMode('app')" style="flex:1;padding:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:#161620;color:#666;">&#9881; App Creds</button>
-          <button id="tm-tab-ps" onclick="tmSetMode('ps')" style="flex:1;padding:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:#161620;color:#666;">&#128187; PowerShell</button>
-        </div>
-
-        <!-- Shared: Tenant ID -->
-        <div class="tm-field">
-          <label>Tenant ID <span style="color:#555;font-size:.72rem;">(or use <em>common</em>)</span></label>
-          <input id="tm-tenant" class="tm-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx or common">
-        </div>
-
-        <!-- Username/Password mode fields -->
-        <div id="tm-mode-upw">
-          <div class="tm-field">
-            <label>Username (email)</label>
-            <input id="tm-username" class="tm-input" placeholder="you@company.com" autocomplete="username">
-          </div>
-          <div class="tm-field">
-            <label>Password</label>
-            <input id="tm-password" class="tm-input" type="password" placeholder="Your Microsoft account password" autocomplete="current-password">
-            <small style="color:#555;font-size:.71rem;">Does not work if MFA is required on your account.</small>
-          </div>
-        </div>
-
-        <!-- App Credentials mode fields -->
-        <div id="tm-mode-app" style="display:none;">
-          <div class="tm-field">
-            <label>Client ID</label>
-            <input id="tm-client-id" class="tm-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-          </div>
-          <div class="tm-field">
-            <label>Client Secret</label>
-            <input id="tm-client-secret" class="tm-input" type="password" placeholder="Your app client secret">
-          </div>
-          <div class="tm-field">
-            <label>User UPN to read calendar for</label>
-            <input id="tm-upn" class="tm-input" placeholder="user@yourtenant.com">
-            <small style="color:#555;font-size:.71rem;">Requires Calendars.Read application permission granted by admin.</small>
-          </div>
-        </div>
-
-        <!-- MFA / Device Code mode -->
-        <div id="tm-mode-mfa" style="display:none;">
-          <p style="font-size:.78rem;color:#aaa;margin:0 0 10px;">Uses Microsoft&#8217;s device login &mdash; works with MFA, no password stored in this app.</p>
-          <button class="tm-btn" onclick="teamsDeviceStart()" id="tm-device-start-btn">&#128274; Start Device Login</button>
-          <div id="tm-device-code-box" style="display:none;margin-top:12px;background:#0d0d1a;border:1px solid #00b4d8;border-radius:8px;padding:14px;text-align:center;">
-            <div style="font-size:.78rem;color:#aaa;margin-bottom:6px;">1. Open this link in any browser:</div>
-            <a id="tm-device-url" href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" style="color:#7ec8e3;font-size:.85rem;">https://microsoft.com/devicelogin &#8599;</a>
-            <div style="font-size:.78rem;color:#aaa;margin:10px 0 4px;">2. Enter this code:</div>
-            <div id="tm-device-code" style="font-size:1.8rem;font-weight:900;color:#00b4d8;letter-spacing:6px;padding:6px 0;font-family:monospace;"></div>
-            <div style="font-size:.72rem;color:#555;margin-top:2px;" id="tm-device-expires"></div>
-            <button class="tm-btn tm-btn-sm" onclick="teamsDevicePoll(false)" style="margin-top:10px;">&#8635; I&#8217;ve signed in &mdash; check now</button>
-            <div class="tm-status" id="tm-device-poll-status" style="margin-top:6px;"></div>
-          </div>
-          <div class="tm-status" id="tm-device-start-status" style="margin-top:6px;"></div>
-        </div>
-
-        <!-- PowerShell / MicrosoftTeams module mode -->
-        <div id="tm-mode-ps" style="display:none;">
-          <p style="font-size:.78rem;color:#aaa;margin:0 0 8px;">Uses the <strong>MicrosoftTeams</strong> PowerShell module already installed on this machine. If you&#8217;re already signed in via PowerShell (<code>Connect-MicrosoftTeams</code>) the session is reused.</p>
-          <button class="tm-btn tm-btn-sm" onclick="teamsPSStatus()" style="margin-bottom:8px;">&#128269; Check Module &amp; Session</button>
-          <div class="tm-status" id="tm-ps-status" style="margin-bottom:8px;"></div>
-          <button class="tm-btn" id="tm-ps-connect-btn" onclick="teamsPSConnect()">&#128187; Connect-MicrosoftTeams</button>
-          <div class="tm-status" id="tm-ps-conn-status" style="margin-top:6px;"></div>
-          <div id="tm-ps-teams-box" style="display:none;margin-top:12px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:.78rem;font-weight:600;color:#7ec8e3;">Teams</span>
-              <button class="tm-btn tm-btn-sm" onclick="teamsPSLoadTeams()">&#8635; Load Teams</button>
-            </div>
-            <div id="tm-ps-teams-list" style="max-height:200px;overflow-y:auto;font-size:.75rem;"></div>
-          </div>
-        </div>
-
-        <button class="tm-btn" id="tm-connect-btn" onclick="teamsConnect()">&#128279; Connect</button>
-        <div class="tm-status" id="tm-conn-status"></div>
-      </div>
-    </div>
-
-    <div class="teams-panel" style="margin-top:14px;">
-      <h3>📆 Date Range</h3>
-      <div class="tm-field">
-        <label>Start</label>
-        <input id="tm-range-start" class="tm-input" type="date">
-      </div>
-      <div class="tm-field">
-        <label>End</label>
-        <input id="tm-range-end" class="tm-input" type="date">
-      </div>
-      <button class="tm-btn" onclick="teamsLoadRange()">📥 Load Events</button>
-      <div class="tm-status" id="tm-load-status"></div>
-    </div>
-
-    <div class="teams-panel" style="margin-top:14px;">
-      <h3>🔍 Filter</h3>
-      <div class="tm-field">
-        <label>Search subject / body</label>
-        <input id="tm-filter-text" class="tm-input" placeholder="meeting, standup…" oninput="teamsApplyFilter()">
-      </div>
-      <div class="tm-field">
-        <label>Show</label>
-        <select id="tm-filter-type" class="tm-input" onchange="teamsApplyFilter()">
-          <option value="all">All events</option>
-          <option value="online">Online / Teams meetings only</option>
-          <option value="busy">Busy</option>
-          <option value="tentative">Tentative</option>
-          <option value="free">Free</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <!-- Right: calendar -->
-  <div>
-    <div class="teams-panel">
-      <div class="cal-header">
-        <button class="cal-nav" onclick="calMove(-1)">&#8249;</button>
-        <span class="cal-title" id="cal-month-title">—</span>
-        <button class="cal-nav" onclick="calMove(1)">&#8250;</button>
-      </div>
-      <div class="cal-grid" id="cal-day-labels">
-        <div class="cal-day-label">Sun</div><div class="cal-day-label">Mon</div>
-        <div class="cal-day-label">Tue</div><div class="cal-day-label">Wed</div>
-        <div class="cal-day-label">Thu</div><div class="cal-day-label">Fri</div>
-        <div class="cal-day-label">Sat</div>
-      </div>
-      <div class="cal-grid" id="cal-cells" style="margin-top:4px;"></div>
-      <div id="cal-empty" style="text-align:center;color:#555;padding:30px 0;font-size:.85rem;">Connect and load events to populate the calendar.</div>
-    </div>
-
-    <div id="tm-event-detail" class="detail-panel" style="display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h4 id="tm-ev-title">—</h4>
-        <button onclick="document.getElementById('tm-event-detail').style.display='none'" style="background:none;border:none;color:#666;font-size:1.1rem;cursor:pointer;">✕</button>
-      </div>
-      <div class="detail-row"><span class="dk">When</span><span class="dv" id="tm-ev-when">—</span></div>
-      <div class="detail-row"><span class="dk">Where</span><span class="dv" id="tm-ev-where">—</span></div>
-      <div class="detail-row"><span class="dk">Organizer</span><span class="dv" id="tm-ev-org">—</span></div>
-      <div class="detail-row"><span class="dk">Status</span><span class="dv" id="tm-ev-status">—</span></div>
-      <div class="detail-row"><span class="dk">Type</span><span class="dv" id="tm-ev-type">—</span></div>
-      <div class="detail-row" id="tm-ev-link-row" style="display:none;"><span class="dk">Join URL</span><span class="dv"><a id="tm-ev-link" href="#" target="_blank" style="color:#7ec8e3;">Open Teams meeting ↗</a></span></div>
-      <div class="detail-row"><span class="dk">Body</span><span class="dv" id="tm-ev-body" style="max-height:100px;overflow:auto;">—</span></div>
-    </div>
-  </div>
-</div>
-
-</div><!-- /tc-pane-cal -->
-
-<!-- Chat pane -->
-<div id="tc-pane-chat" style="display:none;">
-
-  <!-- Chat pane top bar -->
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
-    <div id="chat-conn-badge" style="display:none;" class="teams-connected" style="margin:0;">
-      <span class="teams-dot"></span>
-      <span id="chat-conn-who" style="font-size:.8rem;"></span>
-    </div>
-    <div id="chat-noconn-msg" style="display:none;font-size:.82rem;color:#f90;">
-      &#9888; Not connected &mdash; <a href="javascript:void(0)" onclick="tcMainTab('cal')" style="color:#7ec8e3;">go to Calendar tab to connect</a> first.
-    </div>
-    <!-- Inline auth box shown when PS connected but Graph token missing -->
-    <div id="chat-needs-graph-msg" style="display:none;background:#0d0d1e;border:1px solid #5059C9;border-radius:8px;padding:12px 16px;font-size:.82rem;">
-      &#128274; <strong style="color:#7ec8e3;">One more step needed</strong> &mdash; authorize chat access with Microsoft.
-      <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
-        <input id="chat-inline-tenant" class="tm-input" placeholder="your-domain.com or tenant ID" autocomplete="off" style="font-size:.78rem;padding:5px 8px;flex:1;max-width:240px;">
-        <button class="tm-btn tm-btn-sm" onclick="chatInlineAuth()">&#128274; Authorize</button>
-      </div>
-      <div id="chat-inline-auth-box" style="display:none;margin-top:10px;text-align:center;background:#0a0a1a;border:1px solid #5059C9;border-radius:6px;padding:12px;">
-        <div style="font-size:.75rem;color:#aaa;margin-bottom:6px;">Open: <a href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" style="color:#7ec8e3;font-weight:600;">microsoft.com/devicelogin ↗</a></div>
-        <div id="chat-inline-code" style="font-size:1.8rem;font-weight:900;color:#7ec8e3;letter-spacing:8px;font-family:monospace;padding:6px 0;background:#111;border-radius:5px;margin:6px 0;"></div>
-        <button class="tm-btn tm-btn-sm" onclick="chatInlinePoll(false)" style="margin-top:4px;">&#8635; I've signed in &mdash; check now</button>
-        <div id="chat-inline-poll-st" style="font-size:.75rem;margin-top:5px;"></div>
-      </div>
-      <div id="chat-inline-start-st" style="font-size:.75rem;margin-top:5px;"></div>
-    </div>
-    <div style="margin-left:auto;display:flex;gap:8px;">
-      <a href="https://teams.microsoft.com/v2/" target="_blank" rel="noopener" class="tm-btn tm-btn-sm" style="text-decoration:none;">&#128279; Open Teams &#8599;</a>
-      <button class="tm-btn tm-btn-sm" onclick="chatLoad()">&#8635; Refresh</button>
-    </div>
-  </div>
-
-  <div class="teams-layout" style="grid-template-columns:280px 1fr;">
-
-    <!-- Chat list -->
-    <div>
-      <div class="teams-panel" style="height:100%;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <h3 style="margin:0;padding:0;border:none;">&#128172; Recent Chats</h3>
-        </div>
-        <div class="tm-status" id="chat-list-status"></div>
-        <div id="chat-list" style="display:flex;flex-direction:column;gap:4px;max-height:520px;overflow-y:auto;margin-top:6px;"></div>
-      </div>
-    </div>
-
-    <!-- Message view -->
-    <div>
-      <div class="teams-panel" style="display:flex;flex-direction:column;gap:10px;">
-        <div id="chat-header" style="display:flex;align-items:center;justify-content:space-between;">
-          <h3 style="margin:0;padding:0;border:none;" id="chat-title">Select a chat ←</h3>
-          <button class="tm-btn tm-btn-sm" onclick="chatRefreshMsgs()" id="chat-refresh-btn" style="display:none;">&#8635; Refresh</button>
-        </div>
-        <div id="chat-msgs" style="flex:1;min-height:320px;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px 0;"></div>
-        <div id="chat-compose" style="display:none;margin-top:4px;">
-          <div style="display:flex;gap:8px;">
-            <input id="chat-input" class="tm-input" placeholder="Type a message…" style="flex:1;" onkeydown="if(event.key==='Enter'&amp;&amp;!event.shiftKey){event.preventDefault();chatSend();}">
-            <button class="tm-btn" onclick="chatSend()">Send &#10148;</button>
-            <a id="chat-open-teams-link" href="https://teams.microsoft.com/v2/" target="_blank" rel="noopener" class="tm-btn" style="text-decoration:none;background:#444;color:#eee;" title="Open this chat in Teams">&#8599;</a>
-          </div>
-          <div class="tm-status" id="chat-send-status"></div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div><!-- /tc-pane-chat -->
-
-<script>
-// ── Teams Calendar state ────────────────────────────────────────────────────
-let _teamsToken = null;
-let _teamsUpn   = null;
-let _teamsEvents = [];  // raw from API
-let _teamsFiltered = []; // after filter
-let _calYear = new Date().getFullYear();
-let _calMonth = new Date().getMonth();
-let _tmMode = 'upw';
-var _deviceCode = null;
-var _deviceInterval = null;
-var _devicePollTenant = 'common';
-var _devicePollClientId = '';
-
-// Init date range defaults
-(function(){
-  const now = new Date();
-  const y = now.getFullYear(), m = now.getMonth();
-  const s = new Date(y, m, 1);
-  const e = new Date(y, m+1, 0);
-  const localDate = d => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
-  document.getElementById('tm-range-start').value = localDate(s);
-  document.getElementById('tm-range-end').value   = localDate(e);
-  calRender();
-  // Restore saved creds
-  const saved = JSON.parse(localStorage.getItem('tm_creds')||'{}');
-  if(saved.tenant)    document.getElementById('tm-tenant').value = saved.tenant;
-  if(saved.username)  document.getElementById('tm-username').value = saved.username;
-  if(saved.client_id) document.getElementById('tm-client-id').value = saved.client_id;
-  if(saved.upn)       document.getElementById('tm-upn').value = saved.upn;
-  if(saved.mode)      tmSetMode(saved.mode);
-  // Restore quick-login email/tenant/clientid
-  if(saved.quick_email)    { var qe=document.getElementById('tm-quick-email');    if(qe) qe.value=saved.quick_email; }
-  if(saved.quick_tenant)   { var qt=document.getElementById('tm-quick-tenant');   if(qt) qt.value=saved.quick_tenant; }
-  if(saved.quick_clientid) { var qc=document.getElementById('tm-quick-clientid'); if(qc) qc.value=saved.quick_clientid; }
-  // Check for Okta SSO (persisted from Okta page)
-  setTimeout(tmCheckOktaSSO, 100);
-})();
-
-// ── Quick / dedicated Teams login ─────────────────────────────────────────
-var _tmQuickDeviceCode = null;
-var _tmQuickPollInterval = null;
-
-function tmToggleAdvanced(){
-  var panel = document.getElementById('tm-advanced-panel');
-  var btn   = document.getElementById('tm-adv-toggle');
-  var show  = panel.style.display === 'none';
-  panel.style.display = show ? '' : 'none';
-  btn.textContent = show ? '⚙ Hide advanced options' : '⚙ Advanced auth options';
-  btn.style.color = show ? '#7ec8e3' : '#444';
-}
-
-function tmQuickLogin(){
-  var email    = (document.getElementById('tm-quick-email').value||'').trim();
-  var tenant   = (document.getElementById('tm-quick-tenant').value||'').trim() || 'common';
-  var clientId = (document.getElementById('tm-quick-clientid').value||'').trim();
-  var st       = document.getElementById('tm-quick-status');
-  var box      = document.getElementById('tm-quick-device-box');
-  st.textContent='Starting sign-in…';
-  box.style.display='none';
-  if(_tmQuickPollInterval){ clearInterval(_tmQuickPollInterval); _tmQuickPollInterval=null; }
-  // Persist email hint
-  try{
-    var s=JSON.parse(localStorage.getItem('tm_creds')||'{}');
-    s.quick_email=email; s.quick_tenant=tenant; s.quick_clientid=clientId;
-    localStorage.setItem('tm_creds',JSON.stringify(s));
-  }catch(e){}
-  var startBody = {tenant_id:tenant};
-  if(clientId) startBody.client_id = clientId;
-  fetch('/api/teams/device_start',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(startBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.user_code){
-      _tmQuickDeviceCode  = j.device_code;
-      _devicePollTenant   = tenant;
-      _devicePollClientId = clientId;
-      _teamsUpn           = email;
-      document.getElementById('tm-quick-code').textContent = j.user_code;
-      var urlEl = document.getElementById('tm-quick-url');
-      urlEl.href = j.verification_uri||'https://microsoft.com/devicelogin';
-      document.getElementById('tm-quick-expires').textContent = j.expires_in ? 'Code expires in '+Math.round(j.expires_in/60)+' min' : '';
-      box.style.display='';
-      st.innerHTML='<span style="color:#7ec8e3;">Code ready ↑</span>';
-      _tmQuickPollInterval = setInterval(function(){ tmQuickPoll(true); }, 5000);
-    } else {
-      st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||('Request failed ('+result.ok+')'))+'</span>';
-    }
-  }).catch(function(e){ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function tmShowManualSection(btn){
-  var ms = document.getElementById('tm-manual-section');
-  if(ms) ms.style.display='';
-  if(btn && btn.parentNode) btn.parentNode.style.display='none';
-}
-
-function tmCheckOktaSSO(){
-  var ssoBanner = document.getElementById('tm-sso-banner');
-  var manualSec = document.getElementById('tm-manual-section');
-  if(!ssoBanner || !manualSec) return;
-  if(_teamsToken){ ssoBanner.style.display='none'; manualSec.style.display='none'; return; }
-  // Read Okta identity from localStorage (persisted by Okta page)
-  var sso = null;
-  try{ sso = JSON.parse(localStorage.getItem('okta_sso')||'null'); }catch(e){}
-  if(sso && sso.session_id && sso.login){
-    document.getElementById('tm-sso-who').textContent = sso.login;
-    ssoBanner.style.display = '';
-    manualSec.style.display = 'none';
-  } else {
-    ssoBanner.style.display = 'none';
-    manualSec.style.display = '';
-  }
-}
-
-function tmOktaSSO(){
-  var st = document.getElementById('tm-quick-status');
-  // Read Okta identity from localStorage
-  var sso = null;
-  try{ sso = JSON.parse(localStorage.getItem('okta_sso')||'null'); }catch(e){}
-  if(!sso || !sso.session_id){
-    if(st) st.innerHTML='<span style="color:#f90;">&#9888; Sign into Okta first (<a href="/okta" style="color:#7ec8e3;">go to Okta page</a>), then come back here.</span>';
-    return;
-  }
-  // Pre-fill email from Okta
-  document.getElementById('tm-quick-email').value = sso.login || '';
-  // Derive Microsoft tenant hint from Okta domain: acme.okta.com → acme.com
-  if(sso.domain){
-    var t = sso.domain.replace(/[.]okta[.]com$/i,'').replace(/[.]oktapreview[.]com$/i,'');
-    if(t && t.indexOf('.') === -1) t = t + '.com';
-    document.getElementById('tm-quick-tenant').value = t || 'common';
-  }
-  // Reveal manual section so the device-code box can appear below it
-  document.getElementById('tm-manual-section').style.display = '';
-  // Launch device-code flow — Microsoft will redirect through Okta as IdP
-  tmQuickLogin();
-}
-
-function tmQuickPoll(auto){
-  var st = document.getElementById('tm-quick-poll-status');
-  if(!_tmQuickDeviceCode){ if(st) st.textContent='\u26A0 Start sign-in first.'; return; }
-  if(!auto && st) st.textContent='Checking\u2026';
-  var pollBody = {tenant_id:_devicePollTenant, device_code:_tmQuickDeviceCode};
-  if(_devicePollClientId) pollBody.client_id = _devicePollClientId;
-  fetch('/api/teams/device_poll',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(pollBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.token){
-      if(_tmQuickPollInterval){ clearInterval(_tmQuickPollInterval); _tmQuickPollInterval=null; }
-      _teamsToken = j.token;
-      if(j.upn) _teamsUpn = j.upn;
-      var who = _teamsUpn || '';
-      // Update banner and login card
-      document.getElementById('tm-login-card').innerHTML=
-        '<div style="text-align:center;padding:12px 0;">'
-        +'<div style="font-size:1.5rem;margin-bottom:6px;">&#9989;</div>'
-        +'<div style="color:#4caf50;font-weight:700;font-size:.95rem;">Signed in to Microsoft Teams</div>'
-        +'<div style="color:#888;font-size:.8rem;margin-top:4px;">'+escHtml(who)+'</div>'
-        +'<button class="tm-btn tm-btn-danger tm-btn-sm" onclick="teamsDisconnect()" style="margin-top:10px;">Sign out</button>'
-        +'</div>';
-      document.getElementById('teams-connected-banner').style.display='flex';
-      document.getElementById('teams-connected-who').textContent=' '+escHtml(who);
-      document.getElementById('tm-quick-status').textContent='';
-      // Save UPN
-      try{
-        var s=JSON.parse(localStorage.getItem('tm_creds')||'{}');
-        s.quick_email=who; s.mode='mfa'; s.quick_tenant=_devicePollTenant; s.quick_clientid=_devicePollClientId;
-        localStorage.setItem('tm_creds',JSON.stringify(s));
-      }catch(e){}
-      // Switch to chat tab and load
-      tcMainTab('cal');
-      teamsLoadRange();
-    } else if(j.pending){
-      if(!auto && st) st.textContent='Still waiting for sign-in\u2026';
-    } else if(j.expired){
-      if(_tmQuickPollInterval){ clearInterval(_tmQuickPollInterval); _tmQuickPollInterval=null; }
-      if(st) st.innerHTML='<span style="color:#f90;">&#9888; Code expired. Click Sign in again.</span>';
-      document.getElementById('tm-quick-device-box').style.display='none';
-    } else {
-      if(_tmQuickPollInterval){ clearInterval(_tmQuickPollInterval); _tmQuickPollInterval=null; }
-      if(st) st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(function(e){ if(!auto && st) st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function tmSetMode(mode){
-  _tmMode = mode;
-  document.getElementById('tm-mode-upw').style.display  = mode==='upw' ? '' : 'none';
-  document.getElementById('tm-mode-app').style.display  = mode==='app' ? '' : 'none';
-  document.getElementById('tm-mode-mfa').style.display  = mode==='mfa' ? '' : 'none';
-  document.getElementById('tm-mode-ps').style.display   = mode==='ps'  ? '' : 'none';
-  ['upw','mfa','app','ps'].forEach(function(m){
-    var btn = document.getElementById('tm-tab-'+m);
-    if(btn){ btn.style.background = m===mode ? '#252535' : '#161620'; btn.style.color = m===mode ? '#7ec8e3' : '#666'; }
-  });
-  var cb = document.getElementById('tm-connect-btn');
-  if(cb) cb.style.display = (mode==='mfa'||mode==='ps') ? 'none' : '';
-}
-
-function teamsConnect(){
-  const tenant = document.getElementById('tm-tenant').value.trim();
-  const st     = document.getElementById('tm-conn-status');
-  if(!tenant){ st.textContent='\u26A0 Enter a Tenant ID (or "common").'; return; }
-  st.textContent='Connecting…';
-  let payload;
-  if(_tmMode==='upw'){
-    const username = document.getElementById('tm-username').value.trim();
-    const password = document.getElementById('tm-password').value;
-    if(!username||!password){ st.textContent='\u26A0 Enter your username and password.'; return; }
-    payload = {grant_type:'password', tenant_id:tenant, username, password};
-    _teamsUpn = username;
-  } else {
-    const clientId     = document.getElementById('tm-client-id').value.trim();
-    const clientSecret = document.getElementById('tm-client-secret').value.trim();
-    const upn          = document.getElementById('tm-upn').value.trim();
-    if(!clientId||!clientSecret){ st.textContent='\u26A0 Fill in Client ID and Secret.'; return; }
-    payload = {grant_type:'client_credentials', tenant_id:tenant, client_id:clientId, client_secret:clientSecret, upn};
-    _teamsUpn = upn||null;
-  }
-  fetch('/api/teams/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-  .then(r=>r.json()).then(j=>{
-    if(j.token){
-      _teamsToken = j.token;
-      const who = _teamsUpn ? ' ('+_teamsUpn+')' : '';
-      st.innerHTML='<span style="color:#4caf50;">\u2705 Connected'+who+'</span>';
-      document.getElementById('teams-connected-banner').style.display='flex';
-      document.getElementById('teams-connected-who').textContent = who;
-      const save = {mode:_tmMode, tenant};
-      if(_tmMode==='upw') save.username = document.getElementById('tm-username').value.trim();
-      else { save.client_id=document.getElementById('tm-client-id').value.trim(); save.upn=document.getElementById('tm-upn').value.trim(); }
-      localStorage.setItem('tm_creds', JSON.stringify(save));
-    } else {
-      st.innerHTML='<span style="color:#f55;">\u274C '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(e=>{ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function teamsDisconnect(){
-  var prevUpn = _teamsUpn;
-  _teamsToken = null;
-  _teamsUpn   = null;
-  _teamsEvents = [];
-  _teamsFiltered = [];
-  if(_deviceInterval){ clearInterval(_deviceInterval); _deviceInterval=null; }
-  if(_tmQuickPollInterval){ clearInterval(_tmQuickPollInterval); _tmQuickPollInterval=null; }
-  calRender();
-  document.getElementById('teams-connected-banner').style.display='none';
-  document.getElementById('tm-conn-status').textContent='Disconnected.';
-  document.getElementById('tm-password').value='';
-  document.getElementById('tm-client-secret').value='';
-  var b=document.getElementById('tm-device-code-box'); if(b) b.style.display='none';
-  // Restore quick-login card (in case it was replaced with success state)
-  var card = document.getElementById('tm-login-card');
-  if(card && !card.querySelector('#tm-quick-email')){
-    var email = prevUpn || '';
-    card.innerHTML=''
-      +'<div id="tm-sso-banner" style="display:none;background:#0a1a14;border:1px solid #2e7d52;border-radius:8px;padding:14px;margin-bottom:12px;text-align:center;">'
-      +'<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;"><span style="font-size:1.1rem;">&#128274;</span><span style="font-size:.88rem;color:#4caf50;font-weight:700;">Okta SSO Connected</span></div>'
-      +'<div id="tm-sso-who" style="font-size:.8rem;color:#aaa;margin-bottom:10px;word-break:break-all;"></div>'
-      +'<button class="tm-btn" onclick="tmOktaSSO()" style="width:100%;padding:10px;font-size:.92rem;background:#1b5e20;border-color:#2e7d52;">&#128274;&nbsp; Login to Teams via Okta SSO</button>'
-      +'<div style="margin-top:8px;"><button onclick="tmShowManualSection(this)" style="background:none;border:none;color:#555;font-size:.72rem;cursor:pointer;padding:2px;">or use a different account ↓</button></div>'
-      +'</div>'
-      +'<div id="tm-manual-section">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">'
-      +'<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#5059C9"/><path d="M20.5 10h-4a.5.5 0 0 0-.5.5v1h4.5A2.5 2.5 0 0 1 23 14v5.5a.5.5 0 0 0 .5.5h.5A1.5 1.5 0 0 0 25.5 18.5v-6A2.5 2.5 0 0 0 23 10h-2.5z" fill="#fff" opacity=".7"/><rect x="8" y="12" width="13" height="12" rx="2" fill="#fff"/><path d="M14.5 15.5v5M12 17.5h5" stroke="#5059C9" stroke-width="1.5" stroke-linecap="round"/></svg>'
-      +'<div><div style="font-size:.95rem;font-weight:700;color:#e0e0ff;">Microsoft Teams</div>'
-      +'<div style="font-size:.72rem;color:#555;">Sign in with your work or school account</div></div></div>'
-      +'<div class="tm-field"><label style="color:#7ec8e3;">Work email</label>'
-      +'<input id="tm-quick-email" class="tm-input" type="email" placeholder="you@company.com" autocomplete="username" style="font-size:.9rem;padding:9px 12px;" value="'+escHtml(email)+'" onkeydown="if(event.key===\\'Enter\\')tmQuickLogin()"></div>'
-      +'<div class="tm-field"><label style="color:#7ec8e3;">Tenant ID <span style="color:#555;font-size:.71rem;">(optional)</span></label>'
-      +'<input id="tm-quick-tenant" class="tm-input" placeholder="common" autocomplete="off" style="font-size:.87rem;padding:7px 12px;"></div>'
-      +'<button class="tm-btn" onclick="tmQuickLogin()" style="width:100%;margin-top:4px;padding:10px;font-size:.92rem;">&#128274;&nbsp; Sign in with Microsoft</button>'
-      +'</div>'
-      +'<div class="tm-status" id="tm-quick-status" style="margin-top:8px;text-align:center;"></div>'
-      +'<div id="tm-quick-device-box" style="display:none;margin-top:12px;background:#0a0a1a;border:1px solid #5059C9;border-radius:8px;padding:14px;text-align:center;">'
-      +'<div style="font-size:.75rem;color:#aaa;margin-bottom:6px;">1. Open in any browser:</div>'
-      +'<a id="tm-quick-url" href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" style="color:#7ec8e3;font-size:.85rem;font-weight:600;">microsoft.com/devicelogin ↗</a>'
-      +'<div style="font-size:.75rem;color:#aaa;margin:10px 0 4px;">2. Enter this one-time code:</div>'
-      +'<div id="tm-quick-code" style="font-size:2rem;font-weight:900;color:#7ec8e3;letter-spacing:8px;padding:6px 0;font-family:monospace;background:#111;border-radius:6px;margin:6px 0;"></div>'
-      +'<div id="tm-quick-expires" style="font-size:.7rem;color:#555;margin-bottom:10px;"></div>'
-      +'<button class="tm-btn tm-btn-sm" onclick="tmQuickPoll(false)">&#8635;&nbsp;I&#39;ve signed in &#8212; check now</button>'
-      +'<div id="tm-quick-poll-status" style="font-size:.75rem;margin-top:6px;min-height:1em;"></div>'
-      +'</div>';
-    setTimeout(tmCheckOktaSSO, 50);
-  }
-}
-
-function teamsDeviceStart(){
-  var tenant = (document.getElementById('tm-tenant').value.trim()||'common');
-  if(tenant.toLowerCase()==='common') tenant='common';
-  _devicePollTenant = tenant;
-  var clientIdEl = document.getElementById('tm-quick-clientid');
-  _devicePollClientId = clientIdEl ? clientIdEl.value.trim() : '';
-  var st  = document.getElementById('tm-device-start-status');
-  var box = document.getElementById('tm-device-code-box');
-  st.textContent='Starting device login…';
-  box.style.display='none';
-  if(_deviceInterval){ clearInterval(_deviceInterval); _deviceInterval=null; }
-  var startBody = {tenant_id:tenant};
-  if(_devicePollClientId) startBody.client_id = _devicePollClientId;
-  fetch('/api/teams/device_start',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(startBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.user_code){
-      _deviceCode = j.device_code;
-      document.getElementById('tm-device-code').textContent = j.user_code;
-      var urlEl = document.getElementById('tm-device-url');
-      urlEl.href = j.verification_uri||'https://microsoft.com/devicelogin';
-      urlEl.textContent = (j.verification_uri||'https://microsoft.com/devicelogin')+' ↗';
-      var exp = j.expires_in ? 'Expires in '+Math.round(j.expires_in/60)+' min' : '';
-      document.getElementById('tm-device-expires').textContent = exp;
-      box.style.display='';
-      st.textContent='';
-      _deviceInterval = setInterval(function(){ teamsDevicePoll(true); }, 5000);
-    } else {
-      st.innerHTML='<span style="color:#f55;">❌ '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(function(e){ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function teamsDevicePoll(auto){
-  var st = document.getElementById('tm-device-poll-status');
-  if(!_deviceCode){ st.textContent='⚠ Start device login first.'; return; }
-  if(!auto) st.textContent='Checking…';
-  var pollBody = {tenant_id:_devicePollTenant, device_code:_deviceCode};
-  if(_devicePollClientId) pollBody.client_id = _devicePollClientId;
-  fetch('/api/teams/device_poll',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(pollBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.token){
-      if(_deviceInterval){ clearInterval(_deviceInterval); _deviceInterval=null; }
-      _teamsToken = j.token;
-      _teamsUpn   = j.upn||'';
-      var who = _teamsUpn ? ' ('+_teamsUpn+')' : '';
-      document.getElementById('tm-conn-status').innerHTML='<span style="color:#4caf50;">✅ Connected via MFA'+who+'</span>';
-      document.getElementById('teams-connected-banner').style.display='flex';
-      document.getElementById('teams-connected-who').textContent=who;
-      document.getElementById('tm-device-code-box').style.display='none';
-      st.textContent='';
-      var save={mode:'mfa',tenant:_devicePollTenant};
-      if(_teamsUpn) save.username=_teamsUpn;
-      localStorage.setItem('tm_creds',JSON.stringify(save));
-      tcMainTab('cal');
-      teamsLoadRange();
-    } else if(j.pending){
-      if(!auto) st.textContent='Still waiting for sign-in…';
-    } else if(j.expired){
-      if(_deviceInterval){ clearInterval(_deviceInterval); _deviceInterval=null; }
-      st.innerHTML='<span style="color:#f90;">⚠ Code expired. Click Start again.</span>';
-    } else {
-      if(_deviceInterval){ clearInterval(_deviceInterval); _deviceInterval=null; }
-      st.innerHTML='<span style="color:#f55;">❌ '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(function(e){ if(!auto) st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function teamsPSStatus(){
-  var st = document.getElementById('tm-ps-status');
-  st.textContent = 'Checking…';
-  fetch('/api/teams/ps_status',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.module_found){
-      var who = j.account || j.tenant_name || '';
-      var tid  = j.tenant_id || 'common';
-      var msg = '\u2705 Module v'+j.version+' found. ';
-      if(j.connected){
-        msg += '&#128279; Connected: <strong>'+who+'</strong>';
-        var box=document.getElementById('tm-ps-teams-box'); if(box) box.style.display='';
-        document.getElementById('teams-connected-banner').style.display='flex';
-        document.getElementById('teams-connected-who').textContent=' (PS: '+who+')';
-        if(!_teamsToken) teamsPSAcquireGraphToken(tid, who);
-      } else {
-        msg += '&#10060; No cached session &mdash; click Connect.';
-      }
-      st.innerHTML='<span style="color:#4caf50;">'+msg+'</span>';
-    } else {
-      st.innerHTML='<span style="color:#f90;">&#9888; MicrosoftTeams module not found. Run: <code>Install-Module MicrosoftTeams</code></span>';
-    }
-  }).catch(function(e){ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function teamsPSConnect(){
-  var st  = document.getElementById('tm-ps-conn-status');
-  var btn = document.getElementById('tm-ps-connect-btn');
-  st.textContent = 'Opening browser for sign-in… (may take 30–60 s)';
-  btn.disabled = true;
-  fetch('/api/teams/ps_connect',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
-  .then(function(r){ return r.json(); }).then(function(j){
-    btn.disabled = false;
-    if(j.connected){
-      var who = j.account || j.tenant_name || '';
-      var tid  = j.tenant_id || 'common';
-      st.innerHTML='<span style="color:#4caf50;">\u2705 Connected: <strong>'+who+'</strong></span>';
-      document.getElementById('teams-connected-banner').style.display='flex';
-      document.getElementById('teams-connected-who').textContent=' (PS: '+who+')';
-      var box=document.getElementById('tm-ps-teams-box'); if(box) box.style.display='';
-      // Auto-acquire a Graph token for Chat — show inline device-code prompt
-      teamsPSAcquireGraphToken(tid, who);
-    } else {
-      st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(function(e){ btn.disabled=false; st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function teamsPSAcquireGraphToken(tenantId, upn){
-  // Ensure the MFA/device-code box is ready even though we're in PS tab
-  _devicePollTenant = tenantId || _devicePollTenant || 'common';
-  _teamsUpn = upn || _teamsUpn;
-  // Show an inline prompt — target the PS connection status area, fall back to the tab pane
-  var conn = document.getElementById('tm-ps-conn-status')
-          || document.getElementById('tm-ps-tab')
-          || document.querySelector('.tm-tab-pane');
-  var chatBox = document.getElementById('tm-ps-chat-auth-box');
-  if(!chatBox){
-    chatBox = document.createElement('div');
-    chatBox.id = 'tm-ps-chat-auth-box';
-    chatBox.style.cssText = 'margin-top:12px;background:#0d0d1a;border:1px solid #7ec8e3;border-radius:8px;padding:14px;';
-    if(conn) conn.parentNode.insertBefore(chatBox, conn.nextSibling);
-    else document.body.appendChild(chatBox);
-  }
-  chatBox.innerHTML = '<div style="font-size:.78rem;color:#aaa;margin-bottom:8px;">&#128172; <strong style="color:#7ec8e3;">One more step for Chat access</strong><br>Microsoft requires a separate Graph token to read your chats. Click below — a code will appear that you enter at microsoft.com/devicelogin.</div>'
-    +'<button class="tm-btn tm-btn-sm" id="tm-ps-chat-auth-btn" onclick="teamsPSStartGraphDevice()">&#128274; Authorize Chat Access</button>'
-    +'<div id="tm-ps-chat-start-status" style="font-size:.75rem;margin-top:6px;"></div>'
-    +'<div id="tm-ps-chat-code-box" style="display:none;margin-top:10px;text-align:center;">'
-    +'<div style="font-size:.75rem;color:#aaa;">Open: <a href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" style="color:#7ec8e3;">microsoft.com/devicelogin &#8599;</a></div>'
-    +'<div id="tm-ps-chat-user-code" style="font-size:1.6rem;font-weight:900;color:#00b4d8;letter-spacing:6px;font-family:monospace;padding:6px 0;"></div>'
-    +'<button class="tm-btn tm-btn-sm" onclick="teamsPSPollGraphDevice(false)" style="margin-top:6px;">&#8635; I&#39;ve signed in &mdash; check now</button>'
-    +'<div id="tm-ps-chat-poll-status" style="font-size:.75rem;margin-top:4px;"></div>'
-    +'</div>';
-}
-
-var _psGraphDeviceCode = null;
-var _psGraphPollInterval = null;
-
-function teamsPSStartGraphDevice(){
-  var btn = document.getElementById('tm-ps-chat-auth-btn');
-  var box = document.getElementById('tm-ps-chat-code-box');
-  var startSt = document.getElementById('tm-ps-chat-start-status');
-  if(btn) btn.disabled = true;
-  if(startSt) startSt.innerHTML = '<span style="color:#7ec8e3;">Starting\u2026</span>';
-  if(_psGraphPollInterval){ clearInterval(_psGraphPollInterval); _psGraphPollInterval=null; }
-  var psStartBody = {tenant_id:_devicePollTenant};
-  if(_devicePollClientId) psStartBody.client_id = _devicePollClientId;
-  fetch('/api/teams/device_start',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(psStartBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.user_code){
-      _psGraphDeviceCode = j.device_code;
-      document.getElementById('tm-ps-chat-user-code').textContent = j.user_code;
-      if(startSt) startSt.textContent = '';
-      if(box) box.style.display='';
-      if(btn) btn.style.display='none';
-      _psGraphPollInterval = setInterval(function(){ teamsPSPollGraphDevice(true); }, 5000);
-    } else {
-      if(startSt) startSt.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||JSON.stringify(j))+'</span>';
-      if(btn){ btn.disabled=false; }
-    }
-  }).catch(function(e){
-    if(btn) btn.disabled=false;
-    if(startSt) startSt.innerHTML='<span style="color:#f55;">Error: '+e+'</span>';
-  });
-}
-
-function teamsPSPollGraphDevice(auto){
-  var st = document.getElementById('tm-ps-chat-poll-status');
-  if(!_psGraphDeviceCode){ if(st) st.textContent='\u26A0 Start device login first.'; return; }
-  if(!auto && st) st.textContent='Checking\u2026';
-  var pollBody = {tenant_id:_devicePollTenant, device_code:_psGraphDeviceCode};
-  if(_devicePollClientId) pollBody.client_id = _devicePollClientId;
-  fetch('/api/teams/device_poll',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(pollBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.token){
-      if(_psGraphPollInterval){ clearInterval(_psGraphPollInterval); _psGraphPollInterval=null; }
-      _teamsToken = j.token;
-      if(j.upn) _teamsUpn = j.upn;
-      // Hide the auth box and show success
-      var box = document.getElementById('tm-ps-chat-auth-box');
-      if(box) box.innerHTML='<span style="color:#4caf50;font-size:.82rem;">\u2705 Chat access granted.</span>';
-      // Update the top banner
-      document.getElementById('teams-connected-banner').style.display='flex';
-      var who = _teamsUpn ? ' ('+_teamsUpn+')' : '';
-      document.getElementById('teams-connected-who').textContent=who;
-      // Auto-switch to chat tab and load
-      tcMainTab('chat');
-    } else if(j.pending){
-      if(!auto && st) st.textContent='Still waiting for sign-in\u2026';
-    } else if(j.expired){
-      if(_psGraphPollInterval){ clearInterval(_psGraphPollInterval); _psGraphPollInterval=null; }
-      if(st) st.innerHTML='<span style="color:#f90;">\u26A0 Code expired. Click Authorize again.</span>';
-      var btn=document.getElementById('tm-ps-chat-auth-btn');
-      if(btn){ btn.style.display=''; btn.disabled=false; }
-    } else {
-      if(_psGraphPollInterval){ clearInterval(_psGraphPollInterval); _psGraphPollInterval=null; }
-      if(st) st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(function(e){ if(!auto && st) st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function teamsPSLoadTeams(){
-  var list = document.getElementById('tm-ps-teams-list');
-  list.textContent = 'Loading\u2026';
-  fetch('/api/teams/ps_teams',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.teams && j.teams.length){
-      list.innerHTML = j.teams.map(function(t){
-        return '<div style="padding:4px 6px;border-bottom:1px solid #222;color:#ccc;">'
-          +'<strong style="color:#7ec8e3;">'+_esc(t.DisplayName||t.display_name||'')+'</strong>'
-          +(t.Description||t.description ? '<br><span style="color:#666;font-size:.7rem;">'+_esc(t.Description||t.description||'')+'</span>' : '')
-          +'</div>';
-      }).join('');
-    } else {
-      list.innerHTML='<span style="color:#888;">'+(j.error||'No teams found.')+'</span>';
-    }
-  }).catch(function(e){ list.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function _esc(s){ var d=document.createElement('div');d.textContent=s;return d.innerHTML; }
-
-function teamsLoadRange(){
-  const st = document.getElementById('tm-load-status');
-  if(!_teamsToken){ st.innerHTML='<span style="color:#f55;">\u26A0 Connect first.</span>'; return; }
-  const start = document.getElementById('tm-range-start').value;
-  const end   = document.getElementById('tm-range-end').value;
-  const upn   = _teamsUpn || (_tmMode==='app' ? document.getElementById('tm-upn').value.trim() : '');
-  if(!start||!end){ st.textContent='\u26A0 Set start and end date.'; return; }
-  const startDate = new Date(start+'T00:00:00');
-  const endDate = new Date(end+'T23:59:59.999');
-  if(Number.isNaN(startDate.getTime())||Number.isNaN(endDate.getTime())||endDate<startDate){
-    st.textContent='\u26A0 Choose a valid date range.'; return;
-  }
-  st.textContent='Loading events…';
-  fetch('/api/teams/calendar',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:_teamsToken,start_date:startDate.toISOString(),end_date:endDate.toISOString(),upn,use_me:_tmMode==='upw'})})
-  .then(r=>r.json().then(j=>({status:r.status,data:j}))).then(({status,data:j})=>{
-    if(j.events){
-      _teamsEvents = j.events;
-      teamsApplyFilter();
-      st.innerHTML='<span style="color:#4caf50;">\u2705 Loaded '+j.events.length+' events.</span>';
-      document.getElementById('cal-empty').style.display='none';
-      calRender();
-    } else {
-      st.innerHTML='<span style="color:#f55;">\u274C '+(j.error||('Request failed ('+status+')'))+'</span>';
-    }
-  }).catch(e=>{ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function teamsApplyFilter(){
-  const txt  = (document.getElementById('tm-filter-text').value||'').toLowerCase();
-  const type = document.getElementById('tm-filter-type').value;
-  _teamsFiltered = _teamsEvents.filter(ev=>{
-    if(txt && !(ev.subject||'').toLowerCase().includes(txt) && !(ev.bodyPreview||'').toLowerCase().includes(txt)) return false;
-    if(type==='online' && !ev.isOnlineMeeting) return false;
-    if(type==='busy'   && ev.showAs!=='busy') return false;
-    if(type==='tentative' && ev.showAs!=='tentative') return false;
-    if(type==='free'   && ev.showAs!=='free') return false;
-    return true;
-  });
-  calRender();
-}
-
-// ── Calendar rendering ───────────────────────────────────────────────────────
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-function calMove(dir){
-  _calMonth += dir;
-  if(_calMonth < 0){ _calMonth=11; _calYear--; }
-  if(_calMonth > 11){ _calMonth=0; _calYear++; }
-  calRender();
-}
-
-function calRender(){
-  document.getElementById('cal-month-title').textContent = MONTHS[_calMonth]+' '+_calYear;
-  const today = new Date();
-  const firstDay = new Date(_calYear, _calMonth, 1).getDay();
-  const daysInMonth = new Date(_calYear, _calMonth+1, 0).getDate();
-  const prevDays = new Date(_calYear, _calMonth, 0).getDate();
-  const cells = document.getElementById('cal-cells');
-  cells.innerHTML='';
-
-  // Build a day→events map for fast lookup
-  const dayMap = {};
-  (_teamsFiltered.length ? _teamsFiltered : []).forEach(ev=>{
-    const d = new Date(ev.start.dateTime||ev.start.date);
-    if(d.getFullYear()===_calYear && d.getMonth()===_calMonth){
-      const key = d.getDate();
-      if(!dayMap[key]) dayMap[key]=[];
-      dayMap[key].push(ev);
-    }
-  });
-
-  // Leading cells from previous month
-  for(let i=0;i<firstDay;i++){
-    const c=document.createElement('div');
-    c.className='cal-cell other-month';
-    c.innerHTML=`<div class="cal-num">${prevDays-firstDay+1+i}</div>`;
-    cells.appendChild(c);
-  }
-  // Current month cells
-  for(let d=1;d<=daysInMonth;d++){
-    const c=document.createElement('div');
-    const isToday = d===today.getDate()&&_calMonth===today.getMonth()&&_calYear===today.getFullYear();
-    c.className='cal-cell'+(isToday?' today':'');
-    let inner=`<div class="cal-num">${d}</div>`;
-    const evs=dayMap[d]||[];
-    evs.slice(0,3).forEach(ev=>{
-      const cls=ev.isOnlineMeeting?'ev-teams':ev.showAs==='tentative'?'ev-tentative':ev.showAs==='busy'?'ev-busy':'';
-      const time=ev.start.dateTime?new Date(ev.start.dateTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
-      inner+=`<div class="cal-event ${cls}" title="${(ev.subject||'').replace(/"/g,'&quot;')}" onclick="calShowEvent(${JSON.stringify(JSON.stringify(ev))})"> ${time?time+' ':''}${ev.subject||'(no title)'}</div>`;
-    });
-    if(evs.length>3) inner+=`<div style="font-size:.65rem;color:#666;">${evs.length-3} more…</div>`;
-    c.innerHTML=inner;
-    cells.appendChild(c);
-  }
-  // Trailing cells
-  const total=firstDay+daysInMonth;
-  const trailing=(total%7===0)?0:7-(total%7);
-  for(let i=1;i<=trailing;i++){
-    const c=document.createElement('div');
-    c.className='cal-cell other-month';
-    c.innerHTML=`<div class="cal-num">${i}</div>`;
-    cells.appendChild(c);
-  }
-}
-
-function calShowEvent(jsonStr){
-  const ev = JSON.parse(jsonStr);
-  const panel = document.getElementById('tm-event-detail');
-  panel.style.display='';
-  document.getElementById('tm-ev-title').textContent = ev.subject||'(no title)';
-  const fmt=(dt)=>{ if(!dt) return '—'; try{ return new Date(dt).toLocaleString(); }catch(e){ return dt; } };
-  document.getElementById('tm-ev-when').textContent = fmt(ev.start&&ev.start.dateTime)+' – '+fmt(ev.end&&ev.end.dateTime);
-  document.getElementById('tm-ev-where').textContent = (ev.location&&ev.location.displayName)||'—';
-  document.getElementById('tm-ev-org').textContent = (ev.organizer&&ev.organizer.emailAddress&&ev.organizer.emailAddress.name)||'—';
-  document.getElementById('tm-ev-status').textContent = ev.showAs||'—';
-  document.getElementById('tm-ev-type').innerHTML = ev.isOnlineMeeting
-    ? '<span class="tag-online">Teams Meeting</span>'
-    : '<span class="tag-offline">In-person / Other</span>';
-  const linkRow = document.getElementById('tm-ev-link-row');
-  if(ev.onlineMeetingUrl||ev.teams_join_url){
-    linkRow.style.display='';
-    document.getElementById('tm-ev-link').href = ev.onlineMeetingUrl||ev.teams_join_url;
-  } else { linkRow.style.display='none'; }
-  document.getElementById('tm-ev-body').textContent = ev.bodyPreview||'(no preview)';
-  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-// ── Chat state ───────────────────────────────────────────────────────────────
-let _chatList = [];
-let _chatSelectedId = null;
-let _tcMainMode = 'cal';
-
-function tcMainTab(tab){
-  _tcMainMode = tab;
-  document.getElementById('tc-pane-cal').style.display  = tab==='cal'  ? '' : 'none';
-  document.getElementById('tc-pane-chat').style.display = tab==='chat' ? '' : 'none';
-  document.getElementById('tc-main-cal').style.background  = tab==='cal'  ? '#252535' : '#161620';
-  document.getElementById('tc-main-cal').style.color       = tab==='cal'  ? '#7ec8e3' : '#666';
-  document.getElementById('tc-main-chat').style.background = tab==='chat' ? '#252535' : '#161620';
-  document.getElementById('tc-main-chat').style.color      = tab==='chat' ? '#7ec8e3' : '#666';
-  if(tab==='chat'){
-    var badge   = document.getElementById('chat-conn-badge');
-    var noconn  = document.getElementById('chat-noconn-msg');
-    var needsGraph = document.getElementById('chat-needs-graph-msg');
-    var who     = document.getElementById('chat-conn-who');
-    if(_teamsToken){
-      badge.style.display      = 'flex';
-      noconn.style.display     = 'none';
-      needsGraph.style.display = 'none';
-      who.textContent          = _teamsUpn || 'Connected';
-      chatLoad(); // always refresh on tab switch
-    } else if(document.getElementById('teams-connected-banner').style.display !== 'none'){
-      // PS / banner connected but no Graph token yet
-      badge.style.display      = 'none';
-      noconn.style.display     = 'none';
-      needsGraph.style.display = '';
-      // Auto-fill tenant input from email or Okta domain
-      var ti = document.getElementById('chat-inline-tenant');
-      if(ti && !ti.value){
-        var prefill = _devicePollTenant||'';
-        if(!prefill||prefill==='common'||prefill==='organizations'){
-          var em=((document.getElementById('tm-quick-email')||{}).value||'');
-          if(em.indexOf('@')>0) prefill=em.split('@')[1];
-        }
-        if(!prefill||prefill==='common'){
-          try{var sso=JSON.parse(localStorage.getItem('okta_sso')||'null');if(sso&&sso.domain)prefill=sso.domain.replace(/\\.okta\\.com$/,'');}catch(e){}
-        }
-        if(prefill&&prefill!=='common'&&prefill!=='organizations') ti.value=prefill;
-      }
-    } else {
-      badge.style.display      = 'none';
-      noconn.style.display     = '';
-      needsGraph.style.display = 'none';
-    }
-  }
-}
-
-// ── Inline chat auth (when Graph token missing but PS session exists) ────────
-var _chatInlineDeviceCode = null;
-var _chatInlinePollInterval = null;
-
-function chatInlineAuth(){
-  var st  = document.getElementById('chat-inline-start-st');
-  var box = document.getElementById('chat-inline-auth-box');
-  if(st) st.textContent = 'Starting…';
-  if(_chatInlinePollInterval){ clearInterval(_chatInlinePollInterval); _chatInlinePollInterval=null; }
-  // Determine best tenant: explicit input > _devicePollTenant > email domain > Okta domain
-  var tenantInput = ((document.getElementById('chat-inline-tenant')||{}).value||'').trim();
-  var tenant = tenantInput || _devicePollTenant || '';
-  if(!tenant || tenant==='common' || tenant==='organizations'){
-    var em = ((document.getElementById('tm-quick-email')||{}).value||'');
-    if(em.indexOf('@')>0) tenant = em.split('@')[1].trim();
-  }
-  if(!tenant || tenant==='common' || tenant==='organizations'){
-    try{ var sso=JSON.parse(localStorage.getItem('okta_sso')||'null'); if(sso&&sso.domain) tenant=sso.domain.replace(/\\.okta\\.com$/,''); }catch(e){}
-  }
-  if(!tenant) tenant = 'common';
-  _devicePollTenant = tenant;  // store so chatInlinePoll uses the same tenant
-  var inlineBody = {tenant_id:tenant};
-  if(_devicePollClientId) inlineBody.client_id = _devicePollClientId;
-  fetch('/api/teams/device_start',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(inlineBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.user_code){
-      _chatInlineDeviceCode = j.device_code;
-      document.getElementById('chat-inline-code').textContent = j.user_code;
-      if(box) box.style.display='';
-      if(st)  st.textContent='';
-      _chatInlinePollInterval = setInterval(function(){ chatInlinePoll(true); }, 5000);
-    } else {
-      if(st) st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||'Failed')+'</span>';
-    }
-  }).catch(function(e){ if(st) st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function chatInlinePoll(auto){
-  var st = document.getElementById('chat-inline-poll-st');
-  if(!_chatInlineDeviceCode){ if(st) st.textContent='Start auth first.'; return; }
-  if(!auto && st) st.textContent='Checking…';
-  var tenant = _devicePollTenant || 'common';
-  var pollBody = {tenant_id:tenant, device_code:_chatInlineDeviceCode};
-  if(_devicePollClientId) pollBody.client_id = _devicePollClientId;
-  fetch('/api/teams/device_poll',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(pollBody)})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.token){
-      if(_chatInlinePollInterval){ clearInterval(_chatInlinePollInterval); _chatInlinePollInterval=null; }
-      _teamsToken = j.token;
-      if(j.upn){ _teamsUpn = j.upn; document.getElementById('chat-conn-who').textContent = j.upn; }
-      document.getElementById('chat-needs-graph-msg').style.display = 'none';
-      document.getElementById('chat-conn-badge').style.display = 'flex';
-      document.getElementById('chat-noconn-msg').style.display = 'none';
-      document.getElementById('teams-connected-banner').style.display = 'flex';
-      if(j.upn) document.getElementById('teams-connected-who').textContent = ' '+escHtml(j.upn);
-      tcMainTab('chat');
-    } else if(j.pending){
-      if(!auto && st) st.textContent='Still waiting…';
-    } else if(j.expired){
-      if(_chatInlinePollInterval){ clearInterval(_chatInlinePollInterval); _chatInlinePollInterval=null; }
-      if(st) st.innerHTML='<span style="color:#f90;">&#9888; Expired. Click Authorize again.</span>';
-      document.getElementById('chat-inline-auth-box').style.display='none';
-    } else {
-      if(_chatInlinePollInterval){ clearInterval(_chatInlinePollInterval); _chatInlinePollInterval=null; }
-      if(st) st.innerHTML='<span style="color:#f55;">&#10060; '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(function(e){ if(!auto && st) st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function chatLoad(){
-  var st = document.getElementById('chat-list-status');
-  if(!_teamsToken){ st.innerHTML='<span style="color:#f55;">\u26A0 Connect first (use the connection panel on the left).</span>'; return; }
-  st.textContent='Loading chats\u2026';
-  fetch('/api/teams/chats',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:_teamsToken})})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.chats){
-      _chatList = j.chats;
-      var el = document.getElementById('chat-list');
-      el.innerHTML='';
-      if(_chatList.length===0){ st.textContent='No chats found.'; return; }
-      st.textContent='';
-      _chatList.forEach(function(c){
-        var name = c.topic || (c.members||[]).map(function(m){ return m.displayName||''; }).filter(Boolean).join(', ') || c.id;
-        var preview = (c.lastMessagePreview&&c.lastMessagePreview.body&&c.lastMessagePreview.body.content)||'';
-        var div = document.createElement('div');
-        div.className='chat-item';
-        div.dataset.id = c.id;
-        div.innerHTML='<div class="chat-item-name">'+escHtml(name)+'</div>'
-          +'<div class="chat-item-preview">'+escHtml(preview.replace(/<[^>]+>/g,'').slice(0,60))+'</div>';
-        (function(id,n){ div.onclick=function(){ chatSelect(id,n); }; })(c.id,name);
-        el.appendChild(div);
-      });
-    } else {
-      st.innerHTML='<span style="color:#f55;">\u274C '+(j.error||JSON.stringify(j))+'</span>';
-    }
-  }).catch(function(e){ document.getElementById('chat-list-status').innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function chatSelect(id, name){
-  _chatSelectedId = id;
-  document.querySelectorAll('.chat-item').forEach(function(el){
-    el.classList.toggle('selected', el.dataset.id===id);
-  });
-  document.getElementById('chat-title').textContent = name;
-  document.getElementById('chat-refresh-btn').style.display='';
-  document.getElementById('chat-compose').style.display='';
-  // Update the "open in Teams" button to deep-link to this specific chat
-  var teamsLink = document.getElementById('chat-open-teams-link');
-  if(teamsLink) teamsLink.href = 'https://teams.microsoft.com/l/chat/'+encodeURIComponent(id)+'/0';
-  chatRefreshMsgs();
-}
-
-function chatRefreshMsgs(){
-  if(!_chatSelectedId) return;
-  var el = document.getElementById('chat-msgs');
-  el.innerHTML='<div style="color:#555;font-size:.8rem;padding:10px;">Loading messages\u2026</div>';
-  fetch('/api/teams/chat/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:_teamsToken, chat_id:_chatSelectedId, me_upn:_teamsUpn})})
-  .then(function(r){ return r.json(); }).then(function(j){
-    el.innerHTML='';
-    if(!j.messages){ el.innerHTML='<span style="color:#f55;">\u274C '+(j.error||'Error')+'</span>'; return; }
-    var msgs = j.messages.slice().reverse();
-    if(msgs.length===0){ el.innerHTML='<div style="color:#555;font-size:.8rem;padding:10px;">No messages yet.</div>'; return; }
-    msgs.forEach(function(m){
-      var upn = (m.from&&m.from.user&&m.from.user.userPrincipalName)||'';
-      var isMe = _teamsUpn && upn.toLowerCase()===_teamsUpn.toLowerCase();
-      var sender = (m.from&&m.from.user&&m.from.user.displayName)||(m.from&&m.from.application&&m.from.application.displayName)||'';
-      var body = ((m.body&&m.body.content)||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').trim();
-      var t = m.createdDateTime ? new Date(m.createdDateTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-      var row = document.createElement('div');
-      row.className='msg-row '+(isMe?'me':'them');
-      var inner = document.createElement('div');
-      inner.innerHTML=((!isMe&&sender)?'<div class="msg-sender">'+escHtml(sender)+'</div>':'')
-        +'<div class="msg-bubble">'+(body?escHtml(body):'<em style="color:#555;">(attachment)</em>')
-        +'<div class="msg-time">'+t+'</div></div>';
-      row.appendChild(inner);
-      el.appendChild(row);
-    });
-    el.scrollTop = el.scrollHeight;
-  }).catch(function(e){ el.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function chatSend(){
-  var input = document.getElementById('chat-input');
-  var st    = document.getElementById('chat-send-status');
-  var msg   = input.value.trim();
-  if(!msg||!_chatSelectedId) return;
-  st.textContent='Sending\u2026';
-  fetch('/api/teams/chat/send',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:_teamsToken, chat_id:_chatSelectedId, message:msg})})
-  .then(function(r){ return r.json(); }).then(function(j){
-    if(j.ok){ input.value=''; st.textContent=''; setTimeout(chatRefreshMsgs,600); }
-    else { st.innerHTML='<span style="color:#f55;">\u274C '+(j.error||JSON.stringify(j))+'</span>'; }
-  }).catch(function(e){ st.innerHTML='<span style="color:#f55;">Error: '+e+'</span>'; });
-}
-
-function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-</script>
-"""
 
 @app.route('/modules')
 @requires_permission('dashboard')
 def modules_page():
     return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', MODULES_TEMPLATE.replace('{% extends "base.html" %}','').replace('{% block content %}','').replace('{% endblock %}','')), enabled_modules=ENABLED_MODULES, managers=managers, request=request, get_flashed_messages=get_flashed_messages)
 
-@app.route('/teams')
-@requires_permission('dashboard')
-def teams_page():
-    return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}', TEAMS_TEMPLATE), request=request, get_flashed_messages=get_flashed_messages)
 
 @app.route('/google-services')
 @requires_permission('dashboard')
@@ -7981,428 +6530,6 @@ def api_code_archetypes():
         app.logger.exception('Failed to save custom code archetype')
         return jsonify({'error': f'Could not save archetype: {exc}'}), 500
     return jsonify({'archetype': archetype}), 201
-
-@app.route('/api/teams/connect', methods=['POST'])
-def api_teams_connect():
-    """Acquire an Azure AD token for Microsoft Graph.
-    Supports two grant types:
-      - 'password'            : ROPC (username + password, delegated, no MFA)
-      - 'client_credentials'  : App-only (client_id + client_secret)
-    """
-    try:
-        import urllib.request as _ur, urllib.parse as _up
-        data = request.get_json() or {}
-        tenant_id   = data.get('tenant_id', '').strip()
-        client_id   = data.get('client_id', '').strip()
-        grant_type  = data.get('grant_type', 'client_credentials')
-        # Fall back to Azure CLI public client when none provided (works for ROPC with delegated perms)
-        if not client_id:
-            if grant_type == 'password':
-                client_id = '04b07795-8542-4c45-a359-a4867a4e20c5'  # Azure CLI public client
-            else:
-                return jsonify({'error': 'client_id required'}), 400
-        # ROPC (password) grant is not allowed on /common or /consumers — must use
-        # a specific tenant GUID or /organizations.
-        if grant_type == 'password':
-            if not tenant_id or tenant_id.lower() in ('common', 'consumers'):
-                tenant_id = 'organizations'
-        else:
-            if not tenant_id:
-                tenant_id = 'common'
-        token_url = f'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'
-        if grant_type == 'password':
-            username = data.get('username', '').strip()
-            password = data.get('password', '')
-            if not username or not password:
-                return jsonify({'error': 'username and password required for password grant'}), 400
-            form = {
-                'grant_type': 'password',
-                'client_id': client_id,
-                'username': username,
-                'password': password,
-                # Delegated scopes needed for calendar read
-                'scope': 'https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Chat.Read https://graph.microsoft.com/Chat.ReadWrite https://graph.microsoft.com/User.Read offline_access openid',
-            }
-        else:  # client_credentials
-            client_secret = data.get('client_secret', '').strip()
-            if not client_secret:
-                return jsonify({'error': 'client_secret required for client_credentials grant'}), 400
-            form = {
-                'grant_type': 'client_credentials',
-                'client_id': client_id,
-                'client_secret': client_secret,
-                'scope': 'https://graph.microsoft.com/.default',
-            }
-        body = _up.urlencode(form).encode()
-        req = _ur.Request(token_url, data=body, method='POST')
-        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
-        with _ur.urlopen(req, timeout=15) as resp:
-            tj = json.loads(resp.read().decode())
-        token = tj.get('access_token')
-        if not token:
-            return jsonify({'error': tj.get('error_description') or tj.get('error_codes') or 'No token in response'}), 400
-        scope = tj.get('scope', '')
-        return jsonify({'token': token, 'scope': scope, 'grant_type': grant_type})
-    except Exception as e:
-        app.logger.exception('Teams connect failed')
-        err_msg = str(e)
-        try:
-            if hasattr(e, 'read'):
-                body_err = json.loads(e.read().decode())
-                err_msg = body_err.get('error_description') or body_err.get('error') or err_msg
-        except Exception:
-            pass
-        return jsonify({'error': err_msg}), 500
-
-@app.route('/api/teams/calendar', methods=['POST'])
-def api_teams_calendar():
-    """Fetch calendar events from Microsoft Graph for a user or the app itself."""
-    try:
-        data = request.get_json() or {}
-        token = data.get('token', '').strip()
-        start_date = data.get('start_date', '')
-        end_date = data.get('end_date', '')
-        upn = (data.get('upn') or '').strip()
-        if not token:
-            return jsonify({'error': 'token required'}), 400
-        if not start_date or not end_date:
-            return jsonify({'error': 'start_date and end_date required'}), 400
-        # Normalize ISO dates
-        start_iso = start_date + 'T00:00:00' if 'T' not in start_date else start_date
-        end_iso   = end_date   + 'T23:59:59' if 'T' not in end_date   else end_date
-        if start_iso.endswith('T00:00:00'):
-            start_iso += 'Z'
-        if end_iso.endswith('T23:59:59'):
-            end_iso += 'Z'
-        import urllib.request as _ur, urllib.parse as _up
-        # Endpoint: user calendar or app-level calendar
-        use_me = data.get('use_me', False)
-        if use_me or not upn:
-            endpoint = 'https://graph.microsoft.com/v1.0/me/calendarView'
-        else:
-            endpoint = f'https://graph.microsoft.com/v1.0/users/{_up.quote(upn)}/calendarView'
-        params = _up.urlencode({
-            'startDateTime': start_iso,
-            'endDateTime':   end_iso,
-            '$top': 200,
-            '$select': 'subject,start,end,location,organizer,showAs,isOnlineMeeting,onlineMeetingUrl,bodyPreview,webLink',
-            '$orderby': 'start/dateTime',
-        })
-        url = endpoint + '?' + params
-        req = _ur.Request(url)
-        req.add_header('Authorization', 'Bearer ' + token)
-        req.add_header('Content-Type', 'application/json')
-        with _ur.urlopen(req, timeout=20) as resp:
-            result = json.loads(resp.read().decode())
-        events = result.get('value', [])
-        # Follow @odata.nextLink pages (cap at 1000)
-        next_link = result.get('@odata.nextLink')
-        while next_link and len(events) < 1000:
-            nr = _ur.Request(next_link)
-            nr.add_header('Authorization', 'Bearer ' + token)
-            with _ur.urlopen(nr, timeout=20) as r2:
-                page = json.loads(r2.read().decode())
-            events.extend(page.get('value', []))
-            next_link = page.get('@odata.nextLink')
-        return jsonify({'events': events, 'count': len(events)})
-    except Exception as e:
-        app.logger.exception('Teams calendar fetch failed')
-        err_msg = str(e)
-        try:
-            if hasattr(e, 'read'):
-                body_err = json.loads(e.read().decode())
-                err_msg = body_err.get('error', {}).get('message') or err_msg
-        except Exception:
-            pass
-        return jsonify({'error': err_msg}), 500
-
-
-@app.route('/api/teams/chats', methods=['POST'])
-def api_teams_chats():
-    """List the current user's recent chats via Microsoft Graph."""
-    try:
-        import urllib.request as _ur, urllib.parse as _up
-        data = request.get_json() or {}
-        token = data.get('token', '').strip()
-        if not token:
-            return jsonify({'error': 'token required'}), 400
-        url = ('https://graph.microsoft.com/v1.0/me/chats'
-               '?$top=50&$expand=members&$select=id,topic,chatType,lastMessagePreview')
-        req = _ur.Request(url)
-        req.add_header('Authorization', 'Bearer ' + token)
-        with _ur.urlopen(req, timeout=20) as resp:
-            result = json.loads(resp.read().decode())
-        return jsonify({'chats': result.get('value', [])})
-    except Exception as e:
-        app.logger.exception('Teams chats failed')
-        err_msg = str(e)
-        try:
-            if hasattr(e, 'read'):
-                body_err = json.loads(e.read().decode())
-                err_msg = (body_err.get('error') or {}).get('message') or err_msg
-        except Exception:
-            pass
-        return jsonify({'error': err_msg}), 500
-
-
-@app.route('/api/teams/chat/messages', methods=['POST'])
-def api_teams_chat_messages():
-    """Fetch recent messages from a specific Teams chat."""
-    try:
-        import urllib.request as _ur, urllib.parse as _up
-        data = request.get_json() or {}
-        token   = data.get('token', '').strip()
-        chat_id = data.get('chat_id', '').strip()
-        if not token or not chat_id:
-            return jsonify({'error': 'token and chat_id required'}), 400
-        url = ('https://graph.microsoft.com/v1.0/me/chats/'
-               + _up.quote(chat_id, safe='')
-               + '/messages?$top=50&$select=id,body,from,createdDateTime,messageType')
-        req = _ur.Request(url)
-        req.add_header('Authorization', 'Bearer ' + token)
-        with _ur.urlopen(req, timeout=20) as resp:
-            result = json.loads(resp.read().decode())
-        msgs = [m for m in result.get('value', []) if m.get('messageType') == 'message']
-        return jsonify({'messages': msgs})
-    except Exception as e:
-        app.logger.exception('Teams chat messages failed')
-        err_msg = str(e)
-        try:
-            if hasattr(e, 'read'):
-                body_err = json.loads(e.read().decode())
-                err_msg = (body_err.get('error') or {}).get('message') or err_msg
-        except Exception:
-            pass
-        return jsonify({'error': err_msg}), 500
-
-
-@app.route('/api/teams/chat/send', methods=['POST'])
-def api_teams_chat_send():
-    """Send a text message to a Teams chat."""
-    try:
-        import urllib.request as _ur, urllib.parse as _up
-        data = request.get_json() or {}
-        token   = data.get('token', '').strip()
-        chat_id = data.get('chat_id', '').strip()
-        message = data.get('message', '').strip()
-        if not token or not chat_id or not message:
-            return jsonify({'error': 'token, chat_id and message required'}), 400
-        url = ('https://graph.microsoft.com/v1.0/me/chats/'
-               + _up.quote(chat_id, safe='') + '/messages')
-        body = json.dumps({'body': {'content': message, 'contentType': 'text'}}).encode()
-        req = _ur.Request(url, data=body, method='POST')
-        req.add_header('Authorization', 'Bearer ' + token)
-        req.add_header('Content-Type', 'application/json')
-        with _ur.urlopen(req, timeout=20) as resp:
-            result = json.loads(resp.read().decode())
-        return jsonify({'ok': True, 'id': result.get('id')})
-    except Exception as e:
-        app.logger.exception('Teams chat send failed')
-        err_msg = str(e)
-        try:
-            if hasattr(e, 'read'):
-                body_err = json.loads(e.read().decode())
-                err_msg = (body_err.get('error') or {}).get('message') or err_msg
-        except Exception:
-            pass
-        return jsonify({'error': err_msg}), 500
-
-
-@app.route('/api/teams/device_start', methods=['POST'])
-def api_teams_device_start():
-    """Start an OAuth2 device code flow for Microsoft Graph (supports MFA)."""
-    try:
-        import urllib.request as _ur, urllib.parse as _up
-        data = request.get_json() or {}
-        tenant_id = data.get('tenant_id', 'common').strip() or 'common'
-        if tenant_id.lower() == 'consumers':
-            tenant_id = 'common'
-        # Use caller-supplied client_id (e.g. from an Office 365 app registration),
-        # fall back to Azure CLI public client which works for basic Graph access.
-        client_id = data.get('client_id', '').strip() or '04b07795-8542-4c45-a359-a4867a4e20c5'
-        url = f'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/devicecode'
-        form = _up.urlencode({
-            'client_id': client_id,
-            'scope': 'https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Chat.Read https://graph.microsoft.com/Chat.ReadWrite https://graph.microsoft.com/User.Read offline_access openid',
-        }).encode()
-        req = _ur.Request(url, data=form, method='POST')
-        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
-        with _ur.urlopen(req, timeout=15) as resp:
-            j = json.loads(resp.read().decode())
-        return jsonify(j)
-    except Exception as e:
-        app.logger.exception('Device start failed')
-        err_msg = str(e)
-        try:
-            if hasattr(e, 'read'): err_msg = json.loads(e.read().decode()).get('error_description') or err_msg
-        except Exception: pass
-        return jsonify({'error': err_msg}), 500
-
-
-@app.route('/api/teams/device_poll', methods=['POST'])
-def api_teams_device_poll():
-    """Poll for a token after the user completes device code login."""
-    try:
-        import urllib.request as _ur, urllib.parse as _up, base64 as _b64
-        data = request.get_json() or {}
-        tenant_id   = data.get('tenant_id', 'common').strip() or 'common'
-        device_code = data.get('device_code', '').strip()
-        if not device_code:
-            return jsonify({'error': 'device_code required'}), 400
-        client_id = data.get('client_id', '').strip() or '04b07795-8542-4c45-a359-a4867a4e20c5'
-        url  = f'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'
-        form = _up.urlencode({
-            'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
-            'client_id':  client_id,
-            'device_code': device_code,
-        }).encode()
-        req = _ur.Request(url, data=form, method='POST')
-        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
-        try:
-            with _ur.urlopen(req, timeout=15) as resp:
-                tj = json.loads(resp.read().decode())
-            token = tj.get('access_token')
-            if not token:
-                return jsonify({'error': tj.get('error_description') or 'No token'}), 400
-            upn = ''
-            id_token = tj.get('id_token', '')
-            if id_token:
-                try:
-                    parts  = id_token.split('.')
-                    padded = parts[1] + '=' * (4 - len(parts[1]) % 4)
-                    claims = json.loads(_b64.urlsafe_b64decode(padded).decode('utf-8', errors='ignore'))
-                    upn = claims.get('preferred_username') or claims.get('upn') or claims.get('email') or ''
-                except Exception: pass
-            return jsonify({'token': token, 'upn': upn})
-        except Exception as poll_err:
-            err_body = {}
-            try:
-                if hasattr(poll_err, 'read'): err_body = json.loads(poll_err.read().decode())
-            except Exception: pass
-            err_code = err_body.get('error', '')
-            if err_code == 'authorization_pending':
-                return jsonify({'pending': True})
-            elif err_code in ('expired_token', 'code_expired', 'authorization_declined'):
-                return jsonify({'expired': True})
-            return jsonify({'error': err_body.get('error_description') or str(poll_err)}), 400
-    except Exception as e:
-        app.logger.exception('Device poll failed')
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/teams/ps_status', methods=['POST'])
-def api_teams_ps_status():
-    """Check if the MicrosoftTeams PS module is installed; try a silent reconnect to detect cached session."""
-    import tempfile, os as _os, re as _re
-    try:
-        ps_script = textwrap.dedent(r"""
-            $m = Get-Module MicrosoftTeams -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
-            if (-not $m) { [PSCustomObject]@{module_found=$false} | ConvertTo-Json -Compress; exit }
-            $ver = $m.Version.ToString()
-            try {
-                $conn = Connect-MicrosoftTeams -UseDeviceAuthentication:$false -ErrorAction Stop 2>$null
-                if (-not $conn -or -not $conn.Account) { throw 'no account' }
-                [PSCustomObject]@{module_found=$true; version=$ver; connected=$true; account=[string]$conn.Account; tenant_id=[string]$conn.TenantId} | ConvertTo-Json -Compress
-            } catch {
-                [PSCustomObject]@{module_found=$true; version=$ver; connected=$false} | ConvertTo-Json -Compress
-            }
-        """).strip()
-        tf = tempfile.NamedTemporaryFile(suffix='.ps1', mode='w', delete=False, encoding='utf-8')
-        tf.write(ps_script); tf.close()
-        try:
-            result = subprocess.run(
-                ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tf.name],
-                capture_output=True, text=True, timeout=30
-            )
-        finally:
-            _os.unlink(tf.name)
-        stdout = result.stdout.strip()
-        if not stdout:
-            return jsonify({'error': result.stderr.strip() or 'No output from PowerShell'}), 500
-        m = _re.search(r'\{.*\}', stdout, _re.DOTALL)
-        data = json.loads(m.group(0) if m else stdout)
-        return jsonify(data)
-    except Exception as e:
-        app.logger.exception('PS status check failed')
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/teams/ps_connect', methods=['POST'])
-def api_teams_ps_connect():
-    """Run Connect-MicrosoftTeams and return account/tenant from its return value (no admin required)."""
-    import tempfile, os as _os, re as _re
-    try:
-        ps_script = textwrap.dedent(r"""
-            Import-Module MicrosoftTeams -ErrorAction Stop
-            $conn = Connect-MicrosoftTeams -ErrorAction Stop
-            if ($conn -and $conn.Account) {
-                [PSCustomObject]@{connected=$true; account=[string]$conn.Account; tenant_id=[string]$conn.TenantId; tenant_name=[string]$conn.TenantDomain} | ConvertTo-Json -Compress
-            } else {
-                [PSCustomObject]@{connected=$false; error='Connect-MicrosoftTeams returned no account'} | ConvertTo-Json -Compress
-            }
-        """).strip()
-        tf = tempfile.NamedTemporaryFile(suffix='.ps1', mode='w', delete=False, encoding='utf-8')
-        tf.write(ps_script); tf.close()
-        try:
-            result = subprocess.run(
-                ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tf.name],
-                capture_output=True, text=True, timeout=120
-            )
-        finally:
-            _os.unlink(tf.name)
-        stdout = result.stdout.strip()
-        if not stdout:
-            return jsonify({'connected': False, 'error': result.stderr.strip() or 'No output from PowerShell'}), 500
-        m = _re.search(r'\{.*\}', stdout, _re.DOTALL)
-        data = json.loads(m.group(0) if m else stdout)
-        # normalise: use account as tenant_name fallback
-        if data.get('connected') and not data.get('tenant_name'):
-            data['tenant_name'] = data.get('account', '')
-        return jsonify(data)
-    except Exception as e:
-        app.logger.exception('PS connect failed')
-        return jsonify({'connected': False, 'error': str(e)}), 500
-
-
-@app.route('/api/teams/ps_teams', methods=['POST'])
-def api_teams_ps_teams():
-    """Return Teams the signed-in user can see; reconnects silently in the subprocess."""
-    import tempfile, os as _os, re as _re
-    try:
-        ps_script = textwrap.dedent(r"""
-            Import-Module MicrosoftTeams -ErrorAction Stop
-            $conn = Connect-MicrosoftTeams -ErrorAction Stop
-            # Try Get-Team (owner/member list), fall back to Get-AssociatedTeam
-            $teams = $null
-            try { $teams = Get-Team -ErrorAction Stop | Select-Object GroupId, DisplayName, Description, Visibility } catch {}
-            if (-not $teams) {
-                try { $teams = Get-AssociatedTeam -ErrorAction Stop | Select-Object GroupId, DisplayName, Description, Visibility } catch {}
-            }
-            if ($teams) { $teams | ConvertTo-Json -Compress -Depth 3 } else { Write-Output '[]' }
-        """).strip()
-        tf = tempfile.NamedTemporaryFile(suffix='.ps1', mode='w', delete=False, encoding='utf-8')
-        tf.write(ps_script); tf.close()
-        try:
-            result = subprocess.run(
-                ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tf.name],
-                capture_output=True, text=True, timeout=180
-            )
-        finally:
-            _os.unlink(tf.name)
-        stdout = result.stdout.strip()
-        if not stdout:
-            return jsonify({'error': result.stderr.strip() or 'No output'}), 500
-        m = _re.search(r'(\[.*\]|\{.*\})', stdout, _re.DOTALL)
-        raw = m.group(0) if m else stdout
-        try:
-            parsed = json.loads(raw)
-        except Exception:
-            return jsonify({'error': 'Could not parse Teams output', 'raw': stdout[:500]}), 500
-        if isinstance(parsed, dict): parsed = [parsed]
-        return jsonify({'teams': parsed})
-    except Exception as e:
-        app.logger.exception('PS get-team failed')
-        return jsonify({'error': str(e)}), 500
 
 
 OKTA_TEMPLATE = r'''
@@ -8908,20 +7035,9 @@ def api_stats():
     return jsonify(get_system_stats())
 
 
-
-
-
-
-
-
-
-
 def _b64_encode_path(p: str) -> str:
 
     return base64.urlsafe_b64encode(p.encode()).decode()
-
-
-
 
 
 def _b64_decode_path(s: str) -> str:
@@ -8933,9 +7049,6 @@ def _b64_decode_path(s: str) -> str:
     except Exception:
 
         return ''
-
-
-
 
 
 @app.route('/scripts/edit/<b64path>')
@@ -8964,9 +7077,6 @@ def scripts_edit(b64path):
         return redirect(url_for('scripts_list'))
 
     return render_template_string(HTML_TEMPLATE.replace('{% block content %}{% endblock %}',SCRIPT_EDIT_TEMPLATE.replace('{% extends "base.html" %}','').replace('{% block content %}','').replace('{% endblock %}','')),content=content,filepath=path,b64path=b64path,message=None,request=request,get_flashed_messages=get_flashed_messages)
-
-
-
 
 
 @app.route('/scripts/save/<b64path>', methods=['POST'])
@@ -9023,9 +7133,6 @@ def scripts_save(b64path):
     return redirect(url_for('scripts_list'))
 
 
-
-
-
 @app.route('/scripts/backup/<b64path>', methods=['POST'])
 
 @requires_permission('scripts')
@@ -9062,9 +7169,6 @@ def scripts_backup(b64path):
         return jsonify({'success':False,'error':str(e)})
 
 
-
-
-
     # --- Minimal Web IDE API endpoints -----------------------------------------------------
 
     def _safe_script_path(filename: str):
@@ -9082,15 +7186,6 @@ def scripts_backup(b64path):
         except Exception:
 
             return None
-
-
-
-
-
-
-
-
-
 
 
     @app.route('/api/ide/load', methods=['POST'])
@@ -9122,9 +7217,6 @@ def scripts_backup(b64path):
             return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
     @app.route('/api/ide/save', methods=['POST'])
 
     def api_ide_save():
@@ -9148,9 +7240,6 @@ def scripts_backup(b64path):
         except Exception as e:
 
             return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
     @app.route('/api/ide/execute', methods=['POST'])
@@ -9280,13 +7369,9 @@ def scripts_backup(b64path):
             return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
     # Remote credential storage for IDE remote execution (basic, stored in data/ide_creds.json)
 
     CREDS_FILE = Path(__file__).resolve().parent / 'data' / 'ide_creds.json'
-
 
 
     @app.route('/api/ide/remote/creds', methods=['POST'])
@@ -9332,9 +7417,6 @@ def scripts_backup(b64path):
             return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-
-
-
     @app.route('/api/ide/remote/creds', methods=['GET'])
 
     def api_ide_remote_creds_get():
@@ -9358,9 +7440,6 @@ def scripts_backup(b64path):
         except Exception as e:
 
             return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-
 
 
 @app.route('/scripts/suggest_commit/<b64path>', methods=['GET'])
@@ -9417,9 +7496,6 @@ def scripts_suggest_commit(b64path):
         return jsonify({'success':False,'error':str(e)})
 
 
-
-
-
 @app.route('/scripts/diff/<b64path>', methods=['POST'])
 
 @requires_permission('scripts')
@@ -9456,9 +7532,6 @@ def scripts_diff(b64path):
     except Exception as e:
 
         return jsonify({'success':False,'error':str(e)})
-
-
-
 
 
 @app.route('/scripts/exec_path/<b64path>', methods=['POST','GET'])
@@ -11529,7 +9602,6 @@ function startAndOpen(){{
 </body></html>""", 200, {{'Content-Type': 'text/html'}}
 
 
-
 @app.route('/addons/modules/<module_name>/web/<path:filepath>')
 def addons_module_web(module_name, filepath):
     """Serve web-accessible files from a module (for PHP setup scripts, etc.)"""
@@ -12109,7 +10181,6 @@ runpy.run_path(r'{entry_file}', run_name='__main__')
         return {'status': 'error', 'message': str(exc)}
 
 
-
 def _register_runtime_blueprint_routes(app_obj, module_name: str, module_file: Path):
     """Register blueprint routes directly on the live app when startup is already finished."""
     try:
@@ -12388,7 +10459,6 @@ def _proxy_starting(module_name, port, subpath):
             f'<p><a href="{dest}" style="color:#4CAF50">Refresh now</a> &nbsp;|&nbsp; '
             f'<a href="/addons/modules" style="color:#888">⬅ Back</a></p>'
             f'</body></html>')
-
 
 
 @app.route('/addons/modules/<module_name>/status')
@@ -12818,9 +10888,6 @@ def resources_list():
     return render_resources_page()
 
 
-
-
-
 @app.route('/resources/preview')
 
 def resources_preview():
@@ -12852,9 +10919,6 @@ def resources_preview():
     except Exception:
 
         return 'binary or unreadable', 400
-
-
-
 
 
 @app.route('/resources/load_options')
@@ -12922,9 +10986,6 @@ def resources_load_options():
     return html_form
 
 
-
-
-
 @app.route('/api/resources/list')
 
 def api_resources_list():
@@ -12940,9 +11001,6 @@ def api_resources_list():
         app.logger.exception('Failed to list resources')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/resources/upload', methods=['POST'])
@@ -12974,7 +11032,6 @@ def api_resources_upload():
         cat_dir.mkdir(parents=True, exist_ok=True)
 
 
-
         # Server-side validation: allowed extensions and size limits
 
         ALLOWED_EXTS = {'.txt', '.jsonl', '.md', '.pdf', '.json'}
@@ -12984,13 +11041,11 @@ def api_resources_upload():
         MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
-
         ext = Path(filename).suffix.lower()
 
         if ext not in ALLOWED_EXTS:
 
             return jsonify({'error': 'Invalid file type', 'allowed': list(ALLOWED_EXTS)}), 400
-
 
 
         # Prevent duplicate filenames in same category (by logical filename)
@@ -13004,13 +11059,11 @@ def api_resources_upload():
             return jsonify({'error': 'Resource already exists', 'message': 'Duplicate resource detected'}), 400
 
 
-
         # quick content-length check when available
 
         if request.content_length and request.content_length > MAX_BYTES:
 
             return jsonify({'error': 'File too large', 'max_bytes': MAX_BYTES}), 400
-
 
 
         # store with a safe unique filename to avoid collisions on disk
@@ -13044,7 +11097,6 @@ def api_resources_upload():
             # reject persona flag for binary types
 
             persona = False
-
 
 
         entry = {
@@ -13136,9 +11188,6 @@ def api_resources_upload():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/resources/delete', methods=['POST'])
 
 def api_resources_delete():
@@ -13186,9 +11235,6 @@ def api_resources_delete():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/resources/enqueue_ingest', methods=['POST'])
 
 def api_resources_enqueue_ingest():
@@ -13214,7 +11260,6 @@ def api_resources_enqueue_ingest():
             return jsonify({'error': 'resource not found'}), 404
 
 
-
         tasks = _load_ingest_tasks()
 
         tid = f"task_{int(time.time()*1000)}"
@@ -13232,9 +11277,6 @@ def api_resources_enqueue_ingest():
         app.logger.exception('Enqueue failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/resources/ingest_status')
@@ -13264,9 +11306,6 @@ def api_resources_ingest_status():
         app.logger.exception('Status failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/resources/load', methods=['POST'])
@@ -13302,13 +11341,11 @@ def api_resources_load():
             return jsonify({'error': 'resource not found'}), 404
 
 
-
         p = Path(entry.get('path'))
 
         if not p.exists():
 
             return jsonify({'error': 'file missing'}), 500
-
 
 
         # Read small files as text where possible; for binary keep path and size
@@ -13326,13 +11363,11 @@ def api_resources_load():
             content = {'type': 'binary', 'path': str(p), 'size': p.stat().st_size}
 
 
-
         # respect form flags
 
         for_ingestion = bool(data.get('for_ingestion'))
 
         for_training = bool(data.get('for_training'))
-
 
 
         # Persist into session meta under 'loaded_resources'
@@ -13376,7 +11411,6 @@ def api_resources_load():
         storage.set_session_meta(session_id, meta)
 
 
-
         # If immediate ingestion requested, call bot.ingest_resource
 
         bot = None
@@ -13400,7 +11434,6 @@ def api_resources_load():
             app.logger.exception('Failed to get chat bot for ingest')
 
 
-
         return jsonify({'ok': True, 'message': 'Loaded into session', 'session_id': session_id})
 
     except Exception as e:
@@ -13408,9 +11441,6 @@ def api_resources_load():
         app.logger.exception('Load failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/resources/convert_to_training', methods=['POST'])
@@ -13470,9 +11500,6 @@ def api_resources_convert_to_training():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/personality/status')
 
 def api_personality_status():
@@ -13492,9 +11519,6 @@ def api_personality_status():
         app.logger.exception('Personality status failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/personality/list')
@@ -13542,9 +11566,6 @@ def api_personality_list():
         app.logger.exception('List personalities failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/personality/apply', methods=['POST'])
@@ -13618,9 +11639,6 @@ def api_personality_apply():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/personality/delete', methods=['POST'])
 
 def api_personality_delete():
@@ -13674,8 +11692,6 @@ def api_personality_delete():
         return jsonify({'error': str(e)}), 500
 
 
-
-
 @app.route('/api/personality/toggle', methods=['POST'])
 def api_personality_toggle():
     try:
@@ -13694,8 +11710,6 @@ def api_personality_toggle():
     except Exception as e:
         app.logger.exception('Toggle personality failed')
         return jsonify({'error': str(e)}), 500
-
-
 
 
 @app.route('/masterchief_code_ui')
@@ -14680,7 +12694,6 @@ def api_echo_chat():
             meta = {}
 
 
-
         # Ensure a persona is applied for this session if none exists
 
         try:
@@ -14770,7 +12783,6 @@ def api_echo_chat():
             app.logger.exception('Auto-apply persona step failed')
 
 
-
         um_low = message.lower()
 
         # ---- Unified action registry (echo_image, youtube_play, … ) ----
@@ -14804,7 +12816,6 @@ def api_echo_chat():
             _upsert_session_meta(session_id, title=topic)
 
             return jsonify({'response': f"Got it — I'll explore that: {topic}. Can you provide any important details or constraints?", 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
-
 
 
         # Refinement
@@ -14842,7 +12853,6 @@ def api_echo_chat():
                 return jsonify({'response': "Thanks — I've updated the plan with that detail. Anything else to refine?", 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
 
 
-
         # Validation
 
         if any(p in um_low for p in ['is this okay', 'does this work', 'is this correct', 'confirm', 'validate', 'looks good', 'agree', 'ok to proceed']):
@@ -14876,7 +12886,6 @@ def api_echo_chat():
                 return jsonify({'response': resp_text, 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
 
 
-
         # Completion
 
         if any(p in um_low for p in ["done","finished","complete","that's all",'thats all',"that's it","that's it, thanks",'thank you','thanks']):
@@ -14908,7 +12917,6 @@ def api_echo_chat():
                 _upsert_session_meta(session_id)
 
                 return jsonify({'response': resp_text, 'session_id': session_id, 'timestamp': time.time(), 'message_id': f"bot_{int(time.time()*1000)}"})
-
 
 
         # Fallback to bot
@@ -15010,7 +13018,6 @@ def api_echo_chat():
             return False
 
 
-
         # apply sanitizer and preserve original for debugging when possible
 
         try:
@@ -15100,7 +13107,6 @@ def api_echo_chat():
         auto_continue = _parse_bool_val(data.get('auto_continue'), default=bool(app.config.get('ECHO_AUTO_CONTINUE', False)))
 
 
-
         def _looks_truncated(t: str) -> bool:
 
             if not t or len(t) < 200:
@@ -15120,7 +13126,6 @@ def api_echo_chat():
                 return True
 
             return False
-
 
 
             # If requested (or configured) attempt to auto-continue when the reply looks cut off,
@@ -15188,7 +13193,6 @@ def api_echo_chat():
                         return False
 
 
-
                 while retries < max_retries and _looks_truncated(full_text):
 
                     try:
@@ -15242,7 +13246,6 @@ def api_echo_chat():
                     retries += 1
 
 
-
         # Optionally save the full response to a file so very long replies are available un-truncated
 
         if save_to_file:
@@ -15274,7 +13277,6 @@ def api_echo_chat():
                 app.logger.exception('Failed to save echo response to file')
 
 
-
         # persist session metadata so it appears in chat history list
 
         try:
@@ -15294,9 +13296,6 @@ def api_echo_chat():
     except Exception as e:
 
         return jsonify({'error':str(e)}),500
-
-
-
 
 
 @app.route('/api/echo/outputs')
@@ -15330,9 +13329,6 @@ def api_echo_outputs():
         app.logger.exception('List echo outputs failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/data/echo_chat_outputs/<path:fname>')
@@ -15673,9 +13669,6 @@ def api_echo_history():
         return jsonify({'error':str(e)}),500
 
 
-
-
-
 @app.route('/api/echo/model', methods=['GET'])
 def api_echo_model():
     try:
@@ -15708,7 +13701,6 @@ def api_echo_preload_model():
         warmed = False
 
 
-
         # Prefer an explicitly selected model stored by `/api/echo/select_model`.
 
         try:
@@ -15734,7 +13726,6 @@ def api_echo_preload_model():
             model = None
 
 
-
         # Fall back to discovery if no explicit selection
 
         if not model and hasattr(bot, '_find_local_model'):
@@ -15748,13 +13739,11 @@ def api_echo_preload_model():
                 model = None
 
 
-
         # Allow caller to request no warm (useful for large models)
 
         payload = request.get_json(silent=True) or {}
 
         do_warm = payload.get('warm', True)
-
 
 
         if model and do_warm:
@@ -15774,7 +13763,6 @@ def api_echo_preload_model():
                     return jsonify({'model': model, 'warmed': False, 'error': str(e)}), 500
 
 
-
         return jsonify({'model': model, 'warmed': warmed})
 
     except Exception as e:
@@ -15784,17 +13772,11 @@ def api_echo_preload_model():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
-
-
 @app.route('/api/echo/generate_image', methods=['POST'])
 
 def api_echo_generate_image():
 
     """Generate an image from a prompt using a local CPU-only diffusers pipeline if available.
-
 
 
     This endpoint is intentionally local-first: it will attempt to import `diffusers`
@@ -15824,7 +13806,6 @@ def api_echo_generate_image():
             return jsonify({'error': 'prompt required'}), 400
 
 
-
         # Rate limiting (simple sliding window per session/ip)
 
         now_ts = time.time()
@@ -15846,7 +13827,6 @@ def api_echo_generate_image():
         IMAGE_RATE[rl_key] = timestamps
 
 
-
         # Cache key
 
         cache_key = f"{prompt}||{size}||{style}"
@@ -15858,11 +13838,9 @@ def api_echo_generate_image():
             return jsonify({'ok': True, 'url': '/' + cached['path']})
 
 
-
         outdir = Path(__file__).parent / 'data' / 'echo_images'
 
         outdir.mkdir(parents=True, exist_ok=True)
-
 
 
         provider = app.config.get('IMAGE_PROVIDER', 'local')
@@ -15870,7 +13848,6 @@ def api_echo_generate_image():
         if provider != 'local':
 
             return jsonify({'error': 'Only local CPU generation is enabled in this demo. Set IMAGE_PROVIDER=local.'}), 501
-
 
 
         # Attempt local generation with diffusers on CPU
@@ -15884,7 +13861,6 @@ def api_echo_generate_image():
         except Exception as e:
 
             return jsonify({'error': 'diffusers or torch not installed (pip install diffusers[torch] transformers)'}), 501
-
 
 
         try:
@@ -15906,7 +13882,6 @@ def api_echo_generate_image():
                 pipe = StableDiffusionPipeline.from_pretrained(model_id)
 
 
-
             # parse size
 
             width, height = (512, 512)
@@ -15924,7 +13899,6 @@ def api_echo_generate_image():
             except Exception:
 
                 pass
-
 
 
             # generate
@@ -15950,15 +13924,11 @@ def api_echo_generate_image():
             return jsonify({'error': f'local generation failed: {e}'}), 500
 
 
-
     except Exception as e:
 
         app.logger.exception('Generate image failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/data/echo_images/<path:fname>')
@@ -16119,9 +14089,6 @@ def api_gguf_select():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/echo/debug_image_provider')
 
 def api_echo_debug_image_provider():
@@ -16143,11 +14110,6 @@ def api_echo_debug_image_provider():
         has_diffusers = False
 
     return jsonify({'IMAGE_PROVIDER': app.config.get('IMAGE_PROVIDER'), 'torch_installed': bool(has_torch), 'diffusers_installed': bool(has_diffusers)})
-
-
-
-
-
 
 
 @app.route('/api/echo/training_files')
@@ -16175,15 +14137,11 @@ def api_echo_training_files():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/echo/train_model', methods=['POST'])
 
 def api_echo_train_model():
 
     """Start a training job (runs tools/finetune_stub.py by default).
-
 
 
     Payload: JSON { model: 'models/..gguf', training_file: 'filename.jsonl', output_name: 'myrun', epochs: 1, batch_size: 8, lr: 1e-4 }
@@ -16209,7 +14167,6 @@ def api_echo_train_model():
         lr = float(data.get('lr', 1e-4))
 
 
-
         engine = data.get('engine', 'stub')
 
         # validate basics
@@ -16217,7 +14174,6 @@ def api_echo_train_model():
         if not model or (not training_file and not resource_id):
 
             return jsonify({'error': 'model and either training_file or resource_id are required'}), 400
-
 
 
         model_path = Path(model)
@@ -16229,7 +14185,6 @@ def api_echo_train_model():
         if not model_path.exists():
 
             return jsonify({'error': 'model not found'}), 404
-
 
 
         if resource_id:
@@ -16273,13 +14228,11 @@ def api_echo_train_model():
                 return jsonify({'error': 'training file not found'}), 404
 
 
-
         job_id = uuid.uuid4().hex
 
         outdir = Path(__file__).parent / 'data' / 'models_output' / job_id
 
         outdir.mkdir(parents=True, exist_ok=True)
-
 
 
         # select worker based on engine
@@ -16315,13 +14268,11 @@ def api_echo_train_model():
             return jsonify({'error': 'unknown engine', 'allowed': ['stub','peft']}), 400
 
 
-
         TRAIN_JOBS[job_id] = {'id': job_id, 'status': 'queued', 'model': str(model_path), 'training_file': str(tfile), 'output': str(outdir), 'engine': engine, 'pid': None, 'returncode': None, 'started_at': None, 'finished_at': None}
 
         _save_train_jobs()
 
         _start_train_job(job_id, cmd, cwd=str(Path(__file__).parent))
-
 
 
         return jsonify({'ok': True, 'job_id': job_id})
@@ -16331,9 +14282,6 @@ def api_echo_train_model():
         app.logger.exception('Start train failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/echo/train_status')
@@ -16375,11 +14323,6 @@ def api_echo_train_status():
     return jsonify({'job': job, 'log_tail': log_tail})
 
 
-
-
-
-
-
 @app.route('/api/echo/train_list')
 
 def api_echo_train_list():
@@ -16391,9 +14334,6 @@ def api_echo_train_list():
     except Exception as e:
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/echo/train_cancel', methods=['POST'])
@@ -16455,11 +14395,6 @@ def api_echo_train_cancel():
         app.logger.exception('Cancel failed')
 
         return jsonify({'error': str(e)}), 500
-
-
-
-
-
 
 
 class _EchoApprovalAuditError(Exception):
@@ -17036,18 +14971,12 @@ def api_echo_models():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/echo-train')
 
 @requires_permission('training')
 def echo_train_page():
 
     return render_echo_training_page()
-
-
-
 
 
 @app.route('/api/echo/select_model', methods=['POST'])
@@ -17112,9 +15041,6 @@ def _chatserv_select_model(model):
 app.config['CHAT_SERV_MODEL_HANDLER'] = _chatserv_select_model
 
 
-
-
-
 @app.route('/api/echo/upload_ingest', methods=['POST'])
 
 def api_echo_upload_ingest():
@@ -17174,7 +15100,6 @@ def api_echo_upload_ingest():
             saved_path = str(target)
 
 
-
         # attempt to have bot ingest the content if supported
 
         try:
@@ -17196,7 +15121,6 @@ def api_echo_upload_ingest():
         except Exception:
 
             app.logger.exception('Failed to call bot.ingest_resource')
-
 
 
         return jsonify({'ok': True, 'saved': saved_path})
@@ -17228,9 +15152,6 @@ def api_echo_search():
     except Exception as e:
 
         return jsonify({'error':str(e)}),500
-
-
-
 
 
 @app.route('/api/echo/sessions')
@@ -17290,9 +15211,6 @@ def api_echo_sessions():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/echo/session/<session_id>', methods=['GET','DELETE'])
 
 def api_echo_session(session_id):
@@ -17350,9 +15268,6 @@ def api_echo_session(session_id):
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/echo/session/favorite', methods=['POST'])
 
 def api_echo_session_favorite():
@@ -17396,9 +15311,6 @@ def api_echo_session_favorite():
         return jsonify({'error': str(e)}),500
 
 
-
-
-
 @app.route('/api/echo/session/create', methods=['POST'])
 
 def api_echo_session_create():
@@ -17418,9 +15330,6 @@ def api_echo_session_create():
     except Exception as e:
 
         return jsonify({'error': str(e)}),500
-
-
-
 
 
 @app.route('/debug/fetch_model')
@@ -17466,9 +15375,6 @@ def debug_fetch_model():
     return html
 
 
-
-
-
 @app.route('/personality')
 
 def personality_list():
@@ -17488,9 +15394,6 @@ def personality_list():
     html_out += '</ul><p><a href="/resources">Back</a></p></body></html>'
 
     return html_out
-
-
-
 
 
 @app.route('/personality/edit')
@@ -17538,9 +15441,6 @@ def personality_edit():
     </body></html>'''
 
 
-
-
-
 @app.route('/personality/save', methods=['POST'])
 
 def personality_save():
@@ -17572,9 +15472,6 @@ def personality_save():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/about')
 
 def about_page():
@@ -17601,18 +15498,11 @@ def pipelines_page():
     return send_file('pipelines.html')
 
 
-
-
-
 @app.route('/cloud')
 
 def cloud_page():
 
     return send_file('cloud_dashboard.html')
-
-
-
-
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -18996,17 +16886,11 @@ def secrets_page():
     return send_file('secrets_vault.html')
 
 
-
-
-
 @app.route('/echo-memory')
 
 def echo_memory_page():
 
     return send_file('echo_memory.html')
-
-
-
 
 
 @app.route('/marketplace')
@@ -19016,9 +16900,6 @@ def marketplace_page():
     return send_file('marketplace.html')
 
 
-
-
-
 @app.route('/notifications')
 
 def notifications_page():
@@ -19026,16 +16907,10 @@ def notifications_page():
     return send_file('notifications.html')
 
 
-
-
-
 @app.route('/rbac')
 @requires_permission('rbac')
 def rbac_page():
     return send_file('rbac.html')
-
-
-
 
 
 # TF Wizard routes
@@ -19108,9 +16983,6 @@ if TF_WIZARD_AVAILABLE:
             return jsonify({'variables': vars_out})
         except Exception as e:
             return jsonify({"error": str(e)}), 400
-
-
-
 
 
 @app.route('/gallery')
@@ -19698,7 +17570,6 @@ _manager_tasks_file = Path(__file__).resolve().parent / 'data' / 'manager_tasks.
 _manager_tests_file = Path(__file__).resolve().parent / 'data' / 'manager_last_test.json'
 
 
-
 def _load_manager_tasks():
 
     try:
@@ -19716,7 +17587,6 @@ def _load_manager_tasks():
         return []
 
 
-
 def _save_manager_tasks(tasks):
 
     try:
@@ -19732,9 +17602,6 @@ def _save_manager_tasks(tasks):
         app.logger.exception('Failed to save manager tasks')
 
         return False
-
-
-
 
 
 @app.route('/manager')
@@ -19786,9 +17653,6 @@ loadTasks(); loadModels(); pollTests();
 </script></body></html>'''
 
     return html_page
-
-
-
 
 
 @app.route('/api/manager/tasks', methods=['GET','POST','PUT','DELETE'])
@@ -19888,9 +17752,6 @@ def api_manager_tasks():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/manager/models', methods=['GET'])
 
 def api_manager_models():
@@ -19936,9 +17797,6 @@ def api_manager_models():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 @app.route('/api/manager/models/preload', methods=['POST'])
 
 def api_manager_models_preload():
@@ -19980,9 +17838,6 @@ def api_manager_models_preload():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
 def _run_tests_background():
 
     try:
@@ -20012,9 +17867,6 @@ def _run_tests_background():
         _manager_tests_file.write_text(json.dumps({'running': False, 'error': 'runner failure'}), encoding='utf-8')
 
 
-
-
-
 @app.route('/api/manager/run_tests', methods=['POST'])
 
 def api_manager_run_tests():
@@ -20034,9 +17886,6 @@ def api_manager_run_tests():
         app.logger.exception('Failed to start tests')
 
         return jsonify({'error': str(e)}), 500
-
-
-
 
 
 @app.route('/api/manager/run_tests/status', methods=['GET'])
@@ -20422,7 +18271,6 @@ def sys_scm_pull():
                         capture_output=True, text=True, cwd=app.root_path, timeout=60)
     output = (r.stdout + '\n' + r.stderr).strip()
     return jsonify({'ok': r.returncode == 0, 'output': output})
-
 
 
 # Isolated add-on features (app_features/) and linked blueprints. Add new features there, not in this file.

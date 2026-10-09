@@ -258,6 +258,7 @@ def _load_linked(app: Flask, root: Path) -> list[dict]:
 # ---------- loading ----------
 def load_features(app: Flask, root, layout_template: str, admin_page, post_guard, audit=None) -> list[dict]:
     root = Path(root)
+    app.config['_layout_template'] = layout_template
     flags = read_flags(root)
     statuses, nav = [], []
     for info in discover(root):
