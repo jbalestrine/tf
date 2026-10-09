@@ -104,6 +104,7 @@ code{color:#4CAF50;}
       <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
       <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
       <a href="/chaos-monkey" class="{{ 'active' if request.path.startswith('/chaos-monkey') else '' }}">🐒 Chaos Monkey Area</a>
+      <a href="/page-editor" class="{{ 'active' if '/page-editor' in request.path else '' }}">✏️ Page Editor</a>
       <a href="/source-map" class="{{ 'active' if '/source-map' in request.path else '' }}">🧭 Source Map</a>
       <a href="/cicd" class="{{ 'active' if '/cicd' in request.path else '' }}">🚀 CI/CD Center</a>
       <a href="/backups" class="{{ 'active' if '/backups' in request.path else '' }}">💾 Data Backups</a>

@@ -444,6 +444,32 @@
       ],
       "urls": [],
       "warning": ""
+    },
+    {
+      "id": "page-editor",
+      "title": "Page Editor",
+      "category": "Operate",
+      "summary": "Pick a page, see every file/block behind it, edit with diff, backup and restore.",
+      "how_to_edit": "UI: templates/page_editor.html. Logic and safety rules (allowed folders/types, backups): managers/page_editor.py. Routes: main.py. Backups go to data/page_editor_backups/.",
+      "files": [
+        {
+          "path": "templates/page_editor.html",
+          "role": "Page UI"
+        },
+        {
+          "path": "managers/page_editor.py",
+          "role": "Finds segments, validates and saves edits"
+        },
+        {
+          "path": "main.py",
+          "role": "Routes /page-editor and /api/page-editor/*",
+          "anchor": "route\\('/page-editor'\\)"
+        }
+      ],
+      "urls": [
+        "/page-editor"
+      ],
+      "warning": ""
     }
   ],
   "notes": [

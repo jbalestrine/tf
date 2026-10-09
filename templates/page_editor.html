@@ -1,0 +1,224 @@
+<div class="section">
+    <h2>Page Editor</h2>
+    <p style="color:#9aa4b2;margin-bottom:8px;">Pick a page, click any part of the live preview, and see the code behind it. Edit it, review the diff, and save. Every save keeps a backup you can restore. Python and template edits take effect after the app restarts.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="pe-page" aria-label="Page" style="min-width:260px;"></select>
+        <button class="btn btn-info" id="pe-load" type="button">Load page</button>
+        <label style="color:#9aa4b2;"><input type="checkbox" id="pe-pick"> Click-to-find mode</label>
+        <span id="pe-status" aria-live="polite" style="color:#9aa4b2;"></span>
+    </div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(320px,1fr) minmax(360px,1.2fr);gap:12px;align-items:start;">
+    <div>
+        <div class="section">
+            <h3>Live preview</h3>
+            <iframe id="pe-frame" title="Page preview" style="width:100%;height:340px;border:1px solid #374151;border-radius:6px;background:#fff;"></iframe>
+        </div>
+        <div class="section">
+            <h3>Files behind this page</h3>
+            <div id="pe-segments" style="display:grid;gap:6px;"></div>
+        </div>
+    </div>
+    <div class="section">
+        <h3 id="pe-title">Editor</h3>
+        <div id="pe-meta" style="color:#9aa4b2;margin-bottom:6px;"></div>
+        <textarea id="pe-text" spellcheck="false" aria-label="Source code" style="width:100%;height:340px;font-family:Consolas,monospace;font-size:13px;background:#0f172a;color:#e2e8f0;border:1px solid #374151;border-radius:6px;padding:8px;white-space:pre;"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
+            <button class="btn btn-info" id="pe-preview" type="button" disabled>Review changes</button>
+            <button class="btn btn-success" id="pe-save" type="button" disabled>Save</button>
+            <button class="btn btn-info" id="pe-reset" type="button" disabled>Discard edits</button>
+        </div>
+        <pre id="pe-diff" style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#111827;padding:8px;border-radius:6px;color:#c9d1d9;"></pre>
+        <h4>Backups of this file</h4>
+        <div id="pe-backups" style="display:grid;gap:4px;"></div>
+    </div>
+</div>
+<script>
+(function () {
+    const $ = function (id) { return document.getElementById(id); };
+    const card = 'background:#1f2937;border-radius:6px;padding:8px 10px;cursor:pointer;';
+    let current = null;
+    let pageUrl = '/';
+    let originalText = '';
+
+    function status(text) { $('pe-status').textContent = text; }
+    function el(tag, text, style) {
+        const n = document.createElement(tag);
+        if (text !== undefined) { n.textContent = text; }
+        if (style) { n.style.cssText = style; }
+        return n;
+    }
+    async function call(url, body) {
+        const options = { credentials: 'same-origin' };
+        if (body) {
+            options.method = 'POST';
+            options.headers = { 'Content-Type': 'application/json' };
+            options.body = JSON.stringify(body);
+        }
+        const response = await fetch(url, options);
+        let data = {};
+        try { data = await response.json(); } catch (error) { /* non-JSON */ }
+        if (!response.ok || data.ok === false) { throw new Error(data.error || ('HTTP ' + response.status)); }
+        return data;
+    }
+
+    async function loadPages() {
+        const data = await call('/api/page-editor/pages');
+        const select = $('pe-page');
+        select.replaceChildren();
+        data.groups.forEach(function (g) {
+            const group = document.createElement('optgroup');
+            group.label = g.group;
+            g.pages.forEach(function (p) {
+                const o = document.createElement('option');
+                o.value = p.url;
+                o.textContent = p.label + '  (' + p.url + ')';
+                group.append(o);
+            });
+            select.append(group);
+        });
+    }
+
+    function bindPicker() {
+        const frame = $('pe-frame');
+        let doc;
+        try { doc = frame.contentDocument; } catch (error) { return; }
+        if (!doc) { return; }
+        doc.addEventListener('click', function (event) {
+            if (!$('pe-pick').checked) { return; }
+            event.preventDefault();
+            event.stopPropagation();
+            findFor(event.target);
+        }, true);
+    }
+
+    async function findFor(node) {
+        const text = (node.textContent || '').trim().split('\n')[0].trim().slice(0, 60);
+        const candidates = [];
+        if (node.id) { candidates.push('id="' + node.id + '"'); }
+        if (text.length >= 2 && node.children.length === 0) { candidates.push(text); }
+        if (node.className && typeof node.className === 'string') { candidates.push(node.className.trim().split(/\s+/)[0]); }
+        if (text.length >= 2) { candidates.push(text); }
+        for (const needle of candidates) {
+            if (!needle || needle.length < 2) { continue; }
+            try {
+                const data = await call('/api/page-editor/find?url=' + encodeURIComponent(pageUrl) + '&q=' + encodeURIComponent(needle));
+                if (data.hits.length) {
+                    status('Found "' + needle + '" in ' + data.hits[0].path + ' line ' + data.hits[0].lines[0]);
+                    await openSegment(data.hits[0], data.hits[0].lines[0]);
+                    return;
+                }
+            } catch (error) { /* try next candidate */ }
+        }
+        status('No source match for that element; it may be generated by script.');
+    }
+
+    function renderSegments(list) {
+        const box = $('pe-segments');
+        box.replaceChildren();
+        list.forEach(function (seg) {
+            const row = el('div', '', card + (seg.role === 'shadowed' ? 'opacity:.55;' : ''));
+            row.append(el('strong', seg.label), el('span', '  ' + seg.path + ':' + seg.start + '-' + seg.end, 'color:#9aa4b2;'));
+            if (seg.note) { row.append(el('div', seg.note, 'color:#9aa4b2;font-size:12px;')); }
+            row.addEventListener('click', function () { openSegment(seg); });
+            box.append(row);
+        });
+    }
+
+    async function loadPage() {
+        pageUrl = $('pe-page').value || '/';
+        status('Loading…');
+        try {
+            const data = await call('/api/page-editor/page?url=' + encodeURIComponent(pageUrl));
+            renderSegments(data.segments);
+            $('pe-frame').onload = bindPicker;
+            $('pe-frame').src = pageUrl;
+            status(data.segments.length + ' source file(s)/blocks found. ' + data.restart_note);
+        } catch (error) { status('Failed: ' + error.message); }
+    }
+
+    async function openSegment(seg, line) {
+        try {
+            const data = await call('/api/page-editor/segment?path=' + encodeURIComponent(seg.path) + '&start=' + seg.start + '&end=' + seg.end);
+            current = data;
+            originalText = data.text;
+            $('pe-text').value = data.text;
+            $('pe-title').textContent = seg.label || seg.path;
+            $('pe-meta').textContent = data.path + ' · lines ' + data.start + '-' + data.end + ' of ' + data.total_lines + ' · ' + data.eol.toUpperCase();
+            $('pe-diff').textContent = '';
+            ['pe-preview', 'pe-reset'].forEach(function (id) { $(id).disabled = false; });
+            $('pe-save').disabled = true;
+            if (line) {
+                const rows = data.text.split('\n');
+                const index = Math.max(0, line - data.start);
+                const offset = rows.slice(0, index).join('\n').length;
+                const box = $('pe-text');
+                box.focus();
+                box.setSelectionRange(offset, offset + (rows[index] || '').length + (index ? 1 : 0));
+                box.scrollTop = Math.max(0, index * 18 - 80);
+            }
+            loadBackups(data.path);
+        } catch (error) { status('Failed: ' + error.message); }
+    }
+
+    async function loadBackups(path) {
+        const box = $('pe-backups');
+        box.replaceChildren();
+        try {
+            const data = await call('/api/page-editor/backups?path=' + encodeURIComponent(path));
+            if (!data.backups.length) { box.append(el('div', 'None yet.', 'color:#9aa4b2;')); }
+            data.backups.forEach(function (b) {
+                const row = el('div', '', 'display:flex;gap:8px;align-items:center;');
+                const btn = el('button', 'Restore');
+                btn.className = 'btn btn-info';
+                btn.type = 'button';
+                btn.addEventListener('click', async function () {
+                    if (!window.confirm('Restore ' + b.name + '? The current file is backed up first.')) { return; }
+                    try {
+                        await call('/api/page-editor/restore', { path: current.path, backup: b.name, sha: current.sha, confirm: true });
+                        status('Restored. Restart the app for it to take effect.');
+                        loadPage();
+                    } catch (error) { status('Failed: ' + error.message); }
+                });
+                row.append(el('span', b.name, 'color:#c9d1d9;font-size:12px;'), btn);
+                box.append(row);
+            });
+        } catch (error) { box.append(el('div', error.message, 'color:#f0c674;')); }
+    }
+
+    function payload() {
+        return { path: current.path, start: current.start, end: current.end, text: $('pe-text').value, sha: current.sha };
+    }
+
+    $('pe-preview').addEventListener('click', async function () {
+        try {
+            const data = await call('/api/page-editor/preview', payload());
+            $('pe-diff').textContent = data.changed ? data.diff : 'No changes.';
+            if (data.problems.length) { $('pe-diff').textContent = 'PROBLEMS (cannot save):\n' + data.problems.join('\n') + '\n\n' + data.diff; }
+            $('pe-save').disabled = !(data.ok && data.changed);
+        } catch (error) { $('pe-diff').textContent = 'Failed: ' + error.message; }
+    });
+    $('pe-save').addEventListener('click', async function () {
+        if (!window.confirm('Save changes to ' + current.path + '? A backup is kept.')) { return; }
+        try {
+            const body = payload();
+            body.confirm = true;
+            const result = await call('/api/page-editor/save', body);
+            status('Saved. Backup: ' + result.backup + (result.needs_restart ? '. Restart the app to see the change.' : '.'));
+            $('pe-save').disabled = true;
+            await loadPage();
+            const seg = { path: current.path, start: current.start, end: current.start + $('pe-text').value.replace(/\r\n/g, '\n').replace(/\n$/, '').split('\n').length - 1, label: $('pe-title').textContent };
+            openSegment(seg);
+        } catch (error) { status('Failed: ' + error.message); }
+    });
+    $('pe-reset').addEventListener('click', function () {
+        $('pe-text').value = originalText;
+        $('pe-diff').textContent = '';
+        $('pe-save').disabled = true;
+    });
+    $('pe-text').addEventListener('input', function () { $('pe-save').disabled = true; });
+    $('pe-load').addEventListener('click', loadPage);
+
+    loadPages().then(loadPage).catch(function (error) { status('Failed to load: ' + error.message); });
+})();
+</script>

@@ -2681,7 +2681,8 @@ code{color:#4CAF50;}
       <a href="/cloud" class="{{ 'active' if '/cloud' in request.path else '' }}">☁️ Cloud</a>
       <a href="/notifications" class="{{ 'active' if '/notifications' in request.path else '' }}">🔔 Notifications</a>
       <a href="/scripts" class="{{ 'active' if '/scripts' in request.path else '' }}">📝 Scripts</a>
-      <a href="/source-map" class="{{ 'active' if '/source-map' in request.path else '' }}">🧭 Source Map</a>
+      <a href="/page-editor" class="{{ 'active' if '/page-editor' in request.path else '' }}">✏️ Page Editor</a>
+    <a href="/source-map" class="{{ 'active' if '/source-map' in request.path else '' }}">🧭 Source Map</a>
     <a href="/cicd" class="{{ 'active' if '/cicd' in request.path else '' }}">🚀 CI/CD Center</a>
     <a href="/backups" class="{{ 'active' if '/backups' in request.path else '' }}">💾 Data Backups</a>
     <a href="/processes" class="{{ 'active' if '/processes' in request.path else '' }}">⚙️ Processes</a>
@@ -16799,6 +16800,117 @@ def api_source_map_markdown():
     from flask import Response
 
     return Response(_source_map().markdown(), mimetype='text/markdown')
+
+
+def _page_editor():
+    from managers.page_editor import PageEditor
+
+    return PageEditor(app, Path(__file__).resolve().parent, HTML_TEMPLATE)
+
+
+def _page_editor_call(fn):
+    from managers.page_editor import PageEditorError
+
+    try:
+        return jsonify({'ok': True, **fn()})
+    except PageEditorError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except Exception:
+        app.logger.exception('Page editor operation failed')
+        return jsonify({'ok': False, 'error': 'The page editor operation failed.'}), 500
+
+
+@app.route('/page-editor')
+def page_editor_page():
+    denied = _admin_page_or_error(False)
+    if denied is not None:
+        return denied
+    return _render_admin_fragment('page_editor.html')
+
+
+@app.route('/api/page-editor/pages', methods=['GET'])
+def api_page_editor_pages():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _page_editor_call(lambda: {'groups': _page_editor().pages()})
+
+
+@app.route('/api/page-editor/page', methods=['GET'])
+def api_page_editor_page():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _page_editor_call(lambda: _page_editor().page_segments(request.args.get('url', '')))
+
+
+@app.route('/api/page-editor/find', methods=['GET'])
+def api_page_editor_find():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _page_editor_call(lambda: {'hits': _page_editor().find(request.args.get('url', ''), request.args.get('q', ''))})
+
+
+@app.route('/api/page-editor/segment', methods=['GET'])
+def api_page_editor_segment():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _page_editor_call(lambda: _page_editor().read_segment(
+        request.args.get('path', ''), request.args.get('start'), request.args.get('end')))
+
+
+@app.route('/api/page-editor/preview', methods=['POST'])
+def api_page_editor_preview():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    d = request.get_json(silent=True) or {}
+    return _page_editor_call(lambda: _page_editor().preview(
+        d.get('path'), d.get('start'), d.get('end'), d.get('text'), d.get('sha')))
+
+
+@app.route('/api/page-editor/save', methods=['POST'])
+def api_page_editor_save():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    d = request.get_json(silent=True) or {}
+    if d.get('confirm') is not True:
+        return jsonify({'ok': False, 'error': 'Confirm the save first.'}), 400
+
+    def work():
+        result = _page_editor().save(d.get('path'), d.get('start'), d.get('end'), d.get('text'), d.get('sha'))
+        _echo_operator_audit('page_editor_save', path=d.get('path'), backup=result['backup'])
+        return result
+
+    return _page_editor_call(work)
+
+
+@app.route('/api/page-editor/backups', methods=['GET'])
+def api_page_editor_backups():
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
+    return _page_editor_call(lambda: {'backups': _page_editor().backups(request.args.get('path', ''))})
+
+
+@app.route('/api/page-editor/restore', methods=['POST'])
+def api_page_editor_restore():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
+    d = request.get_json(silent=True) or {}
+    if d.get('confirm') is not True:
+        return jsonify({'ok': False, 'error': 'Confirm the restore first.'}), 400
+
+    def work():
+        result = _page_editor().restore(d.get('path'), d.get('backup'), d.get('sha'))
+        _echo_operator_audit('page_editor_restore', path=d.get('path'), backup=d.get('backup'))
+        return result
+
+    return _page_editor_call(work)
 
 
 @app.route('/api/echo/models', methods=['GET'])
