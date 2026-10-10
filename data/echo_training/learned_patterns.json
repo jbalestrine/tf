@@ -1,0 +1,8 @@
+{
+  "test question": "test answer",
+  "hi": "Hi there... Echo is listening...",
+  "how are you?": " I am functioning as designed. How can I assist you today?",
+  "please continue. you stopped at \"to\"": " I apologize for the confusion earlier. Currently, I am using the default voice that comes with the AI assistant.",
+  "please continue what you were saying. you ended your message at : currently": " I apologize for the confusion earlier. Currently, I am using the default voice that comes with the AI assistant. However, I can change my tone and voice to",
+  "!run scripts/date.ps1": "`scripts/date.ps1` exited with code 0. (email not configured)\n\nstdout:\n\nFriday, October 9, 2026 8:51:03 AM\n\n\n"
+}

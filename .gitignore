@@ -49,3 +49,4 @@ data/scripts/*.stderr
 data/backups/
 
 tools/grafana/
+data/mailcal_accounts.json

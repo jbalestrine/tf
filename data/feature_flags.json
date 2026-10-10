@@ -28,5 +28,6 @@
   "arm_creator": true,
   "iac_manager": true,
   "about": true,
-  "work_catalog": true
+  "work_catalog": true,
+  "python_addon_manager": true
 }

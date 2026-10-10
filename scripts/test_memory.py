@@ -16,7 +16,7 @@ class ConversationMemory:
         return context
 
 SYSTEM_BEHAVIOR = "You are deeply synchorized AI Companion"
-model_path = r"models\mistral-7b-instruct-v0.1.Q4_K_M.gguf"
+model_path = r"models\mistral-7b-instruct-v0.1-q4_k_m.gguf"
 
 if not os.path.exists(model_path):
     print(f"Error: model missing")
@@ -32,7 +32,7 @@ except ImportError:
     print("Error: llama-cpp is not installed")
     sys.exit(1)
 while True:
-    user_input = input("You: ").strip()
+    user_input = input("You: what is your name?").strip()
     if user_input.lower() == 'exit':
         break
     if not user_input:

@@ -571,6 +571,64 @@
         "/ext/code_manager/"
       ],
       "warning": "Add new features under app_features/<name>/, not in main.py."
+    },
+    {
+      "id": "feature-python_addon_manager",
+      "title": "Module Manager Addon Wizard",
+      "category": "Add-on features",
+      "summary": "installs libraries",
+      "how_to_edit": "Page: app_features/python_addon_manager/templates/index.html. Routes and logic: app_features/python_addon_manager/__init__.py. Name, menu entry, default on/off: app_features/python_addon_manager/feature.json.",
+      "files": [
+        {
+          "path": "app_features/python_addon_manager/__init__.py",
+          "role": "Routes and logic"
+        },
+        {
+          "path": "app_features/python_addon_manager/templates/index.html",
+          "role": "Page markup"
+        },
+        {
+          "path": "app_features/python_addon_manager/feature.json",
+          "role": "Name, menu entry, default on/off"
+        },
+        {
+          "path": "app_features/python_addon_manager/README.md",
+          "role": "Which file edits what"
+        }
+      ],
+      "urls": [
+        "/ext/python_addon_manager/"
+      ],
+      "warning": ""
+    },
+    {
+      "id": "feature-roku",
+      "title": "Roku Dev",
+      "category": "Add-on features",
+      "summary": "Develops Roku App and deploys to roku devices.",
+      "how_to_edit": "Page: app_features/roku/templates/index.html. Routes and logic: app_features/roku/__init__.py. Name, menu entry, default on/off: app_features/roku/feature.json.",
+      "files": [
+        {
+          "path": "app_features/roku/__init__.py",
+          "role": "Routes and logic"
+        },
+        {
+          "path": "app_features/roku/templates/index.html",
+          "role": "Page markup"
+        },
+        {
+          "path": "app_features/roku/feature.json",
+          "role": "Name, menu entry, default on/off"
+        },
+        {
+          "path": "app_features/roku/README.md",
+          "role": "Which file edits what"
+        }
+      ],
+      "urls": [
+        "/ext/roku/"
+      ],
+      "warning": ""
     }
   ],
   "notes": [

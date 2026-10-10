@@ -1,0 +1,11 @@
+{
+  "commands": [
+    {
+      "name": "changevoice",
+      "description": "plays a new voice",
+      "script": "echo/accent_engine.py",
+      "enabled": true,
+      "operator_required": true
+    }
+  ]
+}

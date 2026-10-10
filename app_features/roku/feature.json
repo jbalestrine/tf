@@ -1,0 +1,13 @@
+{
+  "title": "Roku Dev",
+  "description": "Develops Roku App and deploys to roku devices.",
+  "version": "0.1.0",
+  "enabled": true,
+  "core": false,
+  "nav": {
+    "label": "Roku Dev",
+    "href": "/ext/roku/",
+    "icon": "🧩"
+  },
+  "created": "2026-10-09"
+}

@@ -4,5 +4,17 @@
     "url": "/addons/modules/create_a_new_module_when_i_say_module_cr/manager",
     "icon": "\ud83e\udde9",
     "added_at": "2026-09-22T05:29:54.477145"
+  },
+  "module-system-v4": {
+    "name": "module-system-v4",
+    "url": "/addons/modules/module-system-v4/manager",
+    "icon": "\ud83e\udde9",
+    "added_at": "2026-10-09T10:04:34.843262"
+  },
+  "gamex": {
+    "name": "gamex",
+    "url": "/addons/modules/gamex/web/index.html",
+    "icon": "\ud83e\udde9",
+    "added_at": "2026-10-09T15:51:26.018115"
   }
 }

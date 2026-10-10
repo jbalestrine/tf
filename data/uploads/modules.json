@@ -661,5 +661,51 @@
       "rest_api"
     ],
     "auto_load": false
+  },
+  "jchat": {
+    "name": "jchat",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\jchat",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\jchat",
+    "installed_at": "2026-10-09T09:16:34.208735",
+    "type": "python",
+    "description": "testing chat options.",
+    "is_blank_module": true,
+    "capabilities": [
+      "echo_hook"
+    ],
+    "auto_load": false
+  },
+  "xtestx123": {
+    "name": "xtestx123",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\xtestx123",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\xtestx123",
+    "installed_at": "2026-10-09T09:20:18.656182",
+    "type": "python",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [],
+    "auto_load": false
+  },
+  "moduletestJB": {
+    "name": "moduletestJB",
+    "extract_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\moduletestJB",
+    "source_dir": "C:\\Users\\Echo\\masterchief\\data\\uploads\\extracted\\moduletestJB",
+    "installed_at": "2026-10-09T09:26:50.445198",
+    "type": "web",
+    "description": "",
+    "is_blank_module": true,
+    "capabilities": [
+      "echo_hook"
+    ],
+    "auto_load": false
+  },
+  "gamex": {
+    "name": "gamex",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\gamex",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\gamex",
+    "installed_at": "2026-10-09T15:44:52.082896",
+    "entry_point": "index.html",
+    "entry_type": "html",
+    "html_url": "/addons/modules/gamex/files/index.html"
   }
 }

@@ -4,7 +4,12 @@
   "description": "Add OAuth, OKTA, or custom authentication methods",
   "version": "1.0.0",
   "enabled": false,
-  "dependencies": ["requests-oauthlib", "okta", "flask-oauthlib"],
+  "dependencies": [
+    "requests-oauthlib",
+    "okta",
+    "flask-oauthlib"
+  ],
+  "settings": {},
   "routes": [
     {
       "path": "/api/features/auth/providers",

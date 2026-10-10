@@ -4,7 +4,12 @@
   "description": "Integrate with Azure services for cloud resource management",
   "version": "1.0.0",
   "enabled": false,
-  "dependencies": ["azure-identity", "azure-mgmt-compute", "azure-mgmt-storage"],
+  "dependencies": [
+    "azure-identity",
+    "azure-mgmt-compute",
+    "azure-mgmt-storage"
+  ],
+  "settings": {},
   "routes": [
     {
       "path": "/api/features/azure/vms",

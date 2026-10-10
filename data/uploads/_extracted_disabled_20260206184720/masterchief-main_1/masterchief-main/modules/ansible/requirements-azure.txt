@@ -1,8 +1,0 @@
-azure-azcollection>=1.14.0
-azure-cli-core>=2.40.0
-azure-common>=1.1.28
-azure-mgmt-compute>=23.1.0
-azure-mgmt-network>=19.0.0
-azure-mgmt-resource>=21.1.0
-azure-mgmt-storage>=20.0.0
-msrestazure>=0.6.4

@@ -1,3 +1,0 @@
-{"user_message": "how to build docker image", "bot_response": "Use 'docker build -t name:tag .' to build an image", "quality": "excellent", "feedback": "Great explanation", "context": null, "timestamp": 1768260434.9258132}
-{"user_message": "Hello Echo! How can you help me with DevOps?", "bot_response": "Hello... I am Echo \ud83c\udf19", "quality": "excellent", "feedback": null, "context": null, "timestamp": 1768291541.6119006}
-{"user_message": "test question", "bot_response": "test answer", "quality": "excellent", "feedback": null, "context": null, "timestamp": 1768291679.2528522}

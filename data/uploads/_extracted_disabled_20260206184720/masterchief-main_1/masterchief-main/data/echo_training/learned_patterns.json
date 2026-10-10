@@ -1,3 +1,0 @@
-{
-  "how to build docker image": "Use 'docker build -t name:tag .' to build an image"
-}
