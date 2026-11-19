@@ -644,6 +644,62 @@
       "created": "2026-10-09T20:00:42.585675",
       "last_active": "2026-10-09T20:00:42.585681",
       "ip": "127.0.0.1"
+    },
+    {
+      "id": "859869f5-cf37-43c2-877c-517fc8edaae8",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-10-09T21:04:10.141594",
+      "last_active": "2026-10-09T21:04:10.141601",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "2f583899-03a0-413d-be4b-390c1b94f9b6",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-10-09T21:04:10.553106",
+      "last_active": "2026-10-09T21:04:10.553113",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "d9503420-db8b-4798-9286-a5c64e4c831e",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-10-09T21:06:20.219932",
+      "last_active": "2026-10-09T21:06:20.219942",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "dc9a9219-936e-4488-a6a1-3e4904c4c198",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-10-13T11:22:13.422636",
+      "last_active": "2026-10-13T11:22:13.422644",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "0ef408e9-5504-4c8f-bcc8-a4ea14896e8b",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-18T20:33:24.812403",
+      "last_active": "2026-11-18T20:33:24.812411",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "5beecf97-1550-4719-ab2d-2b14745a04c6",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-18T22:08:11.805525",
+      "last_active": "2026-11-18T22:08:11.805541",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "98731ccd-9a36-4801-8770-d6ced70257e5",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-18T22:23:19.590291",
+      "last_active": "2026-11-18T22:23:19.590298",
+      "ip": "127.0.0.1"
     }
   ],
   "audit_log": [
@@ -1161,6 +1217,55 @@
     {
       "id": "779d5068-5b20-4aae-b52f-2a86c1b3a7b4",
       "timestamp": "2026-10-09T20:00:42.585694",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "27c13895-a991-4ea7-aac7-d0caf457988a",
+      "timestamp": "2026-10-09T21:04:10.141617",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "3871b168-36a3-491c-bd8a-42cba5428826",
+      "timestamp": "2026-10-09T21:04:10.553125",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "84121095-dcd1-4738-96f5-99b5f9365ad7",
+      "timestamp": "2026-10-09T21:06:20.219960",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "d9f4bb0e-e13e-4220-8051-3c6680e788c5",
+      "timestamp": "2026-10-13T11:22:13.422662",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "0bae438f-3a8a-4eda-8167-7318f5248d7d",
+      "timestamp": "2026-11-18T20:33:24.812429",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "284cbe2a-4e56-4d2b-bd73-aebcaac15215",
+      "timestamp": "2026-11-18T22:08:11.805672",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "85590453-f68b-44b8-84c1-0e3c161e662d",
+      "timestamp": "2026-11-18T22:23:19.590314",
       "user": "admin",
       "action": "login",
       "details": "User admin logged in"

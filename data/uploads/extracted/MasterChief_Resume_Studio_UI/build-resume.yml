@@ -1,0 +1,36 @@
+name: Build Resume-as-Code Artifacts
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'resume.yaml'
+      - 'build_resumes.py'
+      - 'requirements.txt'
+      - 'template_v2.html'
+      - '.github/workflows/build-resume.yml'
+  workflow_dispatch:
+
+jobs:
+  build-resumes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Packages
+        run: python -m pip install -r requirements.txt
+
+      - name: Build All Resume Formats
+        run: python build_resumes.py
+
+      - name: Upload Compiled Resumes as Workflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Joseph-Balestrine-Resumes-${{ github.run_number }}
+          path: dist/

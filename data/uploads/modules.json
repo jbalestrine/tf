@@ -707,5 +707,13 @@
     "entry_point": "index.html",
     "entry_type": "html",
     "html_url": "/addons/modules/gamex/files/index.html"
+  },
+  "MasterChief_Resume_Studio_UI": {
+    "name": "MasterChief_Resume_Studio_UI",
+    "extract_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\MasterChief_Resume_Studio_UI",
+    "source_dir": "C:\\users\\echo\\masterchief\\data\\uploads\\extracted\\MasterChief_Resume_Studio_UI",
+    "installed_at": "2026-11-18T21:03:14.422165",
+    "entry_point": "app.py",
+    "entry_type": "python"
   }
 }

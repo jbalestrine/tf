@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MasterChief | Resume-as-Code Studio</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --panel: #111827;
+      --panel-alt: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #0078d4;
+      --accent-hover: #0284c7;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: linear-gradient(90deg, #0b192c 0%, #0f294a 100%);
+      border-bottom: 2px solid var(--accent);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    header h1 { margin: 0; font-size: 1.25rem; letter-spacing: 0.4px; }
+    header span { color: #38bdf8; font-size: 0.85rem; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-logo { flex: 0 0 36px; width: 36px; height: 36px; filter: drop-shadow(0 0 5px #00b4d880); }
+    .toolbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    select, input[type="text"], textarea {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:hover { background: var(--accent-hover); }
+    button.save-btn { background: var(--emerald); color: #052e16; }
+    button.save-btn:hover { background: #34d399; }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      padding: 24px 28px;
+    }
+    .credits {
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      padding: 20px 28px;
+      text-align: center;
+      font-size: 0.85rem;
+      line-height: 1.8;
+    }
+    .credits a { color: #50e6ff; overflow-wrap: anywhere; }
+    .credits a:hover { color: #fff; }
+    .credits a:focus-visible { outline: 2px solid #50e6ff; outline-offset: 3px; }
+    @media (max-width: 960px) { .container { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      background: var(--panel-alt);
+      color: var(--muted);
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .tab.active { background: var(--accent); color: #fff; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin: 10px 0 4px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .role-box {
+      background: var(--panel-alt);
+      border-left: 4px solid var(--accent);
+      padding: 14px;
+      border-radius: 6px;
+      margin-bottom: 14px;
+    }
+    .bullet-row {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+    .tiers { display: flex; gap: 14px; margin-top: 8px; font-size: 0.82rem; color: #cbd5e1; }
+    .file-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      background: var(--panel-alt);
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      word-break: break-all;
+      gap: 8px;
+    }
+    .file-item a {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .file-actions { display: flex; align-items: center; gap: 14px; }
+    .file-actions button {
+      padding: 5px 10px;
+      font-size: 0.8rem;
+    }
+    .file-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .preview-trigger { width: 100%; margin-bottom: 14px; background: #1d4d74; }
+    .preview-hint { color: var(--muted); font-size: 0.78rem; margin: -4px 0 14px; }
+    .preview-dialog {
+      width: min(1200px, 94vw);
+      height: min(900px, 92vh);
+      max-width: none;
+      max-height: none;
+      padding: 0;
+      border: 1px solid #475569;
+      border-radius: 12px;
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: 0 25px 80px #000a;
+    }
+    .preview-dialog::backdrop { background: #020617c9; }
+    .preview-shell { height: 100%; display: flex; flex-direction: column; }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .preview-header h2 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
+    .preview-header button { background: var(--panel-alt); white-space: nowrap; }
+    .preview-frame { flex: 1; width: 100%; min-height: 0; border: 0; background: #fff; }
+    #status { font-size: 0.85rem; color: var(--amber); margin-left: auto; }
+    pre {
+      background: #020617;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      color: #a7f3d0;
+      overflow-x: auto;
+      max-height: 180px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <svg class="brand-logo" width="36" height="36" viewBox="0 0 64 64" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+        <path d="M32 2 56 10 59 32 53 49 32 62 11 49 5 32 8 10Z" fill="#0B192C" stroke="#0078D4" stroke-width="2.5"/>
+        <path d="M12 17 20 11 44 11 52 17 49 35 44 43 32 51 20 43 15 35Z" fill="#102B45" stroke="#00B4D8" stroke-width="1.5"/>
+        <path d="M15 22 24 18 40 18 49 22 45 30 35 33 32 30 29 33 19 30Z" fill="#00B4D8"/>
+        <path d="M21 23 27 21 37 21 43 23" fill="none" stroke="#E0FAFF" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M21 37 25 41 32 44 39 41 43 37 M32 51V56 M12 14 8 14 M52 14 56 14" fill="none" stroke="#0078D4" stroke-width="2" stroke-linecap="round"/>
+        <path d="M25 9a4 4 0 0 1 7-2 4.5 4.5 0 0 1 7 2" fill="none" stroke="#E0FAFF" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="7" cy="14" r="2" fill="#00B4D8"/><circle cx="57" cy="14" r="2" fill="#00B4D8"/><circle cx="32" cy="57" r="2" fill="#00B4D8"/>
+      </svg>
+      <div>
+        <h1>MASTERCHIEF // RESUME-AS-CODE STUDIO</h1>
+        <span>Single Source of Truth &rarr; Master ATS, 2-Page Exec, Slide Edition &amp; Cover Letter</span>
+      </div>
+    </div>
+    <nav><a href="/techlearn" style="color:#50e6ff;margin-right:14px">TechLearn Studio</a><a href="/portfolio" style="color:#50e6ff;margin-right:14px">Public Portfolio</a><button class="save-btn" onclick="saveResume()">Save resume.yaml</button></nav>
+  </header>
+
+  <div class="toolbar">
+    <label for="profileSelect" style="margin:0;">Profile:</label>
+    <select id="profileSelect" onchange="switchProfile(this.value)"></select>
+    <button type="button" onclick="document.getElementById('cloneDialog').showModal()">Clone Profile</button>
+    <button type="button" onclick="document.getElementById('importDialog').showModal()">Import Resume</button>
+    <label style="margin:0;">Target:</label>
+    <select id="targetSelect">
+      <option value="all">Build All Targets (Master + Exec + Slide + Cover + PDF + Interview)</option>
+      <option value="master">Master Daily Driver (.docx)</option>
+      <option value="exec">2-Page Executive (.docx)</option>
+      <option value="slideedition">Slide Edition Showroom (.docx)</option>
+      <option value="coverletter">Targeted Cover Letter (.docx)</option>
+      <option value="pdf">Architect Portfolio (.pdf)</option>
+      <option value="interviewprep">Interview War-Room (.docx)</option>
+    </select>
+    <input type="text" id="companyInput" placeholder="Target Company (Cover Letter)" value="Microsoft" />
+    <input type="text" id="roleInput" placeholder="Target Role Title" value="Principal Cloud Architect" />
+    <button onclick="buildTarget()">Run Build Pipeline</button>
+    <span id="status">Ready</span>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('profileTab', this)">Profile &amp; KPIs</div>
+        <div class="tab" onclick="switchTab('coverTab', this)">Cover Letter</div>
+        <div class="tab" onclick="switchTab('expTab', this)">Experience &amp; Tiers</div>
+        <div class="tab" onclick="switchTab('yamlTab', this)">Raw YAML</div>
+        <div class="tab" onclick="switchTab('jdTab', this)">JD Match &amp; Tailor</div>
+        <div class="tab" onclick="switchTab('crmTab', this); loadCRM()">Pipeline CRM</div>
+        <div class="tab" onclick="switchTab('emailTab', this); loadEmail()">Email Agent</div>
+      </div>
+
+      <div id="profileTab" class="tab-pane active">
+        <div class="grid-2">
+          <div><label>Full Name</label><input type="text" id="pName" style="width:100%" /></div>
+          <div><label>Headline</label><input type="text" id="pHeadline" style="width:100%" /></div>
+          <div><label>Email</label><input type="text" id="pEmail" style="width:100%" /></div>
+          <div><label>Phone</label><input type="text" id="pPhone" style="width:100%" /></div>
+        </div>
+        <label>Executive Summary</label>
+        <textarea id="pSummary" rows="4" style="width:100%"></textarea>
+        <h3 style="margin-top:18px;font-size:1rem;">Executive KPI Scorecard (Slide Edition &amp; PDF)</h3>
+        <div id="kpiContainer"></div>
+      </div>
+
+      <div id="coverTab" class="tab-pane">
+        <p style="font-size:0.85rem;color:var(--muted);">Use <code>{company_name}</code> and <code>{role_title}</code> placeholders for dynamic injection during builds.</p>
+        <label>Opening Paragraph</label>
+        <textarea id="clOpening" rows="3" style="width:100%"></textarea>
+        <label>Body Paragraph 1 (Cloud Architecture &amp; Governance)</label>
+        <textarea id="clBody1" rows="3" style="width:100%"></textarea>
+        <label>Body Paragraph 2 (FinOps ROI &amp; Scale)</label>
+        <textarea id="clBody2" rows="3" style="width:100%"></textarea>
+        <label>Closing Paragraph</label>
+        <textarea id="clClosing" rows="2" style="width:100%"></textarea>
+      </div>
+
+      <div id="expTab" class="tab-pane">
+        <div id="expContainer"></div>
+      </div>
+
+      <div id="yamlTab" class="tab-pane">
+        <textarea id="rawYamlEditor" rows="26" style="width:100%;font-family:monospace;"></textarea>
+      </div>
+      <div id="jdTab" class="tab-pane">
+        <label for="jdText">Job description</label><textarea id="jdText" rows="10" style="width:100%"></textarea>
+        <button type="button" onclick="analyzeJD()">Analyze keyword overlap</button>
+        <p>Heuristic estimate, not an actual ATS score. Add a keyword only if it accurately describes your experience.</p>
+        <div id="jdResults"></div>
+      </div>
+      <div id="crmTab" class="tab-pane">
+        <h3>Application pipeline</h3><div class="grid-2">
+          <div><label>Company</label><input id="crmCompany" type="text"></div>
+          <div><label>Role</label><input id="crmRole" type="text"></div>
+          <div><label>Recruiter</label><input id="crmRecruiter" type="text"></div>
+          <div><label>Agency</label><input id="crmAgency" type="text"></div>
+          <div><label>Resume version</label><input id="crmVersion" type="text"></div>
+          <div><label>Date</label><input id="crmDate" type="date"></div>
+          <div><label>Status</label><select id="crmStatus"><option>Submitted</option><option>Shortlisted</option><option>Tech Screen</option><option>Final Panel</option><option>Offer</option></select></div>
+        </div><label>Notes</label><textarea id="crmNotes" rows="3" style="width:100%"></textarea>
+        <button type="button" onclick="saveCRM()">Save submission</button><button type="button" onclick="resetCRM()">New entry</button>
+        <p id="crmMessage" role="status"></p><div id="crmList"></div>
+      </div>
+      <div id="emailTab" class="tab-pane">
+        <h3>Gmail recruiter response queue</h3>
+        <p>Scan checks unread messages without marking them read. Before sending, verify the company, role, and saved active profile. Attachments are rebuilt from that profile.</p>
+        <button type="button" onclick="scanEmail()">Scan Inbox Now</button>
+        <button type="button" id="emailMode" onclick="toggleEmailMode()">Auto-Send: Off</button>
+        <p id="emailMessage" role="status"></p><h4>Queue</h4><div id="emailQueue"></div>
+        <h4>History</h4><div id="emailHistory"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;font-size:1rem;">Generated Artifacts (dist/)</h3>
+      <button class="preview-trigger" onclick="openPreview('/api/preview-template', 'Live Architect Preview')">Live Architect Preview</button>
+      <button id="logCover" type="button" hidden onclick="logCoverToCRM()">Log to CRM</button>
+      <p class="preview-hint">Shows the saved resume.yaml. Save changes before opening the live preview.</p>
+      <div id="filesList">Loading...</div>
+      <h3 style="font-size:0.95rem;margin-top:18px;">Build Logs</h3>
+      <pre id="buildLogs">No builds triggered in this session yet.</pre>
+    </div>
+  </div>
+
+  <footer class="credits">
+    Joseph Balestrine | DevOps Engineer |
+    <a href="https://linkedin.com/in/x122">linkedin.com/in/x122</a> |
+    <a href="mailto:BalestrinoJoseph@gmail.com">BalestrinoJoseph@gmail.com</a>
+  </footer>
+
+  <dialog id="previewDialog" class="preview-dialog" aria-labelledby="previewTitle">
+    <div class="preview-shell">
+      <div class="preview-header">
+        <h2 id="previewTitle">Document Preview</h2>
+        <div class="file-actions">
+          <button type="button" onclick="refreshPreview()">Refresh</button>
+          <button type="button" onclick="closePreview()" aria-label="Close preview">Close &times;</button>
+        </div>
+      </div>
+      <iframe id="previewFrame" class="preview-frame" title="Document preview" sandbox="allow-same-origin"></iframe>
+    </div>
+  </dialog>
+  <dialog id="importDialog" aria-labelledby="importTitle" style="background:#111827;color:white;border:1px solid #475569;border-radius:10px;padding:24px;max-width:90vw">
+    <h2 id="importTitle">Import Resume</h2>
+    <p>YAML/JSON must use the complete builder schema. DOCX/PDF extraction is approximate; review the imported source text.</p>
+    <label for="importName">New profile name</label><input id="importName" type="text" maxlength="64">
+    <label for="importFile">Resume file (.yaml, .json, .docx, .pdf)</label><input id="importFile" type="file" accept=".yaml,.yml,.json,.docx,.pdf">
+    <p id="importMessage" role="status"></p><button type="button" onclick="importProfile()">Import and switch</button>
+    <button type="button" onclick="document.getElementById('importDialog').close()">Cancel</button>
+  </dialog>
+  <dialog id="cloneDialog" aria-labelledby="cloneTitle" style="background:#111827;color:white;border:1px solid #475569;border-radius:10px;padding:24px;max-width:90vw">
+    <h2 id="cloneTitle">Clone saved profile</h2>
+    <label for="cloneName">New profile name</label><input id="cloneName" type="text" maxlength="64">
+    <p id="cloneMessage" role="status"></p><button type="button" onclick="cloneProfile()">Clone</button>
+    <button type="button" onclick="document.getElementById('cloneDialog').close()">Cancel</button>
+  </dialog>
+  <dialog id="discardDialog" aria-labelledby="discardTitle" style="background:#111827;color:white;border:1px solid #475569;border-radius:10px;padding:24px;max-width:90vw">
+    <h2 id="discardTitle">Discard unsaved changes?</h2><p>The saved profile will be preserved.</p>
+    <form method="dialog"><button value="discard">Discard changes</button><button value="cancel">Keep editing</button></form>
+  </dialog>
+  <dialog id="emailConfirm" aria-labelledby="emailConfirmTitle" style="background:#111827;color:white;border:1px solid #475569;border-radius:10px;padding:24px;max-width:90vw">
+    <h2 id="emailConfirmTitle">Confirm email action</h2><p id="emailConfirmText"></p>
+    <form method="dialog"><button value="yes">Confirm</button><button value="no">Cancel</button></form>
+  </dialog>
+
+  <script>
+    let resumeData = {};
+    let activeTabId = 'profileTab';
+    let lastCoverBuild = null;
+    let activeProfile = null;
+    let editorDirty = false;
+
+    function switchTab(id, el) {
+      activeTabId = id;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById(id).classList.add('active');
+    }
+
+    async function loadResume() {
+      const res = await fetch('/api/resume');
+      if (!res.ok) throw new Error('Could not load resume');
+      const json = await res.json();
+      if (json.active_profile !== activeProfile) throw new Error('Active profile changed in another session; reload this page.');
+      resumeData = json.data || {};
+      document.getElementById('rawYamlEditor').value = json.raw_yaml || '';
+
+      const p = resumeData.profile || {};
+      document.getElementById('pName').value = p.name || '';
+      document.getElementById('pHeadline').value = p.headline || '';
+      document.getElementById('pEmail').value = p.email || '';
+      document.getElementById('pPhone').value = p.phone || '';
+      document.getElementById('pSummary').value = p.summary || '';
+
+      const cl = resumeData.cover_letter || {};
+      document.getElementById('clOpening').value = cl.opening || '';
+      document.getElementById('clBody1').value = cl.body_1 || '';
+      document.getElementById('clBody2').value = cl.body_2 || '';
+      document.getElementById('clClosing').value = cl.closing || '';
+
+      renderKPIs();
+      renderExperience();
+      refreshFiles();
+      editorDirty = false;
+    }
+
+    function renderKPIs() {
+      const box = document.getElementById('kpiContainer');
+      box.innerHTML = '';
+      (resumeData.metrics || []).forEach((k) => {
+        const row = document.createElement('div'); row.className='grid-2';
+        for (const key of ['value','label']) {
+          const input=document.createElement('input'); input.type='text'; input.value=k[key] || '';
+          input.addEventListener('input',()=>{k[key]=input.value; editorDirty=true}); row.append(input);
+        }
+        box.append(row);
+      });
+    }
+
+    function renderExperience() {
+      const box = document.getElementById('expContainer');
+      box.innerHTML = '';
+      (resumeData.experience || []).forEach((role, rIdx) => {
+        const roleBox=document.createElement('div'); roleBox.className='role-box';
+        const title=document.createElement('strong'); title.textContent=`${role.role || ''} — ${role.company || ''} (${role.dates || ''})`; roleBox.append(title);
+        (role.bullets || []).forEach((b, bIdx) => {
+          const tiers = b.tiers || [];
+          const row=document.createElement('div'); row.className='bullet-row';
+          const text=document.createElement('textarea'); text.rows=2; text.style.width='100%'; text.value=b.text || '';
+          text.addEventListener('input',()=>{b.text=text.value;editorDirty=true}); row.append(text);
+          const options=document.createElement('div'); options.className='tiers';
+          for(const tier of ['master','exec','slideedition','pdf']) {
+            const label=document.createElement('label'); const check=document.createElement('input');
+            check.type='checkbox'; check.checked=tiers.includes(tier);
+            check.onchange=()=>{toggleTier(rIdx,bIdx,tier,check.checked);editorDirty=true};
+            label.append(check,document.createTextNode(' '+tier)); options.append(label);
+          }
+          row.append(options); roleBox.append(row);
+        });
+        box.append(roleBox);
+      });
+    }
+
+    function toggleTier(rIdx, bIdx, tier, checked) {
+      let arr = resumeData.experience[rIdx].bullets[bIdx].tiers || [];
+      if (checked && !arr.includes(tier)) arr.push(tier);
+      if (!checked) arr = arr.filter(x => x !== tier);
+      resumeData.experience[rIdx].bullets[bIdx].tiers = arr;
+    }
+
+    async function saveResume() {
+      const status = document.getElementById('status');
+      status.textContent = 'Saving...';
+      let body = {};
+      if (activeTabId === 'yamlTab') {
+        body = { raw_yaml: document.getElementById('rawYamlEditor').value };
+      } else {
+        resumeData.profile = resumeData.profile || {};
+        resumeData.profile.name = document.getElementById('pName').value;
+        resumeData.profile.headline = document.getElementById('pHeadline').value;
+        resumeData.profile.email = document.getElementById('pEmail').value;
+        resumeData.profile.phone = document.getElementById('pPhone').value;
+        resumeData.profile.summary = document.getElementById('pSummary').value;
+
+        resumeData.cover_letter = resumeData.cover_letter || {};
+        resumeData.cover_letter.opening = document.getElementById('clOpening').value;
+        resumeData.cover_letter.body_1 = document.getElementById('clBody1').value;
+        resumeData.cover_letter.body_2 = document.getElementById('clBody2').value;
+        resumeData.cover_letter.closing = document.getElementById('clClosing').value;
+        body = { data: resumeData };
+      }
+
+      body.active_profile = activeProfile;
+      const res = await fetch('/api/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        status.textContent = 'Saved & Backed Up!';
+        await loadResume();
+        const dialog = document.getElementById('previewDialog');
+        if (dialog.open && dialog.dataset.url === '/api/preview-template') {
+          refreshPreview();
+        }
+        return true;
+      } else {
+        const err = await res.json();
+        status.textContent = 'Error: ' + (err.detail || 'Save failed');
+        return false;
+      }
+    }
+
+    async function buildTarget() {
+      if (!await saveResume()) return;
+      const status = document.getElementById('status');
+      status.textContent = 'Building...';
+      const payload = {
+        target: document.getElementById('targetSelect').value,
+        company_name: document.getElementById('companyInput').value,
+        role_title: document.getElementById('roleInput').value
+      };
+      const res = await fetch('/api/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (res.ok) {
+        status.textContent = 'Build Complete!';
+        document.getElementById('buildLogs').textContent = json.logs || 'Done.';
+        refreshFiles();
+        document.getElementById('logCover').hidden = !['coverletter','all'].includes(payload.target);
+        lastCoverBuild = ['coverletter','all'].includes(payload.target) ? payload : null;
+      } else {
+        status.textContent = 'Build Failed';
+        document.getElementById('buildLogs').textContent = json.detail || 'Error';
+      }
+    }
+
+    async function refreshFiles() {
+      const res = await fetch('/api/files');
+      const json = await res.json();
+      const list = document.getElementById('filesList');
+      if (!json.files || json.files.length === 0) {
+        list.innerHTML = '<p style="font-size:0.85rem;color:var(--muted);">No files built yet. Click Run Build Pipeline above.</p>';
+        return;
+      }
+      list.replaceChildren();
+      json.files.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        const name = document.createElement('span');
+        name.textContent = f;
+        const actions = document.createElement('div');
+        actions.className = 'file-actions';
+        const preview = document.createElement('button');
+        preview.type = 'button';
+        preview.textContent = 'Preview';
+        preview.disabled = !/\.(pdf|html|docx)$/i.test(f);
+        if (preview.disabled) preview.title = 'Preview is available for PDF, HTML and DOCX files';
+        preview.addEventListener('click', () => openPreview(
+          `/api/preview/${encodeURIComponent(f)}`, f, /\.pdf$/i.test(f)
+        ));
+        const download = document.createElement('a');
+        download.href = `/api/download/${encodeURIComponent(f)}`;
+        download.setAttribute('download', '');
+        download.textContent = 'Download';
+        actions.append(preview, download);
+        item.append(name, actions);
+        list.append(item);
+      });
+    }
+
+    function refreshPreview() {
+      const dialog = document.getElementById('previewDialog');
+      document.getElementById('previewFrame').src = `${dialog.dataset.url}?v=${Date.now()}`;
+    }
+
+    function openPreview(url, title, isPdf = false) {
+      const dialog = document.getElementById('previewDialog');
+      dialog.dataset.url = url;
+      document.getElementById('previewTitle').textContent = title;
+      const frame = document.getElementById('previewFrame');
+      if (isPdf) frame.removeAttribute('sandbox');
+      else frame.setAttribute('sandbox', 'allow-same-origin');
+      refreshPreview();
+      if (!dialog.open) dialog.showModal();
+    }
+
+    function closePreview() {
+      document.getElementById('previewDialog').close();
+    }
+
+    async function jsonRequest(url, method='GET', data) {
+      const response = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:data ? JSON.stringify(data) : undefined});
+      const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'Request failed');
+      return result;
+    }
+    let emailAuto=false;
+    async function confirmEmail(text) {
+      const dialog=document.getElementById('emailConfirm');document.getElementById('emailConfirmText').textContent=text;dialog.returnValue='';
+      return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='yes'),{once:true});dialog.showModal()});
+    }
+    async function loadEmail() {
+      try {
+        const state=await jsonRequest('/api/email');emailAuto=state.auto_send;
+        document.getElementById('emailMode').textContent=`Auto-Send: ${emailAuto?'On':'Off'}`;
+        const queue=document.getElementById('emailQueue'),history=document.getElementById('emailHistory');queue.replaceChildren();history.replaceChildren();
+        for(const item of state.messages.slice().reverse()) {
+          const row=document.createElement('div');row.className='role-box';
+          const heading=document.createElement('strong');heading.textContent=`${item.sender_name || item.sender} <${item.sender}> — ${item.subject}`;row.append(heading);
+          const snippet=document.createElement('p');snippet.textContent=item.snippet;row.append(snippet);
+          if(item.status==='queued') {
+            const companyLabel=document.createElement('label');companyLabel.textContent='Company';const company=document.createElement('input');company.type='text';company.value=item.company;companyLabel.append(company);row.append(companyLabel);
+            const roleLabel=document.createElement('label');roleLabel.textContent='Role';const role=document.createElement('input');role.type='text';role.value=item.role_title;roleLabel.append(role);row.append(roleLabel);
+            const approve=document.createElement('button');approve.textContent='Approve & Send';
+            approve.onclick=async()=>{if(!await confirmEmail(`Send a reply to ${item.sender} with the selected resume files and a cover letter for ${role.value} at ${company.value}?`))return;try{await jsonRequest('/api/email/approve/'+item.id,'POST',{company:company.value,role_title:role.value});document.getElementById('emailMessage').textContent='Email sent.'}catch(e){document.getElementById('emailMessage').textContent=e.message}await loadEmail()};
+            const dismiss=document.createElement('button');dismiss.textContent='Dismiss';dismiss.onclick=async()=>{try{await jsonRequest('/api/email/dismiss/'+item.id,'POST',{});await loadEmail()}catch(e){document.getElementById('emailMessage').textContent=e.message}};
+            row.append(approve,dismiss);queue.append(row);
+          } else {
+            const detail=document.createElement('p');detail.textContent=`${item.status}${item.automatic?' (automatic)':''} ${item.sent_at || item.attempted_at || ''}${item.crm_status ? ' | CRM: '+item.crm_status : ''}`;row.append(detail);history.append(row);
+          }
+        }
+      }catch(e){document.getElementById('emailMessage').textContent=e.message}
+    }
+    async function scanEmail() {
+      document.getElementById('emailMessage').textContent='Scanning Gmail...';
+      try{const result=await jsonRequest('/api/email/scan','POST',{});document.getElementById('emailMessage').textContent=`${result.added} message(s) queued. `+(result.auto_send_errors||[]).map(x=>x.detail).join(' ')}
+      catch(e){document.getElementById('emailMessage').textContent=e.message}await loadEmail();
+    }
+    async function toggleEmailMode() {
+      const enabled=!emailAuto;
+      if(enabled && !await confirmEmail('Enable auto-send? Future scans can send personal resume files to matched senders without further approval. Verify the saved active profile first.'))return;
+      try{await jsonRequest('/api/email/mode','POST',{enabled});await loadEmail()}catch(e){document.getElementById('emailMessage').textContent=e.message}
+    }
+    async function loadProfiles() {
+      const state=await jsonRequest('/api/profiles'); activeProfile=state.active;
+      const select=document.getElementById('profileSelect'); select.replaceChildren();
+      for (const name of state.profiles) { const option=document.createElement('option'); option.value=name; option.textContent=name; select.append(option); }
+      select.value=activeProfile;
+    }
+    async function allowDiscard() {
+      if (!editorDirty) return true;
+      const dialog=document.getElementById('discardDialog'); dialog.returnValue='';
+      return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='discard'),{once:true});dialog.showModal()});
+    }
+    async function switchProfile(name) {
+      if (name===activeProfile) return;
+      if (!await allowDiscard()) {document.getElementById('profileSelect').value=activeProfile;return}
+      try {await jsonRequest('/api/profiles/switch','POST',{name,active_profile:activeProfile});await loadProfiles();await loadResume();document.getElementById('status').textContent='Profile switched.'}
+      catch(e){document.getElementById('status').textContent=e.message;document.getElementById('profileSelect').value=activeProfile}
+    }
+    async function cloneProfile() {
+      const name=document.getElementById('cloneName').value.trim();
+      if (!name) {document.getElementById('cloneMessage').textContent='Enter a profile name.';return}
+      try {await jsonRequest('/api/profiles/clone','POST',{name,active_profile:activeProfile});await loadProfiles();document.getElementById('cloneDialog').close();document.getElementById('status').textContent='Saved profile cloned. Unsaved editor changes are not included.'}
+      catch(e){document.getElementById('cloneMessage').textContent=e.message}
+    }
+    async function importProfile() {
+      const message=document.getElementById('importMessage'), file=document.getElementById('importFile').files[0], name=document.getElementById('importName').value.trim();
+      if (!file || !name) {message.textContent='Choose a file and enter a profile name.';return}
+      if (!await allowDiscard()) return;
+      const form=new FormData(); form.append('file',file); form.append('name',name); form.append('active_profile',activeProfile);
+      try {
+        message.textContent='Importing...';
+        const response=await fetch('/api/profiles/import',{method:'POST',body:form}); const result=await response.json();
+        if (!response.ok) throw new Error(typeof result.detail==='string' ? result.detail : 'Import failed');
+        await loadProfiles(); await loadResume();
+        message.textContent=result.warnings.length ? result.warnings.join(' ') : 'Imported and switched.';
+        document.getElementById('status').textContent='Imported. Review the raw YAML before building.';
+      } catch(e) {message.textContent=e.message}
+    }
+    async function analyzeJD() {
+      const box = document.getElementById('jdResults'); box.replaceChildren();
+      try {
+        const data = await jsonRequest('/api/analyze-jd','POST',{job_description:document.getElementById('jdText').value});
+        const heading = document.createElement('h3'); heading.textContent = data.score === null ? 'No recognized skills found' : `Recognized skill overlap: ${data.score}%`; box.append(heading);
+        const notice = document.createElement('p'); notice.textContent = data.notice; box.append(notice);
+        for (const [label, items] of [['Matched',data.matched],['Missing — verify before adding',data.missing]]) {
+          const section=document.createElement('div'); const h=document.createElement('h4'); h.textContent=label; section.append(h);
+          for (const item of items) {
+            const button=document.createElement('button'); button.textContent=`Copy ${item}`;
+            button.onclick=()=>navigator.clipboard.writeText(item).catch(()=>{document.getElementById('status').textContent='Clipboard unavailable';}); section.append(button);
+            if (label.startsWith('Missing')) {
+              const insert=document.createElement('button'); insert.textContent=`Add ${item} to summary draft`;
+              insert.onclick=()=>{if(confirm(`Only add "${item}" if it accurately describes your experience. Add it to the summary draft?`)){const summary=document.getElementById('pSummary');summary.value += (summary.value.trim() ? '\n' : '') + item; document.getElementById('status').textContent='Added to summary draft; review and save.'}};
+              section.append(insert);
+            }
+          }
+          if (!items.length) section.append(document.createTextNode('None identified.')); box.append(section);
+        }
+      } catch(e) { box.textContent=e.message; }
+    }
+    let editingCRM = null;
+    function resetCRM() {
+      editingCRM=null;
+      for (const id of ['crmCompany','crmRole','crmRecruiter','crmAgency','crmVersion','crmNotes']) document.getElementById(id).value='';
+      document.getElementById('crmDate').value=new Date().toISOString().slice(0,10);
+      document.getElementById('crmStatus').value='Submitted';
+    }
+    function fillCRM(x) {
+      editingCRM=x.id;
+      for (const [key,id] of Object.entries({company:'crmCompany',role_title:'crmRole',recruiter_name:'crmRecruiter',agency:'crmAgency',resume_version:'crmVersion',date:'crmDate',status:'crmStatus',notes:'crmNotes'})) document.getElementById(id).value=x[key]||'';
+    }
+    async function logCoverToCRM() {
+      if (!lastCoverBuild) return;
+      try {
+        await jsonRequest('/api/submissions','POST',{company:lastCoverBuild.company_name,role_title:lastCoverBuild.role_title,
+          recruiter_name:'',agency:'',resume_version:'Targeted Cover Letter',date:new Date().toISOString().slice(0,10),status:'Submitted',notes:''});
+        document.getElementById('logCover').hidden=true;
+        switchTab('crmTab',document.querySelector('[onclick*="crmTab"]')); await loadCRM();
+        document.getElementById('crmMessage').textContent='Logged. Edit the entry to add recruiter details.';
+      } catch(e) { document.getElementById('status').textContent=e.message; }
+    }
+    async function loadCRM() {
+      try {const records=await jsonRequest('/api/submissions');const box=document.getElementById('crmList');box.replaceChildren();
+        for (const x of records) {const row=document.createElement('div');row.className='role-box';const label=document.createElement('span');label.textContent=`${x.company} — ${x.role_title} | ${x.status} | ${x.date} `;const edit=document.createElement('button');edit.textContent='Edit';edit.onclick=()=>fillCRM(x);row.append(label,edit);box.append(row)}
+      } catch(e) {document.getElementById('crmMessage').textContent=e.message}
+    }
+    async function saveCRM() {
+      const data={};for(const [key,id] of Object.entries({company:'crmCompany',role_title:'crmRole',recruiter_name:'crmRecruiter',agency:'crmAgency',resume_version:'crmVersion',date:'crmDate',status:'crmStatus',notes:'crmNotes'})) data[key]=document.getElementById(id).value;
+      try {await jsonRequest('/api/submissions'+(editingCRM?'/'+editingCRM:''),editingCRM?'PUT':'POST',data);resetCRM();await loadCRM();document.getElementById('crmMessage').textContent='Saved.'}catch(e){document.getElementById('crmMessage').textContent=e.message}
+    }
+
+    document.getElementById('previewDialog').addEventListener('close', () => {
+      document.getElementById('previewFrame').removeAttribute('src');
+    });
+
+    for (const id of ['profileTab','coverTab','expTab','yamlTab']) {
+      document.getElementById(id).addEventListener('input',()=>{editorDirty=true});
+      document.getElementById(id).addEventListener('change',()=>{editorDirty=true});
+    }
+    async function openInstalledAddon() {
+      const match = location.pathname.match(/^\/addons\/modules\/([^/]+)\/web\/index\.html$/i);
+      if (!match) return false;
+      const status = document.getElementById('status');
+      try {
+        const response = await fetch(`/addons/modules/${match[1]}/status`);
+        if (!response.ok) throw new Error('Could not check the add-on service.');
+        const result = await response.json();
+        if (result.status !== 'running' || !Number.isInteger(result.port) || result.port < 1 || result.port > 65535) {
+          throw new Error('Start Resume Studio from Addons Modules, then open it again.');
+        }
+        if (!['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
+          throw new Error('Resume Studio is available on the host machine only. Open MasterChief using localhost.');
+        }
+        location.replace(`http://127.0.0.1:${result.port}/`);
+      } catch (error) {
+        status.textContent = error.message;
+      }
+      return true;
+    }
+
+    if (/^\/addons\/modules\/[^/]+\/web\/index\.html$/i.test(location.pathname)) {
+      openInstalledAddon();
+    } else {
+      resetCRM(); loadProfiles().then(loadResume).catch(e=>{document.getElementById('status').textContent=e.message});
+    }
+  </script>
+</body>
+</html>

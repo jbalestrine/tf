@@ -1,0 +1,46 @@
+{
+  "id": "c998988a9af54e0b851166c567d2a747",
+  "title": "Azure Landing Zones (CAF / WAF)",
+  "kind": "cheatsheet",
+  "created": "2026-11-19T05:27:26.323033+00:00",
+  "tags": [
+    "Azure Landing Zones",
+    "CAF / WAF / NIST"
+  ],
+  "terms": [
+    "Azure",
+    "Landing",
+    "Zones",
+    "CAF",
+    "WAF"
+  ],
+  "headline": "Azure landing zones establish a governed foundation for workloads.",
+  "rules": [
+    "Design management groups, identity, network and policy together.",
+    "Apply guardrails consistently and review exceptions.",
+    "Map controls to actual risks, ownership and evidence.",
+    "Review policy exceptions and compliance evidence regularly."
+  ],
+  "failures": [
+    "Missing network routes or DNS can prevent workload connectivity.",
+    "Misapplied policies can block deployments.",
+    "Unowned exceptions undermine controls.",
+    "Control mappings without operational evidence can hide gaps."
+  ],
+  "snippet": "az account show\naz policy assignment list\n\n# Document control, owner, evidence and exception.",
+  "flashcards": [
+    {
+      "question": "What is a landing zone?",
+      "answer": "A governed Azure environment prepared for workloads."
+    },
+    {
+      "question": "Why map a control to evidence?",
+      "answer": "To demonstrate and verify its operation."
+    }
+  ],
+  "takeaways": [
+    "Azure Landing Zones (CAF / WAF)"
+  ],
+  "source_mode": "local",
+  "notice": "Extracts are not summaries; verify source context. Review any example commands before use."
+}

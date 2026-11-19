@@ -16,5 +16,11 @@
     "url": "/addons/modules/gamex/web/index.html",
     "icon": "\ud83e\udde9",
     "added_at": "2026-10-09T15:51:26.018115"
+  },
+  "MasterChief_Resume_Studio_UI": {
+    "name": "MasterChief_Resume_Studio_UI",
+    "url": "/addons/modules/MasterChief_Resume_Studio_UI/web/index.html",
+    "icon": "\ud83e\udde9",
+    "added_at": "2026-11-18T20:40:37.452283"
   }
 }

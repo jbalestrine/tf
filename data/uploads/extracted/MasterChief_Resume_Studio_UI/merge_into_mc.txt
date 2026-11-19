@@ -1,0 +1,46 @@
+python merge_into_masterchief.py
+
+1. 
+"Wire the newly merged masterchief.studio submodule into our PyPI package:
+1. Update pyproject.toml to add the [studio] optional dependency group (fastapi, uvicorn, python-docx, jinja2, mammoth, reportlab, youtube-transcript-api, pypdf, python-multipart) and include templates/*.html and defaults/* in [tool.setuptools.package-data].
+2. Update masterchief.studio modules (app.py, build_resumes.py, techlearn_router.py, email_agent.py, profile_store.py) so HTML templates and default seed files (resume.yaml, techlearn_knowledge.json, .env.example) load from importlib.resources inside masterchief.studio, while all mutable user files (resume.yaml, profiles/, dist/, backups/, techlearn_wiki/, submissions.json, processed_emails.json, .env) initialize and read/write in Path.cwd().
+3. Register masterchief studio in masterchief.cli to launch uvicorn masterchief.studio.app:app --host 0.0.0.0 --port 8080 and open the browser."
+Once you run merge_into_masterchief.py and Copilot wires up pyproject.toml and cli.py, let me know if you want to verify pip install -e ".[studio]" and python -m build before publishing to PyPI!
+
+
+1. 
+"Wire the newly merged masterchief.studio submodule into our PyPI package:
+1. Update pyproject.toml to add the [studio] optional dependency group (fastapi, uvicorn, python-docx, jinja2, mammoth, reportlab, youtube-transcript-api, pypdf, python-multipart) and include templates/*.html and defaults/* in [tool.setuptools.package-data].
+2. Update masterchief.studio modules (app.py, build_resumes.py, techlearn_router.py, email_agent.py, profile_store.py) so HTML templates and default seed files (resume.yaml, techlearn_knowledge.json, .env.example) load from importlib.resources inside masterchief.studio, while all mutable user files (resume.yaml, profiles/, dist/, backups/, techlearn_wiki/, submissions.json, processed_emails.json, .env) initialize and read/write in Path.cwd().
+3. Register masterchief studio in masterchief.cli to launch uvicorn masterchief.studio.app:app --host 0.0.0.0 --port 8080 and open the browser."
+Once you run merge_into_masterchief.py and Copilot wires up pyproject.toml and cli.py, let me know if you want to verify pip install -e ".[studio]" and python -m build before publishing to PyPI!
+
+
+---merge as addon module:
+Because your Career & TechLearn Studio is already built on FastAPI (app.py, techlearn_router.py, email_agent.py), your module loader can mount it into your main MasterChief application with just a couple of lines—and automatically inherit MasterChief's existing RBAC session middleware and LLM gateway.
+
+How Your Module Loader Integration Works Cleanly
+
+
+1. Mount as a Sub-Application (app.mount) or APIRouter
+
+In your MasterChief module loader, expose a lightweight register(main_app, context) hook (or mount studio_app directly):
+python
+from fastapi import Depends
+from masterchief.studio.app import app as studio_app
+
+# Mount the entire Career & TechLearn Studio under /studio
+# Optionally attach MasterChief's existing RBAC dependency to protect admin routes
+main_app.mount("/studio", studio_app)
+Use code with caution.
+• Bonus Benefit: When mounted via main_app.mount("/studio", studio_app), FastAPI automatically handles path prefixes, OpenAPI docs, and lifespan hooks without colliding with any of your existing MasterChief routes.
+
+2. Connect Two Shared MasterChief Services Automatically
+
+When your module loader initializes the addon, pass in two hooks from your main MasterChief OS:
+• Shared RBAC Guard: Override or wrap the localhost-only guard on /admin and /api/email/* with MasterChief's require_role("admin") session dependency.
+• Shared LLM Provider: Pass MasterChief's internal LLM endpoint or callable into techlearn_router and profile_store so TechLearn cheat sheets, YouTube study cards, and .docx/.pdf resume imports use your main app's LLM out of the box.
+
+3. Keep Relative Paths Prefix-Safe in HTML (./api/...)
+
+One quick detail to check when mounting under /studio: make sure fetch(...) calls inside index.html, portfolio.html, and techlearn.html use relative paths (fetch("api/build") instead of fetch("/api/build")) so all API calls resolve cleanly whether the app runs standalone at / or mounted under /studio/ inside MasterChief.
