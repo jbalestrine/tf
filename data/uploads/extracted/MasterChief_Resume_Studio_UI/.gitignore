@@ -1,0 +1,6 @@
+.env
+processed_emails.json
+.processed_emails.json.*.tmp
+submissions.json
+dist/
+.venv/

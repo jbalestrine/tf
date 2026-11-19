@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: letter;
+    margin: 0.45in 0.5in;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1E293B;
+    font-size: 9pt;
+    line-height: 1.38;
+    margin: 0;
+    padding: 0;
+  }
+  .hero {
+    background: linear-gradient(135deg, #0B192C 0%, #0F294A 60%, #0078D4 100%);
+    color: #FFFFFF;
+    padding: 18px 22px;
+    border-radius: 8px;
+    border-bottom: 4px solid #38BDF8;
+    margin-bottom: 12px;
+  }
+  .eyebrow {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #38BDF8;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .hero-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .hero-name {
+    font-size: 20pt;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    margin: 0;
+  }
+  .hero-brand { display: table; }
+  .hero-logo-cell { display: table-cell; vertical-align: middle; padding-right: 10px; }
+  .hero-logo-cell .brand-logo { display: block; width: 36px; height: 36px; filter: drop-shadow(0 0 5px #00b4d880); }
+  .hero-identity { display: table-cell; vertical-align: middle; }
+  .hero-titles {
+    font-size: 10pt;
+    color: #BAE6FD;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .contact-pill {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #FFFFFF;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 8pt;
+    margin: 2px 0;
+    text-decoration: none;
+  }
+  .layout-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+  .left-rail {
+    width: 31%;
+    vertical-align: top;
+    padding-right: 12px;
+  }
+  .main-col {
+    width: 69%;
+    vertical-align: top;
+  }
+  .rail-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-left: 3px solid #0078D4;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+    break-inside: avoid;
+  }
+  .rail-title {
+    font-size: 8.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #0B192C;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #CBD5E1;
+    padding-bottom: 3px;
+  }
+  .kpi-box {
+    margin-bottom: 6px;
+  }
+  .kpi-val {
+    font-size: 13pt;
+    font-weight: 800;
+    color: #0078D4;
+    line-height: 1.1;
+  }
+  .kpi-lbl {
+    font-size: 7.5pt;
+    color: #475569;
+  }
+  .pill {
+    display: inline-block;
+    background: #E0F2FE;
+    color: #0369A1;
+    border: 1px solid #BAE6FD;
+    border-radius: 4px;
+    padding: 1.5px 5px;
+    font-size: 7.4pt;
+    font-weight: 600;
+    margin: 1.5px 1px;
+  }
+  .pill-gov {
+    background: #DCFCE7;
+    color: #166534;
+    border-color: #BBF7D0;
+  }
+  .section-hdr {
+    font-size: 10pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #0B192C;
+    border-bottom: 2px solid #0078D4;
+    padding-bottom: 2px;
+    margin: 8px 0 6px 0;
+    break-after: avoid;
+  }
+  .job-card {
+    border-left: 2.5px solid #CBD5E1;
+    padding-left: 10px;
+    margin-bottom: 9px;
+    break-inside: avoid;
+  }
+  .job-role {
+    font-size: 9.6pt;
+    font-weight: 800;
+    color: #0B192C;
+  }
+  .job-meta {
+    font-size: 8.2pt;
+    font-weight: 700;
+    color: #0078D4;
+    margin-bottom: 3px;
+  }
+  ul.clean-list {
+    margin: 2px 0 0 0;
+    padding-left: 14px;
+  }
+  ul.clean-list li {
+    margin-bottom: 2.5px;
+    font-size: 8.5pt;
+  }
+  .ms-box {
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    border-left: 4px solid #0B192C;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 10px 0;
+    break-inside: avoid;
+  }
+  .ms-title {
+    font-size: 10pt;
+    font-weight: 800;
+    color: #0B192C;
+  }
+  .ms-roles {
+    font-size: 7.8pt;
+    color: #0078D4;
+    font-weight: 600;
+    margin: 3px 0 5px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow">{{ profile.eyebrow }}</div>
+  <table class="hero-table">
+    <tr>
+      <td style="width: 66%; vertical-align: middle;">
+        <div class="hero-brand">
+          <div class="hero-logo-cell">
+            <svg class="brand-logo" width="36" height="36" viewBox="0 0 64 64" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+              <path d="M32 2 56 10 59 32 53 49 32 62 11 49 5 32 8 10Z" fill="#0B192C" stroke="#0078D4" stroke-width="2.5"/>
+              <path d="M12 17 20 11 44 11 52 17 49 35 44 43 32 51 20 43 15 35Z" fill="#102B45" stroke="#00B4D8" stroke-width="1.5"/>
+              <path d="M15 22 24 18 40 18 49 22 45 30 35 33 32 30 29 33 19 30Z" fill="#00B4D8"/>
+              <path d="M21 23 27 21 37 21 43 23" fill="none" stroke="#E0FAFF" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M21 37 25 41 32 44 39 41 43 37 M32 51V56 M12 14 8 14 M52 14 56 14" fill="none" stroke="#0078D4" stroke-width="2" stroke-linecap="round"/>
+              <path d="M25 9a4 4 0 0 1 7-2 4.5 4.5 0 0 1 7 2" fill="none" stroke="#E0FAFF" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="7" cy="14" r="2" fill="#00B4D8"/><circle cx="57" cy="14" r="2" fill="#00B4D8"/><circle cx="32" cy="57" r="2" fill="#00B4D8"/>
+            </svg>
+          </div>
+          <div class="hero-identity">
+            <div class="hero-name">{{ profile.name }}</div>
+            <div class="hero-titles">{{ profile.titles | join("  |  ") }}</div>
+          </div>
+        </div>
+      </td>
+      <td style="width: 34%; text-align: right; vertical-align: middle;">
+        <div class="contact-pill">{{ profile.email }}</div><br>
+        <div class="contact-pill">{{ profile.phone }} &bull; {{ profile.location }}</div><br>
+        <a class="contact-pill" href="{{ profile.linkedin }}">{{ profile.linkedin }}</a>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<table class="layout-table">
+  <tr>
+    <td class="left-rail">
+      <div class="rail-card">
+        <div class="rail-title">Verified Enterprise Impact</div>
+        {% for m in metrics %}
+        <div class="kpi-box">
+          <div class="kpi-val">{{ m.value }}</div>
+          <div class="kpi-lbl">{{ m.label }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% for group in skills %}
+        {% if "pdf" in group.tiers %}
+        <div class="rail-card">
+          <div class="rail-title">{{ group.category }}</div>
+          {% for item in group["items"] %}
+            <span class="pill {% if 'Security' in group.category %}pill-gov{% endif %}">{{ item }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+
+      <div class="rail-card">
+        <div class="rail-title">Education &amp; Certs</div>
+        {% for ed in education %}
+        <div style="margin-bottom: 4px; font-size: 8pt;">
+          <strong>{{ ed.credential }}</strong><br>
+          <span style="color: #475569;">{{ ed.institution }}{% if ed.year %} ({{ ed.year }}){% endif %}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </td>
+
+    <td class="main-col">
+      <div class="rail-card" style="border-left-color: #0B192C;">
+        <div class="rail-title">Executive Architecture Summary</div>
+        <div style="font-size: 8.5pt;">{{ profile.summary }}</div>
+      </div>
+
+      <div class="section-hdr">Enterprise Cloud &amp; DevOps Leadership</div>
+      {% for job in experience[:4] %}
+        {% if "pdf" in job.tiers %}
+        <div class="job-card">
+          <div class="job-role">{{ job.role }} &mdash; {{ job.company }}</div>
+          <div class="job-meta">{{ job.location }} &bull; {{ job.dates }}</div>
+          <ul class="clean-list">
+            {% for b in job.bullets %}
+              {% if "pdf" in b.tiers %}
+              <li><strong>{{ b.category }}:</strong> {{ b.text }}</li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </td>
+  </tr>
+</table>
+
+<div class="section-hdr">Prior Cloud Architecture &amp; DevOps Roles</div>
+{% for job in experience[4:] %}
+  {% if "pdf" in job.tiers %}
+  <div class="job-card">
+    <div class="job-role">{{ job.role }} &mdash; {{ job.company }}</div>
+    <div class="job-meta">{{ job.location }} &bull; {{ job.dates }}</div>
+    <ul class="clean-list">
+      {% for b in job.bullets %}
+        {% if "pdf" in b.tiers %}
+        <li><strong>{{ b.category }}:</strong> {{ b.text }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+{% endfor %}
+
+<div class="ms-box">
+  <div class="ms-title">{{ microsoft_block.company }} &mdash; {{ microsoft_block.location }} &bull; {{ microsoft_block.dates }}</div>
+  <div class="ms-roles">{{ microsoft_block.roles | join("  |  ") }}</div>
+  <ul class="clean-list">
+    {% for b in microsoft_block.bullets %}
+      {% if "pdf" in b.tiers %}
+      <li><strong>{{ b.category }}:</strong> {{ b.text }}</li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</div>
+
+{% for item in earlier_experience %}
+  {% if "pdf" in item.tiers %}
+  <div style="font-size: 8pt; color: #475569; margin-top: 6px; break-inside: avoid;">
+    <strong style="color: #0B192C;">{{ item.company }} ({{ item.dates }}):</strong> {{ item.text }}
+  </div>
+  {% endif %}
+{% endfor %}
+
+</body>
+</html>

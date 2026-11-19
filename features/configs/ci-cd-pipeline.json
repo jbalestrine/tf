@@ -4,7 +4,12 @@
   "description": "Continuous integration and deployment pipeline management",
   "version": "1.0.0",
   "enabled": false,
-  "dependencies": ["jenkinsapi", "gitlab", "github"],
+  "dependencies": [
+    "jenkinsapi",
+    "gitlab",
+    "github"
+  ],
+  "settings": {},
   "routes": [
     {
       "path": "/api/features/cicd/pipelines",

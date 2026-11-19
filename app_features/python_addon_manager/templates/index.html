@@ -1,0 +1,13 @@
+<div class="section">
+    <h2>{{ title }}</h2>
+    <p style="color:#9aa4b2;">{{ description }}</p>
+    <p>This page is the starting point for <code>python_addon_manager</code>. Edit this file to change what the page shows.</p>
+    <button class="btn btn-info" id="python_addon_manager-ping" type="button">Test the API</button>
+    <pre id="python_addon_manager-out" style="margin-top:8px;"></pre>
+</div>
+<script>
+document.getElementById('python_addon_manager-ping').addEventListener('click', async function () {
+    const r = await fetch('/ext/python_addon_manager/api/ping', { credentials: 'same-origin' });
+    document.getElementById('python_addon_manager-out').textContent = JSON.stringify(await r.json(), null, 2);
+});
+</script>

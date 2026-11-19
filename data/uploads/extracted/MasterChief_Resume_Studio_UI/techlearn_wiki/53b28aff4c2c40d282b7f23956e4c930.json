@@ -1,0 +1,44 @@
+{
+  "id": "53b28aff4c2c40d282b7f23956e4c930",
+  "title": "YouTube 6ODNxy3YOPU",
+  "kind": "youtube",
+  "created": "2026-11-19T05:36:41.593532+00:00",
+  "tags": [],
+  "terms": [
+    "Music",
+    "gaion",
+    "world",
+    "dumpling",
+    "like",
+    "they",
+    "well",
+    "wish",
+    "sick",
+    "days",
+    "sighs",
+    "there",
+    "down",
+    "Applause",
+    "these",
+    "order",
+    "starting",
+    "fart",
+    "started",
+    "late"
+  ],
+  "headline": "Study notes extracted from the supplied source.",
+  "rules": [],
+  "failures": [],
+  "snippet": "",
+  "flashcards": [
+    {
+      "question": "Recall source takeaway 1.",
+      "answer": "[Music] [Music] [Music] gaion a day [Music] God all day world let a dumpling like it are they oh well by day I wish I'm sick of days a sighs it's like it's $3 lat we're there [Music] ran down are [Music] [Music] [Applause] [Music] [Applause] [Music] these order starting to fart started too late solid face [Music] God wars down [Music] you"
+    }
+  ],
+  "takeaways": [
+    "[Music] [Music] [Music] gaion a day [Music] God all day world let a dumpling like it are they oh well by day I wish I'm sick of days a sighs it's like it's $3 lat we're there [Music] ran down are [Music] [Music] [Applause] [Music] [Applause] [Music] these order starting to fart started too late solid face [Music] God wars down [Music] you"
+  ],
+  "source_mode": "local",
+  "notice": "Extracts are not summaries; verify source context. Review any example commands before use. No curated module matched; architecture rules and examples require review."
+}

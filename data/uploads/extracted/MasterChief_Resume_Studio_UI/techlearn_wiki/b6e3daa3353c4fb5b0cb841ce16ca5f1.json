@@ -1,0 +1,32 @@
+{
+  "id": "b6e3daa3353c4fb5b0cb841ce16ca5f1",
+  "title": "PowerShell / DSC",
+  "kind": "cheatsheet",
+  "created": "2026-11-19T05:48:14.624431+00:00",
+  "tags": [
+    "PowerShell DSC"
+  ],
+  "terms": [
+    "PowerShell",
+    "DSC"
+  ],
+  "headline": "PowerShell DSC describes and applies a desired configuration state.",
+  "rules": [
+    "Version configuration and test changes before deployment.",
+    "Monitor configuration application and drift."
+  ],
+  "failures": [
+    "Missing DSC resources can block configuration.",
+    "Configuration drift may reappear without monitoring."
+  ],
+  "snippet": "Get-DscLocalConfigurationManager",
+  "flashcards": [
+    {
+      "question": "What is configuration drift?",
+      "answer": "A difference between the intended and actual configuration."
+    }
+  ],
+  "takeaways": [],
+  "source_mode": "local",
+  "notice": "Extracts are not summaries; verify source context. Review any example commands before use."
+}

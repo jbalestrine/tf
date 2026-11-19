@@ -4,7 +4,12 @@
   "description": "Multi-cloud resource management and monitoring",
   "version": "1.0.0",
   "enabled": false,
-  "dependencies": ["boto3", "azure-identity", "google-cloud"],
+  "dependencies": [
+    "boto3",
+    "azure-identity",
+    "google-cloud"
+  ],
+  "settings": {},
   "routes": [
     {
       "path": "/api/features/cloud/providers",

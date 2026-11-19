@@ -1,5 +1,0 @@
-{
-  "how to build docker image": "Use 'docker build -t name:tag .' to build an image",
-  "hello echo! how can you help me with devops?": "Hello... I am Echo \ud83c\udf19",
-  "test question": "test answer"
-}

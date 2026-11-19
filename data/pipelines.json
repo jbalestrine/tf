@@ -73,13 +73,6 @@
       "updated": "2026-08-19T05:25:32.709362"
     },
     {
-      "input_key": "test_value",
-      "action": "deploy_module",
-      "id": "39b42395-d993-482e-9b0c-44cfbd0042a7",
-      "created": "2026-09-22T02:33:07.664654",
-      "updated": "2026-09-22T02:33:07.664665"
-    },
-    {
       "id": "869eaa49-3038-47d3-9f51-7c258c3dd9b0",
       "name": "j",
       "description": "n",
@@ -141,6 +134,202 @@
       ],
       "created": "2026-10-06T17:42:58.045381",
       "updated": "2026-10-06T17:42:58.083399"
+    },
+    {
+      "id": "f07717f5-5e43-4d91-b4b9-1808d0241123",
+      "name": "masterchiefTest",
+      "description": "build, test, and approve-gated release.",
+      "stages": [
+        {
+          "id": "stage-z9amwnjf",
+          "name": "Build",
+          "order": 0,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-epjff9vb",
+              "name": "Build application package",
+              "type": "custom_command",
+              "config": {
+                "command": "python -m build",
+                "working_dir": "."
+              }
+            }
+          ]
+        },
+        {
+          "id": "stage-gmvczxou",
+          "name": "Test",
+          "order": 1,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-nyvhw6aq",
+              "name": "Run test suite",
+              "type": "test_run",
+              "config": {
+                "test_command": "python -m pytest -q",
+                "working_dir": "."
+              }
+            }
+          ]
+        },
+        {
+          "id": "stage-eve5pdew",
+          "name": "Release gate",
+          "order": 2,
+          "parallel": false,
+          "approval_required": true,
+          "steps": [
+            {
+              "id": "step-tggty3bi",
+              "name": "Confirm release readiness",
+              "type": "deploy",
+              "config": {
+                "target": "configured release target",
+                "strategy": "rolling"
+              }
+            }
+          ]
+        }
+      ],
+      "created": "2026-10-09T08:24:21.148425",
+      "updated": "2026-10-09T08:24:21.176198"
+    },
+    {
+      "id": "978946d2-6819-4da4-92a5-e5173800d1e5",
+      "name": "masterchiefTest",
+      "description": "",
+      "stages": [
+        {
+          "id": "stage-teh5mu8j",
+          "name": "Build",
+          "order": 0,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-r2knvzp7",
+              "name": "Check Python syntax",
+              "type": "custom_command",
+              "config": {
+                "command": "python -m compileall -q core echo managers"
+              }
+            }
+          ]
+        },
+        {
+          "id": "stage-qk0p1vrd",
+          "name": "Test",
+          "order": 1,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-owj0x9c2",
+              "name": "Run test suite",
+              "type": "test_run",
+              "config": {
+                "test_command": "python -m pytest -q",
+                "working_dir": "."
+              }
+            }
+          ]
+        }
+      ],
+      "created": "2026-10-09T08:24:51.842827",
+      "updated": "2026-10-09T08:24:51.877399"
+    },
+    {
+      "id": "5f2d050a-ae50-49b1-b3b5-e038df6d84dc",
+      "name": "mchief",
+      "description": "deploy test masterchief",
+      "stages": [
+        {
+          "id": "stage-3gshnqmr",
+          "name": "Build",
+          "order": 0,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-varrje67",
+              "name": "Check Python syntax",
+              "type": "custom_command",
+              "config": {
+                "command": "python -m compileall -q core echo managers"
+              }
+            }
+          ]
+        },
+        {
+          "id": "stage-txryp629",
+          "name": "Test",
+          "order": 1,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-p9sgk1qy",
+              "name": "Run test suite",
+              "type": "test_run",
+              "config": {
+                "test_command": "python -m pytest -q",
+                "working_dir": "."
+              }
+            }
+          ]
+        }
+      ],
+      "created": "2026-10-09T08:25:21.561351",
+      "updated": "2026-10-09T08:25:21.591905"
+    },
+    {
+      "id": "46eea9d4-ae75-4551-bef0-346e7684608d",
+      "name": "TFTEST",
+      "description": "",
+      "stages": [
+        {
+          "id": "stage-5tqrrr0w",
+          "name": "Validate",
+          "order": 0,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-jw7q2h12",
+              "name": "Format and validate",
+              "type": "custom_command",
+              "config": {
+                "command": "terraform fmt -check && terraform validate",
+                "working_dir": "."
+              }
+            }
+          ]
+        },
+        {
+          "id": "stage-ff1ct1cq",
+          "name": "Plan",
+          "order": 1,
+          "parallel": false,
+          "approval_required": false,
+          "steps": [
+            {
+              "id": "step-phvnemw2",
+              "name": "Review infrastructure plan",
+              "type": "terraform_plan",
+              "config": {
+                "working_dir": ".",
+                "var_file": ""
+              }
+            }
+          ]
+        }
+      ],
+      "created": "2026-10-09T08:25:52.162825",
+      "updated": "2026-10-09T08:25:52.187439"
     }
   ]
 }

@@ -1,0 +1,32 @@
+{
+  "id": "d8b780a6c4484f2aa66828d0cc7b82fd",
+  "title": "Terraform / TFE",
+  "kind": "cheatsheet",
+  "created": "2026-11-19T05:27:12.553726+00:00",
+  "tags": [
+    "Terraform / TFE"
+  ],
+  "terms": [
+    "Terraform",
+    "TFE"
+  ],
+  "headline": "Terraform expresses infrastructure as versioned, reviewable configuration.",
+  "rules": [
+    "Protect state and restrict access; use locking for shared state.",
+    "Review plans and promote changes through controlled environments."
+  ],
+  "failures": [
+    "State drift or concurrent operations can cause unexpected plans.",
+    "Overly broad provider credentials increase blast radius."
+  ],
+  "snippet": "terraform init\nterraform plan\nterraform apply",
+  "flashcards": [
+    {
+      "question": "Why review a Terraform plan?",
+      "answer": "To inspect intended changes before applying them."
+    }
+  ],
+  "takeaways": [],
+  "source_mode": "local",
+  "notice": "Extracts are not summaries; verify source context. Review any example commands before use."
+}

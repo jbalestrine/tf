@@ -1,0 +1,13 @@
+{
+  "title": "Module Manager Addon Wizard",
+  "description": "installs libraries",
+  "version": "0.1.0",
+  "enabled": true,
+  "core": false,
+  "nav": {
+    "label": "Module Manager Addon Wizard",
+    "href": "/ext/python_addon_manager/",
+    "icon": "🧩"
+  },
+  "created": "2026-10-09"
+}

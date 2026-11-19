@@ -1,2 +1,0 @@
-Install-Module -Name arm-ttk -Repository PSGallery -Force
-Test-AzTemplate -TemplatePath .\arm-template.json

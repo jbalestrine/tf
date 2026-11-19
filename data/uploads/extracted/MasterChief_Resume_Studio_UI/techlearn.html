@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TechLearn Studio</title>
+<style>
+body{background:#0b1120;color:#e5edf8;font:16px/1.5 system-ui;margin:0} header{background:#002050;border-bottom:3px solid #50e6ff;padding:18px 5%} h1{margin:0} a{color:#50e6ff} main{max-width:1100px;margin:auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px} section{background:#111e33;border:1px solid #334b6a;border-radius:8px;padding:18px} input,textarea,select{width:100%;box-sizing:border-box;background:#1e293b;color:white;border:1px solid #527195;padding:9px;margin:6px 0} button{background:#0078d4;border:0;border-radius:5px;color:white;padding:9px;margin:4px;cursor:pointer} pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07152a;padding:10px} details{border:1px solid #334b6a;padding:8px;margin:6px 0} #message{color:#ffcd77} @media(max-width:700px){main{grid-template-columns:1fr}}
+</style></head><body><header><h1>TechLearn Studio &amp; Interview Prep</h1><a href="/">Resume Studio</a> · <a href="/portfolio">Portfolio</a></header>
+<main><section><h2>Quick Study</h2><label for="tech">Resume technology</label><select id="tech"><option value="">Select a technology</option></select>
+<label for="jd">Or paste a job description</label><textarea id="jd" rows="6"></textarea><button id="generate">Create cheat sheet</button>
+<h2>YouTube captions</h2><label for="url">YouTube URL</label><input id="url" type="url"><button id="video">Create quick study</button><p>Fetching captions requires an internet connection and YouTube availability.</p><p id="message" role="status"></p></section>
+<section><h2>Personal Wiki</h2><input id="search" placeholder="Search"><input id="tag" placeholder="Filter by tag"><button id="find">Search wiki</button><div id="wiki"></div></section>
+<section style="grid-column:1/-1"><h2>Study</h2><div id="study">Choose or create a study.</div></section></main>
+<script>
+const $=id=>document.getElementById(id);
+async function api(url,options){const r=await fetch(url,options);if(!r.ok){let x=await r.json();throw Error(x.detail||r.statusText)}return r.json()}
+function el(tag,text,parent){const n=document.createElement(tag);n.textContent=text;parent.appendChild(n);return n}
+function show(s){const box=$('study');box.replaceChildren();el('h3',s.title,box);el('p',s.headline,box);el('p',s.notice,box);if(s.warning)el('p',s.warning,box);for(const [title,key] of [['Key takeaways','takeaways'],['Technical terms','terms'],['Core architecture rules','rules'],['Production failure modes','failures']]){el('h4',title,box);const list=el('ul','',box);(s[key]||[]).forEach(x=>el('li',x,list));if(!s[key]?.length)el('li','No source-backed content available.',list)}el('h4','CLI / IaC reference',box);el('pre',s.snippet||'No curated snippet available.',box);el('h4','Flashcards',box);for(const f of s.flashcards){let d=el('details','',box);el('summary',f.question,d);el('p',f.answer,d)}}
+async function refresh(){let list=await api('/api/techlearn/wiki?'+new URLSearchParams({q:$('search').value,tag:$('tag').value}));let box=$('wiki');box.replaceChildren();for(const s of list){let row=el('div','',box);let b=el('button',s.title,row);b.onclick=()=>show(s);let d=el('button','Delete',row);d.onclick=async()=>{if(confirm('Delete this study?')){await api('/api/techlearn/wiki/'+s.id,{method:'DELETE'});await refresh()}}}}
+async function create(path,data){try{$('message').textContent='Working...';let s=await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});show(s);await refresh();$('message').textContent=s.warning||'Saved.'}catch(e){$('message').textContent=e.message}}
+$('generate').onclick=()=>create('/api/techlearn/cheatsheet',{technology:$('tech').value,job_description:$('jd').value});$('video').onclick=()=>create('/api/techlearn/youtube',{url:$('url').value});$('find').onclick=()=>refresh().catch(e=>$('message').textContent=e.message);
+api('/api/techlearn/technologies').then(items=>items.forEach(x=>{let o=el('option',x,$('tech'));o.value=x})).catch(e=>$('message').textContent=e.message);refresh().catch(e=>$('message').textContent=e.message);
+</script></body></html>

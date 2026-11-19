@@ -1,0 +1,33 @@
+{
+  "id": "30462276c7934cd4ab283b0c616dd1a2",
+  "title": "FinOps (IBM Turbonomic)",
+  "kind": "cheatsheet",
+  "created": "2026-11-19T05:26:47.952635+00:00",
+  "tags": [
+    "IBM Turbonomic"
+  ],
+  "terms": [
+    "FinOps",
+    "IBM",
+    "Turbonomic"
+  ],
+  "headline": "Turbonomic provides resource-management recommendations based on application demand.",
+  "rules": [
+    "Validate recommendations against workload constraints and change controls.",
+    "Monitor cost and performance outcomes after changes."
+  ],
+  "failures": [
+    "Unreviewed automation can conflict with workload requirements.",
+    "Incomplete discovery can reduce recommendation quality."
+  ],
+  "snippet": "# Review recommendations, constraints and observed outcomes.",
+  "flashcards": [
+    {
+      "question": "What should be checked before acting on a sizing recommendation?",
+      "answer": "Workload constraints, risk and expected impact."
+    }
+  ],
+  "takeaways": [],
+  "source_mode": "local",
+  "notice": "Extracts are not summaries; verify source context. Review any example commands before use."
+}

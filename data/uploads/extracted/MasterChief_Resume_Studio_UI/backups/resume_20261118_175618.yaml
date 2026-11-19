@@ -1,0 +1,354 @@
+# ==============================================================================
+# Joseph Balestrine — Resume-as-Code Single Source of Truth (resume.yaml)
+# Drop into MasterChief app repo to generate Master DOCX, 2-Page Exec DOCX, & Architect PDF
+# ==============================================================================
+
+profile:
+  name: "Joseph Balestrine"
+  titles:
+    - "DevOps Engineer"
+    - "Enterprise Cloud Architect"
+    - "Automation Engineer"
+  email: "balestrinojoseph@gmail.com"
+  phone: "253-350-9800"
+  linkedin: "https://linkedin.com/in/x122"
+  github: "https://github.com/jbalestrine/JB"
+  location: "Seattle / Federal Way, WA"
+  eyebrow: "13+ Years Enterprise Cloud, DevOps & Security Automation Leadership"
+  summary: >-
+    Enterprise Cloud Architect and Senior DevOps Lead with 13+ years of hands-on experience
+    designing multi-cloud Azure/AWS/GCP landing zones, automated CI/CD ecosystems, Infrastructure
+    as Code (Terraform/TFE, ARM, PowerShell DSC), and SRE observability platforms. Proven track
+    record enforcing regulated compliance guardrails (CAF, WAF, NIST, FedRAMP controls, GDPR, HIPAA,
+    ITAR) and delivering verified FinOps ROI (~35% cloud spend reduction and ~247% projected 3-year ROI).
+
+cover_letter:
+  opening: >-
+    I am excited to apply for the {role_title} opportunity at {company_name}. I bring more than
+    13 years of hands-on experience delivering enterprise cloud architecture, DevOps automation,
+    and secure infrastructure solutions.
+  body_1: >-
+    For {company_name}, I would apply my experience designing Azure, AWS, and GCP landing zones,
+    automating infrastructure with Terraform and PowerShell, and establishing governance controls
+    aligned with CAF, WAF, NIST, GDPR, HIPAA, and ITAR requirements. In the {role_title} role, I would
+    focus on practical architectures that strengthen security, reliability, and delivery at scale.
+  body_2: >-
+    I have also delivered measurable operational and financial outcomes, including approximately
+    35% cloud-spend savings and a projected 247% three-year FinOps return. I would welcome the
+    opportunity to bring this combination of architecture, automation, and cost optimization to
+    {company_name} as your {role_title}.
+  closing: >-
+    Thank you for your consideration. I look forward to discussing how my experience can support
+    {company_name}'s goals for the {role_title} position.
+
+metrics:
+  - value: "13+ Yrs"
+    label: "DevOps, Cloud Architecture & Azure WAG"
+  - value: "35%"
+    label: "Avg. Cloud Spend Savings (Turbonomic FinOps)"
+  - value: "247%"
+    label: "Projected 3-Year FinOps ROI"
+  - value: "139K+"
+    label: "Enterprise Servers Remediated (ITAR / DoD)"
+
+skills:
+  - category: "Cloud Architecture & IaC"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    items:
+      - "Enterprise Cloud Architecture"
+      - "Azure Landing Zones (CAF / WAF)"
+      - "Hub & Spoke"
+      - "Azure / AWS / GCP"
+      - "Terraform / TFE"
+      - "ARM Templates"
+      - "PowerShell / DSC"
+      - "Ansible"
+      - "AVS / HCX / NSX-T"
+  - category: "DevOps, CI/CD & Containers"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    items:
+      - "Azure DevOps (ADO)"
+      - "GitHub Actions / GHE"
+      - "GitLab Runner"
+      - "Kubernetes (AKS)"
+      - "Docker"
+      - "Jenkins"
+      - "TeamCity"
+      - "Artifactory"
+      - "OKTA / ADFS"
+  - category: "Security, Governance & FinOps"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    items:
+      - "FinOps (IBM Turbonomic)"
+      - "Capacity Management"
+      - "NIST 800-53"
+      - "FedRAMP-Aligned Controls"
+      - "GDPR"
+      - "HIPAA"
+      - "ITAR / DoD Clearance"
+      - "Nessus"
+  - category: "SRE, Observability & Scripting"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    items:
+      - "Prometheus"
+      - "Grafana"
+      - "AppDynamics"
+      - "New Relic"
+      - "Sumo Logic"
+      - "Splunk"
+      - "SCOM / SCCM / ServiceNow"
+      - "Python / Node.js / React / C# / SQL"
+  - category: "Cloud Data Platforms"
+    tiers: ["master", "slideedition", "pdf"]
+    items:
+      - "Microsoft Fabric"
+      - "OneLake"
+      - "Azure Data Factory (ADF)"
+
+experience:
+  - company: "CIA, Addison Group, Tegna, Mondo"
+    role: "Senior DevOps Engineer Lead"
+    location: "Seattle, WA / Remote"
+    dates: "08/2025 – 04/2026"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    bullets:
+      - category: "Cloud Architecture & IaC"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Designed hybrid Azure cloud solutions, standardized enterprise landing zones, hub-and-spoke architectures, and compliance policy frameworks using Terraform, ARM templates, and PowerShell DSC."
+      - category: "CI/CD & Matrix Automation"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Architected multi-version application test matrices via GitHub Actions, ADO, TFE, and GHE; automated regression boundaries to isolate dependency failures prior to artifact deployment."
+      - category: "Governance & Compliance"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Architected and enforced Azure Landing Zone guardrails and umbrella policies aligned with CAF, WAF, NIST, and GDPR standards to ensure data residency, encryption, and least-privilege access across subscriptions."
+      - category: "Secure Provisioning & Fleets"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Developed automated infrastructure pipelines for VM fleets and containerized workloads, creating secure virtual development environments (VDEs) with isolated datasets and RBAC."
+      - category: "SRE & Observability"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Implemented distributed observability stacks (Prometheus, Grafana) and architected a custom lightweight PowerShell log ingestion pipeline for centralized infrastructure visibility."
+      - category: "Reliability & Incident Response"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Designed SLI/SLO-based reliability dashboards aligned with SRE principles to measure service health, enforce availability targets, and support enterprise incident response strategies."
+      - category: "Migration & Image Engineering"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Drove cloud modernization strategies for enterprise clients, engineering automated Linux/Windows build images with full dependency stacks (Docker, Python, Node.js, React, ML tooling)."
+      - category: "Testing & Smoketesting"
+        tiers: ["master", "slideedition"]
+        text: "Engineered automated API, front-end, UI, and microservice smoke-testing suites using PowerShell, Node.js, React, and Python."
+      - category: "Data & Fabric Platform"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Designed Data Lake (OneLake) and Azure Data Factory archetypes; automated Microsoft Fabric capacity management and workspace CI/CD via Terraform and ADO."
+
+  - company: "Ascendion / Expeditors (Logistics & Global Supply Chain)"
+    role: "Senior DevOps Engineer Lead"
+    location: "Seattle, WA"
+    dates: "03/2025 – 07/2025"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    bullets:
+      - category: "Cloud Migration & CI/CD Strategy"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Designed end-to-end on-prem to Azure migration strategies encompassing CI/CD automation, GitLab/GitLab Runner audits, TFE, Backup, DRaaS, IaC, and GHE."
+      - category: "Global Governance & Data Residency"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Enforced multi-region Azure Landing Zone guardrails aligned with CAF, WAF, and GDPR to govern cross-border data residency, encryption, and RBAC across global subscriptions."
+      - category: "Multi-Platform Pipeline Automation"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Automated environment provisioning and zero-downtime delivery across Azure DevOps, GitHub Actions, GitLab Runner, PowerShell, ARM, Terraform, Docker, and ACR."
+      - category: "Full-Stack Observability & SRE"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Led AppDynamics APM evaluation/rollout and built Prometheus, Grafana, Sumo Logic, and New Relic pipelines aligned with business-critical SLIs/SLOs."
+      - category: "Configuration & Audit Baselines"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Built reproducible system configuration baselines, department-specific mock environments, and Markdown (MD) operational runbooks to train senior analysts."
+      - category: "Data & Fabric Integration"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Architected Data Lake and Azure Data Factory migration patterns, implementing Microsoft Fabric capacity management and automated CI/CD pipelines."
+
+  - company: "WIPRO / Microsoft Corporation"
+    role: "Senior DevOps Engineer Lead III"
+    location: "Redmond, WA"
+    dates: "05/2024 – 08/2024"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    bullets:
+      - category: "DevOps, IaC & AIOps Workflows"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Engineered CI/CD and IaC automation via Azure DevOps, PowerShell, ARM, and Terraform Enterprise (TFE), leveraging ML workflows for root cause analysis (RCA), anomaly detection, and predictive incident prevention."
+      - category: "Enterprise Telemetry & Observability"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Integrated New Relic, Sumo Logic, Splunk, SCOM, and ServiceNow (SNOW); standardized metric naming conventions, scrape configurations, and multi-environment transaction trace dashboards."
+      - category: "Cloud Data Architecture"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Designed enterprise cloud data architectures utilizing Microsoft Fabric, Data Factory, and OneLake with Visio Pro blueprints and standardized capacity governance."
+
+  - company: "CIA, LLC"
+    role: "Senior DevOps Engineer / Enterprise Cloud Architect"
+    location: "Seattle, WA"
+    dates: "02/2023 – 05/2024"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    bullets:
+      - category: "Enterprise Landing Zones & Multi-Cloud IaC"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Authored PowerShell DSC, ARM Templates, Terraform modules, and Visio Hub & Spoke archetypes for Azure, GCP, and AWS deployments (Blue/Green, Canary, Rolling) per TAP architecture documents."
+      - category: "End-to-End CI/CD Orchestration"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Built Azure DevOps pipelines automating enterprise landing zones, policies, web/data servers, certificates, Kubernetes cluster node scaling, and Windows/Unix images."
+      - category: "Isolated VDEs & Custom Distros"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Created isolated Windows/Linux Virtual Development Environments (VDEs) with mock datasets and scripted role-based Linux distro builds (Docker, Python, Node.js, React, PyTorch, TensorFlow, feature flags)."
+      - category: "SRE Analytics & Forensic Logging"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Integrated Prometheus and Grafana SLI/SLO dashboards for capacity forecasting and regulatory uptime; designed structured logging standards for compliance and forensic analysis."
+      - category: "Technical Program & SOW Leadership"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Defined SOW Epics and User Stories for budget forecasting and resource allocation; led vendor onboarding and training for third-party production pipeline tools."
+      - category: "Data Lake & Fabric Baselines"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Designed Visio enterprise cloud archetypes for Data Lakes and Data Factory, establishing IaC and CI/CD baselines for Microsoft Fabric workloads."
+
+  - company: "United Health Group (UHG), JMH | Optum Cloud Connect"
+    role: "DevOps Lead Engineer"
+    location: "NYC, NY | Seattle, WA"
+    dates: "08/2022 – 02/2023"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    bullets:
+      - category: "FinOps & Cloud Optimization (IBM Turbonomic)"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Implemented IBM Turbonomic across client subscriptions, delivering an average 35% public cloud consumption cost savings, ~75% reduction in app performance tickets, and ~247% projected 3-year ROI."
+      - category: "CAF/WAF Policy & TFE Automation"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Created Terraform Enterprise (TFE) and Azure DevOps CI/CD pipelines for automated infrastructure deployments, Hub & Spoke archetypes, Kubernetes scaling, and CAF/WAF umbrella policies."
+      - category: "Datacenter Exit & AVS Migration"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Configured Azure VMware Solution (AVS), AVS-HCX fleet automation, and NSX-T L2Connector for on-prem to Azure lift-and-shift migrations prior to datacenter decommissioning."
+      - category: "Unified SRE Observability & CSP Onboarding"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Unified AppDynamics and Grafana telemetry (metrics, logs, traces) with PromQL alerts; onboarded CSP/Azure Lighthouse tooling and isolated VDEs."
+
+  - company: "Apollo Investment Consulting, LLC"
+    role: "DevOps Architect / DevOps Engineer"
+    location: "NYC, NY | Seattle, WA"
+    dates: "04/2022 – 08/2022"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    bullets:
+      - category: "Financial Governance & Guardrails"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Implemented Azure policy guardrails and umbrella controls aligned with NIST, CAF, and WAF standards to enforce financial data encryption, audit logging, and least-privilege access."
+      - category: "Multi-Cloud Architecture & Kubernetes"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Created MS Visio Hub & Spoke architectural stencils and IaC archetypes (Terraform, ARM, PowerShell DSC) across Azure, AWS, and GCP; configured Docker/Kubernetes clusters via SSH/PEM-secured Bastion hosts."
+      - category: "AIOps & Telemetry Integration"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Evaluated and integrated AI/ML-driven operations tools and Prometheus/APM telemetry to improve incident detection, alert correlation, and noise reduction."
+
+  - company: "Tata Consultancy Services, LLC (TCS) / Humana Insurance"
+    role: "Enterprise Cloud Architect / DevOps Engineer / Lead Consultant"
+    location: "Seattle, WA | Louisville, KY"
+    dates: "10/2020 – 10/2021"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    bullets:
+      - category: "Healthcare Governance (HIPAA & NIST)"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Designed HIPAA- and NIST-aligned Azure Landing Zone policies and CAF/WAF guardrails to enforce PHI data isolation, encryption at rest/in transit, and subscription-level RBAC."
+      - category: "Enterprise Lift-and-Shift & IaC Automation"
+        tiers: ["master", "exec", "slideedition", "pdf"]
+        text: "Architected MS Visio Hub & Spoke migration designs across hybrid, Azure, AWS, and GCP; automated AD, DNS/DHCP, VNet peering, NSGs, Azure Service Bus, WVD, ADFS 2.0, and AKS deployments via Terraform, PowerShell, and C#."
+
+  - company: "CUNA – Credit Union National Assoc. / ATOS – Syntel"
+    role: "Senior DevOps, CI/CD Engineer – IT Application Architecture – Automation Engineer"
+    location: "Seattle, WA"
+    dates: "11/2018 – 05/2019"
+    tiers: ["master", "slideedition", "pdf"]
+    bullets:
+      - category: "CI/CD & Custom Systems Tooling"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Configured Azure DevOps/TFS pipelines across API Connect, BizTalk, and MS SQL Server; built a custom C# WPF GUI management app and orchestrated Linux/Windows IaC using ARM, Terraform, Ansible, and Python."
+      - category: "Identity & Tier IV Infrastructure"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Managed Active Directory, enterprise authentication, Windows Server (2003–2016 DC), SQL HA clusters, SCCM, SCSM, SCOM, and security compliance."
+
+  - company: "Team Inc. (Team Digital Division)"
+    role: "Senior DevOps Lead Engineer"
+    location: "Pittsburgh, PA | Seattle, WA (Remote)"
+    dates: "05/2017 – 09/2018"
+    tiers: ["master", "slideedition", "pdf"]
+    bullets:
+      - category: "CI/CD Velocity & Deployment Automation"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Configured TeamCity and VSTS CI/CD pipelines, doubling dev-to-production velocity in one month and cutting artifact delivery time by 90% with 100% uptime."
+      - category: "One-Click Azure Environments & Management App"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Authored PowerShell ARM/DSC modules for one-click SQL HA/FCI, SOFS, VNet, and IIS environments; built a C# WPF systems management tool (github.com/jbalestrine/JB) and SCCM patching automation."
+
+  - company: "Computer Intelligence Agency"
+    role: "Senior DevOps / Application Support Engineer"
+    location: "Seattle, WA"
+    dates: "08/2016 – 05/2017"
+    tiers: ["master", "slideedition", "pdf"]
+    bullets:
+      - category: "Multi-Cloud IaC & Microservices CI/CD"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Configured microservices CI/CD with TeamCity, GitHub, OKTA, VSTS, and Jenkins; automated multi-cloud IaC across Azure, GCP, and IBM Cloud using Terraform and ARM templates."
+      - category: "Tier III/IV Enterprise Operations"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Supported Ubuntu Linux, Windows Server (2003–2012 DC), SQL clusters, AD/ADFS 2.0, Azure Service Bus, SCCM, SCSM, and SCOM."
+
+  - company: "T-Mobile"
+    role: "Senior DevOps Application Engineer"
+    location: "Bellevue, WA"
+    dates: "05/2016 – 08/2016"
+    tiers: ["master", "slideedition", "pdf"]
+    bullets:
+      - category: "Server Automation & Monitoring"
+        tiers: ["master", "slideedition", "pdf"]
+        text: "Developed deployment tooling, monitoring solutions, and automation scripts for Linux and Windows enterprise servers using C#, PowerShell, SQL, Azure, IIS, Docker, Jenkins, and VSTS."
+
+microsoft_block:
+  company: "Microsoft Corporation"
+  location: "Redmond & Issaquah, WA"
+  dates: "01/2013 – 04/2016"
+  banner_note: "Consolidated Multi-Division DevOps, Windows Azure Group (WAG) & ITAR Security Tenure"
+  roles:
+    - "DevOps Engineer / Sr. Service Engineer – Tools & Automation (XBOX, SSO, CFIT, BGIT, WAG, OSG | 11/2014 – 04/2016)"
+    - "DevOps & Security Service Engineer – Deployment Operations (DoD, ITAR, DHS, Bank of America | 08/2014 – 11/2014)"
+    - "PM / DevOps Engineer – Operating Systems Group (Office 365 CXP | 05/2014 – 06/2014)"
+    - "DevOps / Sr. Azure Service Engineer III & SME – Windows Azure Group (WAG | 02/2014 – 05/2014)"
+    - "DevOps / Livesite & Xbox Operations Support Engineer – Windows Azure, SQL Azure & XOC (01/2013 – 02/2014)"
+  bullets:
+    - category: "ITAR / DoD Security & Vulnerability Remediation"
+      tiers: ["master", "exec", "slideedition", "pdf"]
+      text: "Held Military Security Clearance (ITAR – Cryptography & DoD); engineered PowerShell automation and Nessus compliance workflows to patch and remediate vulnerabilities across 139,000+ enterprise servers supporting DoD, DHS, ITAR, and FedRAMP-aligned baselines."
+    - category: "Enterprise DevOps Automation & Configuration"
+      tiers: ["master", "exec", "slideedition", "pdf"]
+      text: "Automated OS/application deployments and large-scale security patching across 40,000+ Windows datacenter servers using SCCM collections, domain-level GPOs, PowerShell, and C#/.NET diagnostic recovery tools."
+    - category: "24/7 Azure WAG & Xbox Live-Site Reliability"
+      tiers: ["master", "exec", "slideedition", "pdf"]
+      text: "Diagnosed and mitigated critical 24x7 cloud outages across Windows Azure, SQL Azure, AD/ADFS, IIS, and Hyper-V clusters; performed Wireshark/Netmon packet analysis, authored ITIL troubleshooting guides (TSGs), and mentored live-site engineers."
+    - category: "Cloud Content & SharePoint Migration"
+      tiers: ["master", "slideedition", "pdf"]
+      text: "Led R&D, SLA scoping, and automated PowerShell/C#/XML content migrations from SharePoint 2010 to SharePoint 2013 for the Office 365 Operating Systems Group."
+
+earlier_experience:
+  - company: "UTMB (University of Texas Medical Branch)"
+    role: "Network Engineer II"
+    location: "Galveston, TX"
+    dates: "07/2013 – 08/2013"
+    tiers: ["master", "slideedition"]
+    text: "Managed datacenter network operations, DHCP/IP allocation, Cisco/Alcatel router/switch upgrades, and Tier II escalations."
+  - company: "Prior Infrastructure & Network Engineering"
+    role: "Foundational Enterprise Experience"
+    location: "Various"
+    dates: "Pre-2013"
+    tiers: ["master", "exec", "slideedition", "pdf"]
+    text: "IBM | Yahoo! | AOL | Comcast (TSE) | Chevron | Fluor Engineering | LyondellBasell (formerly Lyondell Citgo Refinery) | Veolia ES | Plant Performance Services (P2S) | Aviation Laboratories (Web Dev) | SeattleRiff (Media Streaming) | Answer Secretary (Operations Manager) — Scheduling Cost Engineer, Database Admin, & Cisco ISP Network Engineer."
+
+education:
+  - credential: "Microsoft Certified: Azure"
+    institution: "Microsoft"
+    year: ""
+  - credential: "Electrical Certifications"
+    institution: "Houston Community College (HCC)"
+    year: "2003"
+  - credential: "High School Diploma"
+    institution: "Galveston College (GCC)"
+    year: "1999"

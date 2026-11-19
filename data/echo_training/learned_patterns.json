@@ -1,0 +1,9 @@
+{
+  "test question": "test answer",
+  "hi": "Hi there... Echo is listening...",
+  "how are you?": " I am functioning as designed. How can I assist you today?",
+  "please continue. you stopped at \"to\"": " I apologize for the confusion earlier. Currently, I am using the default voice that comes with the AI assistant.",
+  "please continue what you were saying. you ended your message at : currently": " I apologize for the confusion earlier. Currently, I am using the default voice that comes with the AI assistant. However, I can change my tone and voice to",
+  "!run scripts/date.ps1": "`scripts/date.ps1` exited with code 0. (email not configured)\n\nstdout:\n\nFriday, October 9, 2026 8:51:03 AM\n\n\n",
+  "wrie python script for arm template": "Yes, this is a strong approach. I am now using your Python (.py) files as reference context. Indexed 1122 .py files in workspace. Python structure focus: imports, clear functions/classes, explicit entrypoint, guarded error handling. Top markers: from import, def, import, try/except, class. Reference files: data/scripts/python_masterchief.py; build/lib/scripts/python_masterchief.py; addons/scripts/templates/__init__.py; build/lib/addons/scripts/templates/__init__.py. Send your target task and I will answer using .py conventions from these references."
+}
