@@ -405,6 +405,11 @@ ADDONS_MODULES_TEMPLATE = """{% extends "base.html" %}
 <h2>🧩 Addons Modules</h2>
 
 <p>Manage installed addon modules, configure settings, install dependencies, and run services.</p>
+<link rel="stylesheet" href="/static/css/management-navigation.css">
+<nav class="management-navigation" data-management-page="addons" aria-label="Management Center"><a href="/master-menu">Management Center</a></nav>
+<script src="/static/js/management-navigation.js" defer></script>
+<div id="management-inventory"></div>
+<script src="/static/js/management-inventory.js" defer></script>
 
 {% if installed_modules %}
 

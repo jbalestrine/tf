@@ -25,6 +25,8 @@
       links.forEach(link => {
         const matches = link.textContent.toLocaleLowerCase().includes(query);
         link.hidden = !matches;
+        const addon = link.closest('.pinned-addon');
+        if (addon) addon.hidden = !matches;
         if (matches) matchCount += 1;
       });
       groups.forEach(group => {
@@ -37,7 +39,11 @@
     }
 
     nav.classList.remove('searching');
-    links.forEach(link => { link.hidden = false; });
+    links.forEach(link => {
+      link.hidden = false;
+      const addon = link.closest('.pinned-addon');
+      if (addon) addon.hidden = false;
+    });
     groups.forEach(group => {
       group.hidden = false;
       group.open = group.classList.contains('active') || groupLinks.get(group).some(link => link.classList.contains('active'));

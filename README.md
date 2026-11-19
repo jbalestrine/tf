@@ -26,6 +26,38 @@ Key restoration areas include:
 
 This repo should be treated as a working operational platform, not a throwaway prototype. The project has been repaired, extended, and stabilized enough to be used and released with caution.
 
+## Feature and module management
+
+The **Management Center** menu links Master Menu (page flags and navigation),
+Feature Management (configured handlers), Module Management (built-in manager
+configuration), Add-on Modules (installed files and services), and Code Manager
+(isolated app features and linked blueprints). These are separate controls and
+do not necessarily enable or disable the same underlying component.
+
+The Feature Management, Module Management, and Add-on Modules pages include a
+shared, searchable **Platform inventory** for the authenticated RBAC platform
+administrator. It combines configured features, isolated app features, built-in
+managers, page flags, blueprints, add-on folders, and historical add-on feature
+entries. A discovered folder or registry entry is not proof that it is runnable;
+the inventory labels unverified states and keeps configured and runtime states
+separate. Use the linked management page for the controls supported by each
+system. Inventory entries do not add enable/disable controls to unsupported
+components.
+
+Configured-feature and built-in-module changes require a MasterChief restart.
+Existing routes can remain available until restart; enabling a feature runs
+its handler on the next startup. Core RBAC cannot be disabled from the module
+page. Isolated app features are managed in Code Manager and also require a
+restart. Add-on process start/stop is a separate operation and does not mean
+that all features within an add-on can be toggled individually.
+
+On the main menu, **Build → Pinned Add-ons** includes a **Start** button next
+to each pinned add-on link. Pin an installed add-on from Add-on Modules first.
+Start checks its current service state and starts it only if stopped; the link
+remains separate and does not open automatically. A newly started service may
+take a few seconds to be ready. Use Add-on Modules to stop services or manage
+installation and configuration.
+
 ## Critical Safety Principle
 
 Do not push directly from the active working directory unless you have verified the branch, commit set, and release scope.

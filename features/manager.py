@@ -248,16 +248,21 @@ class FeatureManager:
         if feature_name not in self.feature_configs:
             return jsonify({'success': False, 'error': 'Feature not found'}), 404
         try:
-            if data['enabled']:
-                self.enable_feature(feature_name)
-            else:
-                self.disable_feature(feature_name)
+            config = self.feature_configs[feature_name]
+            old_enabled = config.enabled
+            config.enabled = data['enabled']
+            try:
+                self._save_feature_config(config)
+            except Exception:
+                config.enabled = old_enabled
+                raise
             mgmt = getattr(self, 'management', None)
             if mgmt:
                 mgmt._log('enable' if data['enabled'] else 'disable', feature_name)
             return jsonify({
                 'success': True,
                 'feature': asdict(self.feature_configs[feature_name]),
+                'restart_required': True,
             })
         except Exception as exc:
             current_app.logger.exception('Failed to change feature state for %s', feature_name)

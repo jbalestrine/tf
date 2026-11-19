@@ -43,13 +43,17 @@ metrics:
   label: Enterprise Servers Remediated (ITAR / DoD)
 interview_prep:
   headlines:
-  - Design secure, governed landing zones and automate delivery across enterprise cloud environments.
-  - Connect architecture decisions to reliability, compliance, and measurable FinOps outcomes.
+  - Design secure, governed landing zones and automate delivery across enterprise
+    cloud environments.
+  - Connect architecture decisions to reliability, compliance, and measurable FinOps
+    outcomes.
   fabric_igca:
-  - "Isolate Capacities: Dedicated Dev and Prod F-SKUs with auto-pause and scaling."
-  - "Git + Service Principal Promotion: Read-only Prod workspaces and PR-gated CI/CD."
-  - "Compliance Guardrails: Region-locked Azure Policy under CAF/WAF for GDPR/NIST residency, Entra RBAC, Private Endpoints, and Purview labels."
-  - "Automated Blueprints: Terraform and Fabric REST APIs through gated YAML pipelines, with zero portal click-ops."
+  - 'Isolate Capacities: Dedicated Dev and Prod F-SKUs with auto-pause and scaling.'
+  - 'Git + Service Principal Promotion: Read-only Prod workspaces and PR-gated CI/CD.'
+  - 'Compliance Guardrails: Region-locked Azure Policy under CAF/WAF for GDPR/NIST
+    residency, Entra RBAC, Private Endpoints, and Purview labels.'
+  - 'Automated Blueprints: Terraform and Fabric REST APIs through gated YAML pipelines,
+    with zero portal click-ops.'
   questions:
   - What outcomes and constraints matter most for this role?
   - How do architecture, security, and delivery teams make governance decisions?

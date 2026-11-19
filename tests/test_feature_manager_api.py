@@ -93,3 +93,27 @@ def test_feature_create_requires_same_origin(tmp_path, monkeypatch):
         headers={"Origin": "https://attacker.example"},
     )
     assert response.status_code == 403
+
+
+def test_feature_toggle_applies_handler_only_after_restart(tmp_path, monkeypatch):
+    app, manager = _make_feature_manager(tmp_path, monkeypatch, PlatformAdmin())
+    client = app.test_client()
+    created = _post(client, "/api/features/create", {
+        "name": "restart-test",
+        "display_name": "Restart Test",
+        "dependencies": [],
+        "handler_code": "def register_routes(app):\n    app.add_url_rule('/restart-test', 'restart_test', lambda: 'ok')\n",
+    })
+    assert created.status_code == 201
+    result = _post(client, "/api/features/restart-test/toggle", {"enabled": True})
+    assert result.get_json()["restart_required"] is True
+    assert client.get("/restart-test").status_code == 404
+    assert "restart-test" not in manager.features
+
+    restarted, _ = _make_feature_manager(tmp_path, monkeypatch, PlatformAdmin())
+    assert restarted.test_client().get("/restart-test").get_data(as_text=True) == "ok"
+    disabled = _post(restarted.test_client(), "/api/features/restart-test/toggle", {"enabled": False})
+    assert disabled.get_json()["restart_required"] is True
+    assert restarted.test_client().get("/restart-test").status_code == 200
+    restarted_again, _ = _make_feature_manager(tmp_path, monkeypatch, PlatformAdmin())
+    assert restarted_again.test_client().get("/restart-test").status_code == 404

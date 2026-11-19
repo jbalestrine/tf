@@ -700,6 +700,102 @@
       "created": "2026-11-18T22:23:19.590291",
       "last_active": "2026-11-18T22:23:19.590298",
       "ip": "127.0.0.1"
+    },
+    {
+      "id": "b24e6d7d-0eee-4a4e-9db4-b99fea591af7",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T07:46:40.053223",
+      "last_active": "2026-11-19T07:46:40.053238",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "54e4857d-5a91-4f60-9c58-79dddc99229d",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T08:37:47.491636",
+      "last_active": "2026-11-19T08:37:47.491644",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "a9a80c2a-2e58-41e5-af57-965e3eaf52c8",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T08:43:52.541404",
+      "last_active": "2026-11-19T08:43:52.541411",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "3695679e-e8f3-4ac3-88d0-b0d85a7504a6",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T10:00:27.518527",
+      "last_active": "2026-11-19T10:00:27.518535",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "25aee43a-f873-465e-bf92-85561d549568",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T10:08:00.301088",
+      "last_active": "2026-11-19T10:08:00.301104",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "6c8ddb8a-9c33-4df6-96be-bb0ba0772c56",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T10:18:09.970907",
+      "last_active": "2026-11-19T10:18:09.970920",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "660afbad-432a-4f2e-89d9-12ff74619d49",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T10:48:16.630121",
+      "last_active": "2026-11-19T10:48:16.630131",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "340afdf3-479d-4ecd-8ffa-b1b952d317fc",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T12:30:54.665831",
+      "last_active": "2026-11-19T12:30:54.665840",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "d06aa4c3-563d-49b6-b00c-c407c142d8dc",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T13:00:38.783657",
+      "last_active": "2026-11-19T13:00:38.783666",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "81250a77-6502-4b9c-b47e-e61a78b941e8",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T13:08:14.549404",
+      "last_active": "2026-11-19T13:08:14.549414",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "6b0ab495-e624-4565-8f1c-0902023f6162",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T13:15:52.100935",
+      "last_active": "2026-11-19T13:15:52.100942",
+      "ip": "127.0.0.1"
+    },
+    {
+      "id": "cd4db342-2197-41c8-bc44-ee12003d97bf",
+      "user_id": "b51d9417-48d4-4fab-92b1-f70b60243dc2",
+      "username": "admin",
+      "created": "2026-11-19T13:44:41.321902",
+      "last_active": "2026-11-19T13:44:41.321912",
+      "ip": "127.0.0.1"
     }
   ],
   "audit_log": [
@@ -1266,6 +1362,90 @@
     {
       "id": "85590453-f68b-44b8-84c1-0e3c161e662d",
       "timestamp": "2026-11-18T22:23:19.590314",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "b3d97b33-6d05-48f5-9695-b9825dc1db13",
+      "timestamp": "2026-11-19T07:46:40.053268",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "abb15a5b-3e56-4c79-a692-e0ce436f4277",
+      "timestamp": "2026-11-19T08:37:47.491659",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "f6742784-2576-465f-82e9-a5782b66f0f2",
+      "timestamp": "2026-11-19T08:43:52.541424",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "b41a6cc8-e52e-40e4-9de5-66e6a482acc3",
+      "timestamp": "2026-11-19T10:00:27.518550",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "283233d7-fc8f-46af-a7f4-0f6ecac9590b",
+      "timestamp": "2026-11-19T10:08:00.301137",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "1d8addb9-f7c8-48eb-80d2-3d9e357a0c09",
+      "timestamp": "2026-11-19T10:18:09.970948",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "d5261bf6-2781-4dd5-81cc-c099f8e3f5b2",
+      "timestamp": "2026-11-19T10:48:16.630151",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "93781767-784a-4a56-a47f-b591e6c4fb72",
+      "timestamp": "2026-11-19T12:30:54.665857",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "eb22729b-30f2-4483-bff8-d1c8b8915781",
+      "timestamp": "2026-11-19T13:00:38.783682",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "3d6c2d6d-db8c-42b6-a713-103379a20443",
+      "timestamp": "2026-11-19T13:08:14.549431",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "9b716591-f918-41e6-b50a-fbc6067873fb",
+      "timestamp": "2026-11-19T13:15:52.100957",
+      "user": "admin",
+      "action": "login",
+      "details": "User admin logged in"
+    },
+    {
+      "id": "0832f8e9-3f33-4f76-abd5-3c8aa88eb6c3",
+      "timestamp": "2026-11-19T13:44:41.321933",
       "user": "admin",
       "action": "login",
       "details": "User admin logged in"

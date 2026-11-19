@@ -2416,13 +2416,23 @@ def api_code_archetypes():
 @app.route('/api/modules/toggle', methods=['POST'])
 @requires_permission('dashboard')
 def api_modules_toggle():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
     module = request.form.get('module')
     if module not in ENABLED_MODULES:
         return jsonify({'ok': False, 'error': 'Module not found'}), 400
-    ENABLED_MODULES[module]['enabled'] = not ENABLED_MODULES[module]['enabled']
-    # Save to file
-    app.config['MODULES_CONFIG'].write_text(json.dumps(ENABLED_MODULES, indent=2), encoding='utf-8')
-    return jsonify({'ok': True, 'enabled': ENABLED_MODULES[module]['enabled']})
+    if module == 'rbac' and ENABLED_MODULES[module]['enabled']:
+        return jsonify({'ok': False, 'error': 'The core RBAC module cannot be disabled here.'}), 400
+    old_enabled = ENABLED_MODULES[module]['enabled']
+    ENABLED_MODULES[module]['enabled'] = not old_enabled
+    try:
+        app.config['MODULES_CONFIG'].write_text(json.dumps(ENABLED_MODULES, indent=2), encoding='utf-8')
+    except OSError:
+        ENABLED_MODULES[module]['enabled'] = old_enabled
+        app.logger.exception('Failed to save module settings')
+        return jsonify({'ok': False, 'error': 'Could not save module settings.'}), 500
+    return jsonify({'ok': True, 'enabled': ENABLED_MODULES[module]['enabled'], 'restart_required': True})
 
 @app.route('/api/test')
 def api_test():
@@ -12990,6 +13000,9 @@ def sys_scm_pull():
 from managers.feature_loader import load_features as _load_features
 _load_features(app, Path(__file__).parent, HTML_TEMPLATE, _admin_page_or_error, _admin_post_guard,
                audit=lambda action, **details: _echo_operator_audit(action, **details))
+from managers.management_inventory import register_inventory as _register_inventory
+_register_inventory(app, Path(__file__).parent, get_feature_manager() if FEATURE_MANAGER_AVAILABLE else None,
+                    ENABLED_MODULES, managers, _admin_page_or_error)
 
 
 if __name__=='__main__':

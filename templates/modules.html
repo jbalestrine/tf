@@ -7,7 +7,13 @@
 
 <h2>🧩 Module Management</h2>
 
-<p>Enable or disable MasterChief modules. Changes take effect immediately for most modules; full restart may be needed for newly enabled ones.</p>
+<p>Configure built-in manager modules; these settings are separate from page flags and add-on services.</p>
+<link rel="stylesheet" href="/static/css/management-navigation.css">
+<nav class="management-navigation" data-management-page="modules" aria-label="Management Center"><a href="/master-menu">Management Center</a></nav>
+<script src="/static/js/management-navigation.js" defer></script>
+<p>Module settings are applied when MasterChief starts. Restart after changing a setting; already registered routes may remain available until then.</p>
+<div id="management-inventory"></div>
+<script src="/static/js/management-inventory.js" defer></script>
 
 {% set module_meta = {
   'rbac':         {'url': '/rbac',          'icon': '🔐', 'desc': 'Role-based access control — manage users, roles, and permissions.'},
@@ -28,15 +34,15 @@
     <span class="module-icon">{{ meta.icon }}</span>
     <h3 class="module-title">{{ name|title }}</h3>
     <span class="module-badge {{ 'badge-enabled' if config.enabled else 'badge-disabled' }}">
-      {{ 'Enabled' if config.enabled else 'Disabled' }}
+      {{ 'Configured enabled' if config.enabled else 'Configured disabled' }}
     </span>
   </div>
   <p class="module-desc">{{ meta.desc }}</p>
   <p class="module-manager">Manager: <code>{{ managers[name].__class__.__name__ if managers.get(name) else 'Not loaded' }}</code></p>
   <div class="module-actions">
-    <form method="POST" action="/api/modules/toggle" style="display:inline;">
+    <form class="module-toggle-form" method="POST" action="/api/modules/toggle" style="display:inline;">
       <input type="hidden" name="module" value="{{ name }}">
-      <button type="submit" class="btn {{ 'btn-danger' if config.enabled else 'btn-success' }}">
+      <button type="submit" class="btn {{ 'btn-danger' if config.enabled else 'btn-success' }}" {% if name == 'rbac' and config.enabled %}disabled title="Core RBAC cannot be disabled here"{% endif %}>
         {{ '⏸ Disable' if config.enabled else '▶ Enable' }}
       </button>
     </form>
@@ -47,6 +53,29 @@
 </div>
 {% endfor %}
 </div>
+<p id="module-toggle-status" role="status"></p>
+<script>
+document.querySelectorAll('.module-toggle-form').forEach(form => form.addEventListener('submit', async event => {
+  event.preventDefault();
+  const name = form.elements.module.value;
+  if (!confirm(`Change the ${name} module setting? Restart MasterChief to apply it.`)) return;
+  const button = form.querySelector('button');
+  const status = document.getElementById('module-toggle-status');
+  button.disabled = true;
+  try {
+    const response = await fetch(form.action, {method: 'POST', body: new FormData(form)});
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    sessionStorage.setItem('module-setting-message', 'Module setting saved. Restart MasterChief to apply it.');
+    location.reload();
+  } catch (error) {
+    status.textContent = `Could not change module setting: ${error.message}`;
+    button.disabled = false;
+  }
+}));
+document.getElementById('module-toggle-status').textContent = sessionStorage.getItem('module-setting-message') || '';
+sessionStorage.removeItem('module-setting-message');
+</script>
 
 <!-- ═══════════════════════════════════════════════════════════
      ECHO CHAT  — built-in AI module management

@@ -382,13 +382,16 @@
     <div class="container">
         <div class="header">
             <h1>🚀 Feature Management</h1>
-            <p>Dynamic feature loading and management system for MasterChief Platform</p>
+            <p>Manage configured feature handlers and their settings.</p>
             <div class="paused-note">
                 <strong>Paused TODO:</strong> Echo runtime interpreter alignment is parked for now.
                 See <code>TODO.md</code> and continue only when explicitly resumed.
             </div>
         </div>
 
+        <link rel="stylesheet" href="/static/css/management-navigation.css">
+        <nav class="management-navigation" data-management-page="features" aria-label="Management Center"><a href="/master-menu">Management Center</a></nav>
+        <script src="/static/js/management-navigation.js" defer></script>
         <div id="alerts"></div>
 
         <section class="release-highlight" aria-labelledby="release-highlight-title">
@@ -396,6 +399,9 @@
             <p>The architecture-to-code workflow now includes guided Terraform designs, live blueprint-style hub-and-spoke diagrams, subnet grouping, labeled peering, and SVG/Visio export. Echo ChatServ adds persistent account-based rooms, moderation, persona bots, MOTD management, allowlisted page transfers, and platform-admin-only script/model operations. The local pipeline studio supports YAML/JSON interchange and approval gates; the Observability Center connects existing Prometheus, Grafana, and Loki services. Admins can preview and confirm source-bundle staging for local, WSL/WSL2, and USB targets. Optional CI/CD templates validate and plan only; generated infrastructure is not applied automatically. Cloud actions use the user's supplied credentials and remain limited by cloud-provider IAM. See <a href="/about" style="color:#81c784;">About</a> for the full milestone highlights.</p>
         </section>
 
+        <div id="management-inventory"></div>
+        <h2>Configured features</h2>
+        <p>Changes to feature handlers require a MasterChief restart. Only platform administrators can change features.</p>
         <div class="features-grid" id="features-grid">
             <div class="loading">Loading features...</div>
         </div>
@@ -441,6 +447,21 @@
         </div>
     </div>
 
+    <div id="fm-edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="fm-edit-title" class="modal-title">Edit feature</h2><span class="close" onclick="closeEdit()">&times;</span></div>
+            <form id="fm-edit-form">
+                <div class="form-group"><label for="fm-e-display">Display name</label><input id="fm-e-display" required maxlength="100"></div>
+                <div class="form-group"><label for="fm-e-desc">Description</label><textarea id="fm-e-desc" maxlength="500"></textarea></div>
+                <div class="form-group"><label for="fm-e-version">Version</label><input id="fm-e-version" required></div>
+                <div class="form-group"><label for="fm-e-deps">Dependencies (comma-separated)</label><input id="fm-e-deps"></div>
+                <div class="form-group"><label for="fm-e-code">Handler code</label><textarea id="fm-e-code" rows="12"></textarea></div>
+                <button class="btn btn-primary" type="submit">Save</button>
+                <button class="btn btn-secondary" type="button" onclick="closeEdit()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Feature Creation Modal -->
     <div id="feature-modal" class="modal">
         <div class="modal-content">
@@ -452,7 +473,7 @@
             <form id="feature-form">
                 <div class="form-group">
                     <label for="feature-name">Feature Name *</label>
-                    <input type="text" id="feature-name" name="name" required minlength="2" maxlength="64" pattern="[a-z][a-z0-9_-]+" placeholder="e.g., azure-vm-manager">
+                    <input type="text" id="feature-name" name="name" required minlength="2" maxlength="64" pattern="[a-z][a-z0-9_\-]+" placeholder="e.g., azure-vm-manager">
                 </div>
 
                 <div class="form-group">
@@ -731,6 +752,7 @@ def register_ui(app):
             </div>
         </div>
     </div>
+    <script>
         let features = [];
         let templates = {
             'azure-service': {
@@ -886,11 +908,14 @@ def register_ui(app):
             try {
                 const response = await fetch('/api/features');
                 const data = await response.json();
-
+                if (!response.ok || !data.success || !Array.isArray(data.features)) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
                 features = data.features || [];
                 renderFeatures();
             } catch (error) {
                 showAlert('Error loading features: ' + error.message, 'error');
+                document.getElementById('features-grid').textContent = 'Could not load configured features.';
             }
         }
 
@@ -902,64 +927,42 @@ def register_ui(app):
                 return;
             }
 
-            grid.innerHTML = features.map(feature => `
-                <div class="feature-card ${feature.enabled ? 'enabled' : ''}">
-                    <div class="feature-status ${feature.enabled ? 'status-enabled' : 'status-disabled'}">
-                        ${feature.enabled ? 'Enabled' : 'Disabled'}
-                    </div>
-                    <div class="feature-header">
-                        <div class="feature-title">${feature.display_name}</div>
-                        <label class="feature-toggle">
-                            <input type="checkbox" ${feature.enabled ? 'checked' : ''} onchange="toggleFeature('${feature.name}', this.checked)">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-            const list = visibleFeatures();
-            if (features.length === 0) {
-                grid.innerHTML = '<div class="feature-card"><p>No features available. Create your first feature!</p></div>';
-                return;
+            grid.replaceChildren();
+            for (const feature of features) {
+                const card = document.createElement('div');
+                card.className = 'feature-card' + (feature.enabled ? ' enabled' : '');
+                const title = document.createElement('h3');
+                title.textContent = feature.display_name;
+                const description = document.createElement('p');
+                description.textContent = feature.description || '';
+                const state = document.createElement('p');
+                state.textContent = 'Configured: ' + (feature.enabled ? 'enabled' : 'disabled');
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'btn btn-primary';
+                toggle.textContent = feature.enabled ? 'Disable' : 'Enable';
+                toggle.disabled = !window.managementInventoryReady;
+                toggle.title = toggle.disabled ? 'Sign in as an administrator and restart MasterChief to enable controls.' : '';
+                toggle.addEventListener('click', () => toggleFeature(feature.name, !feature.enabled, toggle));
+                card.append(title, description, state, toggle);
+                for (const [label, action] of [
+                    ['Edit', () => editFeature(feature.name)],
+                    ['Duplicate', () => duplicateFeature(feature.name)],
+                    ['Export', () => { location.href = '/api/features/' + encodeURIComponent(feature.name) + '/export'; }],
+                    ['Delete', () => deleteFeature(feature.name)]
+                ]) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-secondary';
+                    button.textContent = label;
+                    button.disabled = label !== 'Export' && !window.managementInventoryReady;
+                    button.addEventListener('click', action);
+                    card.append(button);
+                }
+                grid.append(card);
             }
-            if (list.length === 0) {
-                grid.innerHTML = '<div class="feature-card"><p>No features match your search or filter.</p></div>';
-                return;
-            }
-            grid.innerHTML = list.map(feature => {
-                const h = health[feature.name] || {};
-                const badge = !feature.enabled ? '<span class="fm-badge fm-off">off</span>'
-                    : h.status === 'degraded' ? '<span class="fm-badge fm-degraded">needs attention</span>'
-                    : '<span class="fm-badge fm-healthy">healthy</span>';
-                const deps = (h.dependencies || []).map(d => `<li class="${d.installed ? 'fm-ok' : 'fm-bad'}">${esc(d.name)} ${d.installed ? '&#10003; ' + esc(d.version) : '&#10007; not installed'}</li>`).join('')
-                    || (feature.dependencies || []).map(d => `<li>${esc(d)}</li>`).join('');
-                const routes = (h.routes || feature.routes || []).map(r => `<li class="${r.live === false ? 'fm-bad' : r.live ? 'fm-ok' : ''}"><code>${esc(r.method)} ${esc(r.path)}</code> ${esc(r.description || '')}${r.live ? ' &#10003;' : ''}</li>`).join('');
-                const issues = (h.issues || []).length ? `<div class="fm-issues">${h.issues.map(esc).join('<br>')}</div>` : '';
-                const uiActions = (feature.ui_components || []).map(c => (c.actions || []).map(a =>
-                    `<button class="btn btn-primary" data-act="${esc(a.action)}" data-name="${esc(feature.name)}" data-url="${esc(a.url || a.modal || a.label)}" data-label="${esc(a.label)}">${esc(a.label)}</button>`).join('')).join('');
-                return `
-                <div class="feature-card ${feature.enabled ? 'enabled' : ''}">
-                    <div class="feature-status ${feature.enabled ? 'status-enabled' : 'status-disabled'}">${feature.enabled ? 'Enabled' : 'Disabled'}</div>
-                    <div class="feature-header">
-                        <div class="feature-title">${esc(feature.display_name)}${badge}</div>
-                        <label class="feature-toggle">
-                            <input type="checkbox" ${feature.enabled ? 'checked' : ''} data-act="toggle" data-name="${esc(feature.name)}">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="feature-description">${esc(feature.description)}</div>
-                    <div class="feature-meta"><span>Version: ${esc(feature.version)}</span><span>Deps: ${(feature.dependencies || []).length}</span><span>Routes: ${(feature.routes || []).length}</span></div>
-                    ${issues}
-                    ${deps || routes ? `<details class="fm-details"><summary>Dependencies &amp; routes</summary>${deps ? `<ul>${deps}</ul>` : ''}${routes ? `<ul>${routes}</ul>` : ''}</details>` : ''}
-                    ${uiActions ? `<div class="feature-actions">${uiActions}</div>` : ''}
-                    <div class="feature-actions">
-                        ${(h.dependencies || []).some(d => !d.installed) ? `<button class="btn btn-primary" data-act="install-deps" data-name="${esc(feature.name)}">Install missing packages</button>` : ''}
-                        ${h.handler_exists === false ? `<button class="btn btn-primary" data-act="gen-handler" data-name="${esc(feature.name)}">Generate handler</button>` : ''}
-                        <button class="btn btn-secondary" data-act="edit" data-name="${esc(feature.name)}">Edit</button>
-                        <button class="btn btn-secondary" data-act="duplicate" data-name="${esc(feature.name)}">Duplicate</button>
-                        <button class="btn btn-secondary" data-act="export" data-name="${esc(feature.name)}">Export</button>
-                        <button class="btn btn-danger" data-act="delete" data-name="${esc(feature.name)}">Delete</button>
-                    </div>
-                </div>`;
-            }).join('');
         }
+        window.addEventListener('management-inventory-ready', renderFeatures);
 
         async function installDeps(name, btn) {
             btn.disabled = true;
@@ -983,53 +986,20 @@ def register_ui(app):
             return d;
         }
 
-        document.getElementById('features-grid').addEventListener('click', function (e) {
-            const el = e.target.closest('[data-act]');
-            if (!el || el.dataset.act === 'toggle') return;
-            const name = el.dataset.name;
-            switch (el.dataset.act) {
-                case 'install-deps': installDeps(name, el); break;
-                case 'gen-handler': generateHandler(name); break;
-                case 'edit': editFeature(name); break;
-                case 'delete': deleteFeature(name); break;
-                case 'duplicate': duplicateFeature(name); break;
-                case 'export': window.location.href = '/api/features/' + encodeURIComponent(name) + '/export'; break;
-                case 'navigate': window.location.href = el.dataset.url; break;
-                case 'modal': openModal(el.dataset.url); break;
-                default: runFeatureAction(name, el.dataset.label);
-            }
-        });
-        document.getElementById('features-grid').addEventListener('change', function (e) {
-            const el = e.target.closest('[data-act="toggle"]');
-            if (el) toggleFeature(el.dataset.name, el.checked, el);
-        });
-        ['fm-search', 'fm-filter', 'fm-sort'].forEach(id => document.getElementById(id).addEventListener('input', renderFeatures));
-
-        document.getElementById('fm-import-file').addEventListener('change', async function () {
-            const file = this.files[0];
-            this.value = '';
-            if (!file) return;
-            let payload;
-            try { payload = JSON.parse(await file.text()); } catch (e) { showAlert('That file is not valid JSON.', 'error'); return; }
-            if (!confirm('Import feature "' + ((payload.config || {}).name || file.name) + '"? It is added disabled; its code is not run until you enable it.')) return;
-            const d = await api('/api/features/import', 'POST', payload);
-            showAlert(d.success ? 'Feature imported (disabled).' : 'Import failed: ' + d.error, d.success ? 'success' : 'error');
-            if (d.success) loadFeatures();
-        });
-
         async function toggleFeature(featureName, enabled, box) {
             if (box) box.disabled = true;
             try {
                 const result = await api(`/api/features/${encodeURIComponent(featureName)}/toggle`, 'POST', { enabled });
                 if (result.success) {
-                    showAlert(`Feature ${enabled ? 'enabled' : 'disabled'} successfully!` + (!enabled ? ' Routes it registered stay until the app restarts.' : ''), 'success');
+                    showAlert('Feature setting saved. Restart MasterChief to apply it.', 'success');
                 } else {
                     showAlert('Error toggling feature: ' + result.error, 'error');
                 }
             } catch (error) {
                 showAlert('Error toggling feature: ' + error.message, 'error');
             }
-            loadFeatures();
+            await loadFeatures();
+            if (window.refreshManagementInventory) window.refreshManagementInventory();
         }
 
         let editingName = null;
@@ -1145,39 +1115,6 @@ def register_ui(app):
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = 'Create Feature';
-            }
-        }
-
-        async function toggleFeature(featureName, enabled) {
-            try {
-                const response = await fetch(`/api/features/${featureName}/toggle`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showAlert(`Feature ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
-                    loadFeatures();
-                } else {
-                    showAlert('Error toggling feature: ' + result.error, 'error');
-                }
-            } catch (error) {
-                showAlert('Error toggling feature: ' + error.message, 'error');
-            }
-        }
-
-        function editFeature(featureName) {
-            // TODO: Implement feature editing
-            showAlert('Feature editing not yet implemented', 'error');
-        }
-
-        function deleteFeature(featureName) {
-            if (confirm(`Are you sure you want to delete the feature "${featureName}"?`)) {
-                // TODO: Implement feature deletion
-                showAlert('Feature deletion not yet implemented', 'error');
             }
         }
 
@@ -1557,6 +1494,6 @@ def register_ui(app):
             }
         }
     </script>
+    <script src="/static/js/management-inventory.js" defer></script>
 </body>
-</html></content>
-<parameter name="filePath">c:\Users\Echo\masterchief\features\templates\feature_manager.html
+</html>
