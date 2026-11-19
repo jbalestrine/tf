@@ -134,6 +134,9 @@ class FeatureManager:
             self.app.add_url_rule('/api/features/github/repo-scripts', 'api_load_repo_scripts', self._api_load_repo_scripts, methods=['POST'])
             self.app.add_url_rule('/api/features/script', 'api_load_from_script', self._api_load_from_script, methods=['POST'])
 
+            from features.management import register as register_management
+            self.management = register_management(self)
+
             with open('debug.log', 'a') as f:
                 f.write("DEBUG: All routes registered successfully\n")
             print("DEBUG: All routes registered successfully")
@@ -249,6 +252,9 @@ class FeatureManager:
                 self.enable_feature(feature_name)
             else:
                 self.disable_feature(feature_name)
+            mgmt = getattr(self, 'management', None)
+            if mgmt:
+                mgmt._log('enable' if data['enabled'] else 'disable', feature_name)
             return jsonify({
                 'success': True,
                 'feature': asdict(self.feature_configs[feature_name]),
