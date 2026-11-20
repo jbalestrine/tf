@@ -7,6 +7,74 @@ Contains page-specific HTML templates.
 # Dashboard template
 DASHBOARD_TEMPLATE = """{% extends "base.html" %}
 {% block content %}
+<link rel="stylesheet" href="/static/dashboard-processes.css">
+<div class="mc-dashboard-overview">
+<div class="dashboard-grid">
+<div class="card">
+<h3>CPU Usage</h3>
+<div class="stat-value" id="cpu-value">{{ stats.cpu.percent }}%</div>
+<div class="progress-bar"><div class="progress-fill" id="cpu-progress" style="width:{{ stats.cpu.percent }}%"></div></div>
+<div class="stat-label">{{ stats.cpu.count }} Cores</div>
+</div>
+<div class="card">
+<h3>Memory Usage</h3>
+<div class="stat-value" id="mem-value">{{ stats.memory.percent }}%</div>
+<div class="progress-bar"><div class="progress-fill" id="mem-progress" style="width:{{ stats.memory.percent }}%"></div></div>
+<div class="stat-label">{{ (stats.memory.used/1024/1024/1024)|round(2) }} GB / {{ (stats.memory.total/1024/1024/1024)|round(2) }} GB</div>
+</div>
+<div class="card">
+<h3>Disk Usage</h3>
+<div class="stat-value" id="disk-value">{{ stats.disk.percent }}%</div>
+<div class="progress-bar"><div class="progress-fill" id="disk-progress" style="width:{{ stats.disk.percent }}%"></div></div>
+<div class="stat-label">{{ (stats.disk.used/1024/1024/1024)|round(2) }} GB / {{ (stats.disk.total/1024/1024/1024)|round(2) }} GB</div>
+</div>
+<div class="card">
+<h3>System Uptime</h3>
+<div class="stat-value">{{ (stats.uptime/3600)|int }}h</div>
+<div class="stat-label">{{ (stats.uptime/60)|int }} minutes</div>
+</div>
+</div>
+<section class="mc-process-panel" aria-labelledby="mc-process-title">
+<div class="mc-process-heading"><div><h2 id="mc-process-title">Processes</h2><p>MasterChief server &middot; live task view</p></div><button id="mc-process-refresh" type="button">Refresh</button></div>
+<p id="mc-process-status" role="status" aria-live="polite">Loading processes...</p>
+<details id="mc-process-details">
+<summary>Expand process details</summary>
+<p>CPU is the share of total server CPU since the previous sample. Memory is resident memory. Disk, network, GPU and power per process are not available here.</p>
+<label for="mc-process-filter">Filter by name or PID</label>
+<input id="mc-process-filter" type="search" placeholder="Search processes">
+<div class="mc-process-table-wrap"><table><thead><tr><th scope="col">Select</th><th scope="col">Name</th><th scope="col">PID</th><th scope="col">Status</th><th scope="col">CPU</th><th scope="col">Memory</th></tr></thead><tbody id="mc-process-rows"></tbody></table></div>
+<button id="mc-process-end" type="button" disabled>End selected process</button>
+<a href="/processes">Open Process Monitor</a>
+</details>
+<div id="mc-process-summary" aria-label="Top processes"></div>
+<noscript>Enable JavaScript to view processes. <a href="/processes">Open Process Monitor</a>.</noscript>
+</section>
+</div>
+<script defer src="/static/dashboard-processes.js"></script>
+<section class="mc-ubuntu" aria-labelledby="mc-ubuntu-title">
+<h2 id="mc-ubuntu-title">UBUNTU MASTERCHIEF OS</h2>
+<p>Use your Ubuntu test VM inside MasterChief. This VM has network access and is not an isolated security sandbox.</p>
+<div class="mc-ubuntu-source">
+<label for="mc-ubuntu-source">Ubuntu app source</label>
+<select id="mc-ubuntu-source"><option value="pypi">PyPI release</option><option value="github">GitHub: Masterchief4</option></select>
+<button id="mc-ubuntu-switch" type="button">Switch app source</button>
+<p id="mc-ubuntu-source-status" role="status" aria-live="polite">Checking app source...</p>
+<p>Switching restarts the Ubuntu app. App data directories are separate; the Ubuntu user and external resources are shared.</p>
+</div>
+<div id="mc-ubuntu-viewer">
+<div class="mc-ubuntu-actions">
+<button id="mc-ubuntu-start" type="button">Start Ubuntu</button>
+<button id="mc-ubuntu-connect" type="button">Connect desktop</button>
+<button id="mc-ubuntu-disconnect" type="button" disabled>Disconnect</button>
+<button id="mc-ubuntu-fullscreen" type="button" aria-pressed="false">Full screen</button>
+</div>
+<p id="mc-ubuntu-status" role="status" aria-live="polite">Checking Ubuntu test VM...</p>
+<div id="mc-ubuntu-screen" tabindex="0" aria-label="UBUNTU MASTERCHIEF OS desktop"></div>
+</div>
+<p>Click inside the desktop to use your keyboard and mouse. Disconnecting leaves the VM running.</p>
+</section>
+<link rel="stylesheet" href="/static/ubuntu-desktop.css">
+<script type="module" src="/static/ubuntu-desktop.js"></script>
 <section class="mc-start" aria-labelledby="mc-start-title">
 <h2 id="mc-start-title">What would you like to do?</h2>
 <p>Choose a starting point. The Workspaces menu contains all available tools, favorites, and recently opened workspaces.</p>
@@ -48,31 +116,6 @@ DASHBOARD_TEMPLATE = """{% extends "base.html" %}
 .mc-start-grid strong,.mc-start-grid span{display:block}.mc-start-grid span{color:#c2d5d3;font-size:.88rem;margin-top:5px}.mc-start .mc-start-note{font-size:.84rem;margin:14px 0 0}
 #mc-continue h3{margin:18px 0 8px;color:#d8ffe6}.mc-clear-recent{margin-top:10px;padding:7px 10px;background:#142b31;color:#e7fff3;border:1px solid #6c9982;border-radius:6px;cursor:pointer}.mc-clear-recent:focus-visible{outline:2px solid #9df2bb}
 </style>
-<div class="dashboard-grid">
-<div class="card">
-<h3>CPU Usage</h3>
-<div class="stat-value" id="cpu-value">{{ stats.cpu.percent }}%</div>
-<div class="progress-bar"><div class="progress-fill" id="cpu-progress" style="width:{{ stats.cpu.percent }}%"></div></div>
-<div class="stat-label">{{ stats.cpu.count }} Cores</div>
-</div>
-<div class="card">
-<h3>Memory Usage</h3>
-<div class="stat-value" id="mem-value">{{ stats.memory.percent }}%</div>
-<div class="progress-bar"><div class="progress-fill" id="mem-progress" style="width:{{ stats.memory.percent }}%"></div></div>
-<div class="stat-label">{{ (stats.memory.used/1024/1024/1024)|round(2) }} GB / {{ (stats.memory.total/1024/1024/1024)|round(2) }} GB</div>
-</div>
-<div class="card">
-<h3>Disk Usage</h3>
-<div class="stat-value" id="disk-value">{{ stats.disk.percent }}%</div>
-<div class="progress-bar"><div class="progress-fill" id="disk-progress" style="width:{{ stats.disk.percent }}%"></div></div>
-<div class="stat-label">{{ (stats.disk.used/1024/1024/1024)|round(2) }} GB / {{ (stats.disk.total/1024/1024/1024)|round(2) }} GB</div>
-</div>
-<div class="card">
-<h3>System Uptime</h3>
-<div class="stat-value">{{ (stats.uptime/3600)|int }}h</div>
-<div class="stat-label">{{ (stats.uptime/60)|int }} minutes</div>
-</div>
-</div>
 <details class="section">
 <summary><strong>All existing quick actions</strong></summary>
 <a href="/scripts" class="btn">Script Manager</a>

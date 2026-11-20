@@ -1,0 +1,11 @@
+.mc-ubuntu{background:#152c28;border:1px solid #436f5a;border-radius:12px;padding:20px;margin:0 0 24px;color:#e7fff3}
+.mc-ubuntu h2{margin:0 0 8px}.mc-ubuntu p{color:#c3d6d0}
+.mc-ubuntu-actions{display:flex;flex-wrap:wrap;gap:8px}
+.mc-ubuntu-actions button{background:#173e30;color:#fff;border:1px solid #83bc99;border-radius:6px;padding:8px 12px;cursor:pointer}
+.mc-ubuntu-actions button:disabled{opacity:.5;cursor:default}
+.mc-ubuntu-source{margin:12px 0}.mc-ubuntu-source select,.mc-ubuntu-source button{margin:4px;padding:7px;background:#173e30;color:#fff;border:1px solid #83bc99;border-radius:6px}
+#mc-ubuntu-screen{height:min(70vh,720px);min-height:320px;background:#101615;overflow:hidden;border:1px solid #456b55;border-radius:6px}
+#mc-ubuntu-screen:focus-visible{outline:2px solid #9df2bb}
+#mc-ubuntu-viewer:fullscreen{box-sizing:border-box;display:flex;flex-direction:column;gap:8px;width:100%;height:100%;padding:10px;background:#152c28;color:#e7fff3}
+#mc-ubuntu-viewer:fullscreen #mc-ubuntu-status{flex:none;margin:0;color:#c3d6d0}
+#mc-ubuntu-viewer:fullscreen #mc-ubuntu-screen{flex:1;min-height:0;height:auto}
