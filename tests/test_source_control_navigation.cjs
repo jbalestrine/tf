@@ -79,6 +79,23 @@ test('both Git pages include the shared pull request overview', () => {
   }
 });
 
+test('both Git pages prominently expose the same PyPI release checklist', () => {
+  for (const file of ['templates/scm.py', 'static/git-workflow-guide.html']) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.match(text, /id="pypi-deploy"/);
+    assert.match(text, /src="\/static\/pypi-release\.js"/);
+    assert.ok(text.indexOf('id="pypi-deploy"') < text.indexOf('id="quick-workflow"'));
+  }
+  const checklist = fs.readFileSync(path.join(root, 'static/pypi-release.js'), 'utf8');
+  for (const detail of ['PYPI DEPLOY', 'PYPI_ONLY_DEPLOY.ps1', '-Tag v1.2.3 -DryRun', '-Tag v1.2.3 -UseVault',
+    'does not publish to Chocolatey', 'jbalestrine/masterchief', 'jbalestrine/tf', 'invalid first key', 'not atomic',
+    'Run PyPI dry run', 'Publish to PyPI', 'Check merged release', 'Create and push release tag',
+    'Load current version', 'Save version to setup.py',
+    'previewButton.click()', 'window.confirm']) {
+    assert.ok(checklist.includes(detail), `missing ${detail}`);
+  }
+});
+
 test('development navigation links directly to the file ecosystem', () => {
   for (const file of ['templates/base.py', 'templates/layout.html', 'templates/master_menu.html',
     'templates/scm.py', 'features/templates/github_integration.html', 'templates/diagnostics.py',

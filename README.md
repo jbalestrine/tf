@@ -371,9 +371,51 @@ py -3 -m venv .venv
 
 The source checkout is the recommended way to run the complete web UI. The PyPI package and CLI provide a package-based installation path; optional provider services still need configuration.
 
+### Publish to PyPI only
+
+[PYPI_ONLY_DEPLOY.ps1](PYPI_ONLY_DEPLOY.ps1) builds a locally available,
+matching semantic tag and publishes only to PyPI. First update `setup.py` to
+an unused version, commit and merge the intended changes, and create and push
+the matching tag for that merged commit. The script builds the tag, not
+uncommitted changes or necessarily the current checkout. Use a Python
+environment with `build` and `twine` already installed, Git, and network
+access. Replace `v1.2.3` below with the actual release tag:
+
+```powershell
+.\PYPI_ONLY_DEPLOY.ps1 -Tag v1.2.3 -DryRun
+.\PYPI_ONLY_DEPLOY.ps1 -Tag v1.2.3 -UseVault
+```
+
+The dry run checks PyPI version availability and builds and validates the
+artifacts without uploading. For the actual upload, store the PyPI token as
+`TWINE_PASSWORD` in the local encrypted Vault at `/secrets`, or configure it in
+the process environment. Check the PyPI project page after upload or an
+uncertain failure. The checked-in PyPI GitHub workflow has an invalid first
+key and must be repaired and tested before relying on it; if repaired, a
+published GitHub release is configured to trigger a separate PyPI upload.
+The Git Command Center and Git Workflow Guide also offer Windows-server buttons
+for a dry run and a separately confirmed publish using the server's selected
+Python interpreter and Vault. The UI requires a successful dry run first and
+rechecks the tag's commit before publishing. Its guided tag button checks the
+live `origin/Masterchief4` commit against the local tracking ref, reads the
+version from that committed `setup.py`, and creates and pushes the matching tag
+only after confirmation. Fetch origin if the tracking ref is stale; update and
+merge the version first if a new version is needed. It never replaces an
+existing tag. If tag pushing fails, the local tag may remain; inspect both
+before retrying. The Source Control admin guards apply. An interrupted or timed-out
+upload has an unconfirmed outcome: inspect PyPI before retrying. Do not rely on
+the in-process lock to coordinate separate app server processes.
+The version editor in the same panel suggests the next patch based on the
+working-copy `setup.py` version; it does not verify PyPI availability. After
+confirmation it changes only that file on the selected feature branch, with a
+stale-file and branch check. Review, stage, commit, push and merge the change
+before preparing the merged release tag.
+
 ## Release PyPI and Chocolatey Together
 
-The single release entry point is [CHOCO_PYPI_DEPLOY.ps1](CHOCO_PYPI_DEPLOY.ps1). First update `setup.py` to a new version, commit the intended source, create and push a matching `v*` tag, then run from that tagged checkout. Tag pushes run package-build validation only; they do not publish separately.
+**Release setup needs repair before use:** [chocolatey/release.ps1](chocolatey/release.ps1) downloads tagged source from `jbalestrine/masterchief`, which may differ from this checkout's `origin` (`jbalestrine/tf`). Verify the intended repository and tag and correct the source URL before publishing. The checked-in `.github/workflows/pypi-publish.yml` currently has an invalid first key; do not rely on its build or publish jobs until it is repaired and tested. If repaired, a GitHub published-release event is configured to publish to PyPI separately, so avoid competing uploads.
+
+The existing combined release entry point is [CHOCO_PYPI_DEPLOY.ps1](CHOCO_PYPI_DEPLOY.ps1); it publishes to both registries, not just PyPI. First update `setup.py` to an unused version, commit and merge the intended source, create and push a matching semantic `v*` tag to the verified source repository, then run from that exact tagged checkout. Uncommitted changes are excluded. The script installs `build` and `twine` into the selected Python environment, including for a dry run.
 
 In `/secrets`, add encrypted entries named `TWINE_PASSWORD` and `CHOCOLATEY_API_KEY`. Choose `API Key` for `TWINE_PASSWORD` and `Chocolatey API Key` for `CHOCOLATEY_API_KEY`. Then run:
 
@@ -383,6 +425,7 @@ In `/secrets`, add encrypted entries named `TWINE_PASSWORD` and `CHOCOLATEY_API_
 ```
 
 The script reads the secrets from the local encrypted Vault, builds both packages from the exact tag, verifies availability and metadata, uploads Chocolatey first and PyPI second, then clears any Vault-loaded values from its process environment. Registry uploads are not atomic: if the PyPI upload fails after Chocolatey accepts the package, fix PyPI and check both package pages before retrying.
+The Git Command Center and Git Workflow Guide also show this checklist under **PYPI DEPLOY**. Neither merging nor pushing a tag confirms that a package was published; check both registry pages.
 
 ## Core Application Layout
 

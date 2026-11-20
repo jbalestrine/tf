@@ -77,6 +77,76 @@ def update_check():
         return jsonify({'ok': False, 'error': str(exc)}), 502
 
 
+@scm_bp.route('/sys/api/scm/pypi-version', methods=['GET', 'POST'])
+def pypi_version():
+    from utils.git_activity_editor import EditConflict
+    from utils.pypi_deploy import update_version, version_preview
+    if not _enabled():
+        return jsonify({'ok': False, 'error': 'scm disabled by feature flag'}), 503
+    try:
+        if request.method == 'GET':
+            return jsonify(version_preview(_root()))
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'ok': False, 'error': 'A JSON request is required.'}), 400
+        return jsonify(update_version(_root(), data.get('version'), data.get('file_version'),
+                                      data.get('branch'), data.get('confirmation')))
+    except EditConflict as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 409
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except (RuntimeError, OSError) as exc:
+        current_app.logger.warning('PyPI version editor failed: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 503
+
+
+@scm_bp.route('/sys/api/scm/pypi-release-preview')
+def pypi_release_preview():
+    from utils.pypi_deploy import release_preview
+    if not _enabled():
+        return jsonify({'ok': False, 'error': 'scm disabled by feature flag'}), 503
+    try:
+        return jsonify(release_preview(_root()))
+    except RuntimeError as exc:
+        current_app.logger.warning('PyPI release preview failed: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 503
+
+
+@scm_bp.route('/sys/api/scm/pypi-release-tag', methods=['POST'])
+def pypi_release_tag():
+    from utils.pypi_deploy import create_release_tag
+    if not _enabled():
+        return jsonify({'ok': False, 'error': 'scm disabled by feature flag'}), 503
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'ok': False, 'error': 'A JSON request is required.'}), 400
+    try:
+        return jsonify(create_release_tag(_root(), data.get('tag'), data.get('expected_commit'), data.get('confirmation')))
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError as exc:
+        current_app.logger.warning('PyPI release tag failed: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 503
+
+
+@scm_bp.route('/sys/api/scm/pypi-deploy', methods=['POST'])
+def pypi_deploy():
+    from utils.pypi_deploy import deploy
+    if not _enabled():
+        return jsonify({'ok': False, 'error': 'scm disabled by feature flag'}), 503
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'ok': False, 'error': 'A JSON request is required.'}), 400
+    try:
+        return jsonify(deploy(_root(), data.get('tag'), data.get('mode'),
+                              data.get('confirmation'), data.get('expected_commit')))
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError as exc:
+        current_app.logger.warning('PyPI release action failed: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 503
+
+
 @scm_bp.route('/sys/api/scm/activity-file', methods=['GET', 'POST'])
 def activity_file():
     from utils.git_activity_editor import EditConflict, load, save
