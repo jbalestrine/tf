@@ -1,6 +1,10 @@
 (() => {
   const $ = id => document.getElementById(id);
   let commands = [], selected = null;
+  const receipts = document.createElement('section');
+  receipts.className = 'panel';
+  receipts.setAttribute('aria-live', 'polite');
+  $('command-form').after(receipts);
   async function api(url, options) {
     const response = await fetch(url, options);
     let data;
@@ -140,11 +144,29 @@
     if (command.confirm && !window.confirm(`Run this operation in the MasterChief repository?\n\n${$('preview').textContent}\n\nReview the target and any risk before continuing.`)) return;
     $('run').disabled = true; $('result-status').textContent = 'Running...';
     $('pr-result-link').hidden = true;
+    let branch = null, receiptWarning = '';
+    if (command.confirm) {
+      try { branch = (await api('/sys/api/scm/status')).branch || null; }
+      catch (error) { receiptWarning = `Branch before action unavailable: ${error.message}. `; }
+    }
+    function saveReceipt(result, data) {
+      if (!command.confirm) return;
+      let prUrl = null;
+      if (command.id === 'pr' && data && data.ok) {
+        const candidate = (data.stdout || '').trim().split(/\s+/).find(text => /^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/[0-9]+$/.test(text));
+        if (candidate) prUrl = candidate;
+      }
+      try {
+        window.gitActionReceipts.record({time: new Date().toLocaleString(), action: command.label, result, branch, prUrl});
+        window.gitActionReceipts.render(receipts);
+      } catch (error) { receiptWarning += `Receipt not saved: ${error.message}. `; }
+    }
     try {
       const data = await api('/sys/api/scm/commands', {method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({action:command.id, values:args, confirmation:command.confirm ? command.id : null})});
       $('output').textContent = [data.stdout, data.stderr].filter(Boolean).join('\n') || '(No output)';
-      $('result-status').textContent = data.ok ? 'Completed' : `Failed (exit ${data.returncode})`;
+      saveReceipt(data.ok ? 'completed' : `failed (exit ${data.returncode})`, data);
+      $('result-status').textContent = receiptWarning + (data.ok ? 'Completed' : `Failed (exit ${data.returncode})`);
       if (data.ok) document.dispatchEvent(new Event('scm-command-completed'));
       if (data.ok && (command.id === 'pr' || command.id === 'pr_merge')) {
         document.dispatchEvent(new Event('scm-pr-changed'));
@@ -163,9 +185,13 @@
         }
       }
       await refresh();
-    } catch (error) { $('result-status').textContent = 'Failed'; $('output').textContent = error.message; }
+    } catch (error) {
+      saveReceipt('outcome unconfirmed', null);
+      $('result-status').textContent = `${receiptWarning}Outcome unconfirmed; inspect repository and GitHub before retrying.`;
+      $('output').textContent = error.message;
+    }
     finally { $('run').disabled = false; }
   };
-  api('/sys/api/scm/commands').then(data => { commands = data.commands; renderList(); refresh(); })
+  api('/sys/api/scm/commands').then(data => { commands = data.commands; window.gitActionReceipts.render(receipts); renderList(); refresh(); })
     .catch(error => { $('result-status').textContent = 'Unable to load commands'; $('output').textContent = error.message; });
 })();

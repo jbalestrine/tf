@@ -30,12 +30,85 @@
   overlay.append(panel);
   document.body.append(button, overlay);
   let items = [], loaded = false, previousFocus = null, closeTimer = null, openingFrame = null;
-  const groups = ['Home', 'Develop', 'Source Control', 'Build & Deploy', 'Operate', 'Manage', 'More tools', 'Installed add-ons'];
+  const groups = ['Home', 'Develop', 'Source Control', 'Build & Deploy', 'Operate', 'Automate & AI', 'Manage', 'More tools', 'Installed add-ons'];
+  const favoritesKey = 'masterchief.workspace.favorites.v1', recentKey = 'masterchief.workspace.recent.v1';
+  const homeGrid = document.getElementById('mc-start-grid');
+  const homeContinue = document.getElementById('mc-continue');
+  const startPoints = [
+    ['/masterchief_code_ui', 'Work on code', 'Edit MasterChief project files.'],
+    ['/static/git-workflow-guide.html#release-journey', 'Complete an update', 'Follow changes through commit, review, and merge.'],
+    ['/iac_manager', 'Build infrastructure', 'Manage infrastructure as code.'],
+    ['/scripts', 'Run or automate', 'Manage scripts and automation.'],
+    ['/sys/diagnostics', 'Check system health', 'Inspect diagnostics and application status.']
+  ];
+  let storageWarning = false;
+  function readStored(key) {
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(value)) throw new TypeError('Invalid saved workspace list');
+      return value.filter(item => typeof item === 'string');
+    } catch { storageWarning = true; return []; }
+  }
+  function writeStored(key, values) {
+    try { localStorage.setItem(key, JSON.stringify(values)); return true; }
+    catch { storageWarning = true; status.textContent = 'Browser storage is unavailable; favorites and recent work cannot be saved.'; return false; }
+  }
+  function visit(item) {
+    if (item.url.includes('?')) return;
+    const known = new Set(items.map(entry => entry.url));
+    writeStored(recentKey, [item.url, ...readStored(recentKey).filter(url => url !== item.url && !url.includes('?') && known.has(url))].slice(0, 8));
+  }
+  function makeLink(item) {
+    const row = el('div', 'mc-drawer-row');
+    const anchor = el('a', 'mc-drawer-link');
+    anchor.href = item.url;
+    if (item.url === location.pathname + location.search + location.hash ||
+        (!location.hash && item.url === location.pathname)) anchor.setAttribute('aria-current', 'page');
+    anchor.append(el('strong', '', item.title));
+    if (item.description || item.disabled) anchor.append(el('span', '', [item.description, item.disabled ? 'Feature disabled' : ''].filter(Boolean).join(' · ')));
+    anchor.addEventListener('click', () => visit(item));
+    const pinned = readStored(favoritesKey).includes(item.url);
+    const pin = el('button', 'mc-drawer-favorite', pinned ? '★' : '☆');
+    pin.type = 'button';
+    if (item.url.includes('?')) {
+      pin.disabled = true;
+      pin.title = 'Favorites are unavailable for links with query parameters.';
+      pin.setAttribute('aria-label', `Favorites unavailable for ${item.title}: link contains query parameters`);
+      row.append(anchor, pin);
+      return row;
+    }
+    pin.setAttribute('aria-label', `${pinned ? 'Remove' : 'Add'} ${item.title} ${pinned ? 'from' : 'to'} favorites`);
+    pin.setAttribute('aria-pressed', String(pinned));
+    pin.addEventListener('click', () => {
+      const known = new Set(items.map(entry => entry.url));
+      const selected = readStored(favoritesKey).filter(url => url !== item.url && !url.includes('?') && known.has(url));
+      if (!pinned) selected.push(item.url);
+      if (!writeStored(favoritesKey, selected)) { renderHome(); return; }
+      render();
+      renderHome();
+      const next = [...list.querySelectorAll('.mc-drawer-favorite')].find(node => node.getAttribute('aria-label') === `${pinned ? 'Add' : 'Remove'} ${item.title} ${pinned ? 'to' : 'from'} favorites`);
+      if (next) next.focus();
+    });
+    row.append(anchor, pin);
+    return row;
+  }
 
   function render() {
+    const expanded = new Set([...list.querySelectorAll('details[open] > summary')].map(node => node.textContent));
     list.replaceChildren();
     const query = search.value.trim().toLocaleLowerCase();
     let count = 0;
+    if (!query) {
+      for (const [heading, key] of [['Favorites', favoritesKey], ['Recently opened', recentKey]]) {
+        const urls = readStored(key);
+        const found = urls.filter(url => !url.includes('?')).map(url => items.find(item => item.url === url)).filter(Boolean);
+        if (!found.length) continue;
+        const section = el('section', 'mc-drawer-group');
+        section.append(el('h3', '', heading));
+        found.forEach(item => section.append(makeLink(item)));
+        list.append(section);
+      }
+    }
     for (const group of groups) {
       const entries = items.filter(item => item.group === group &&
         `${item.title} ${item.description} ${group}`.toLocaleLowerCase().includes(query));
@@ -45,28 +118,57 @@
       section.append(el('h3', '', group));
       const primary = entries.filter(item => !item.extra);
       const extra = entries.filter(item => item.extra);
-      function link(item) {
-        const anchor = el('a', 'mc-drawer-link');
-        anchor.href = item.url;
-        if (item.url === location.pathname + location.search + location.hash ||
-            (!location.hash && item.url === location.pathname)) anchor.setAttribute('aria-current', 'page');
-        anchor.append(el('strong', '', item.title));
-        if (item.description || item.disabled) {
-          anchor.append(el('span', '', [item.description, item.disabled ? 'Feature disabled' : ''].filter(Boolean).join(' · ')));
-        }
-        return anchor;
-      }
-      primary.forEach(item => section.append(link(item)));
+      primary.forEach(item => section.append(makeLink(item)));
       if (extra.length) {
         const details = el('details', 'mc-drawer-more');
-        details.open = Boolean(query) || !primary.length;
-        details.append(el('summary', '', `More ${group.toLowerCase()} (${extra.length})`));
-        extra.forEach(item => details.append(link(item)));
+        const summary = el('summary', '', `More ${group.toLowerCase()} (${extra.length})`);
+        details.open = Boolean(query) || !primary.length || expanded.has(summary.textContent);
+        details.append(summary);
+        extra.forEach(item => details.append(makeLink(item)));
         section.append(details);
       }
       list.append(section);
     }
     status.textContent = count ? `${count} workspace${count === 1 ? '' : 's'}${query ? ' found' : ''}. Access depends on your permissions.` : 'No workspaces found.';
+    if (storageWarning) status.textContent += ' Browser storage is unavailable; favorites and recent work may not be saved.';
+  }
+  function renderHome() {
+      if (!homeGrid) return;
+      homeGrid.replaceChildren();
+      for (const [url, title, description] of startPoints) {
+        const item = items.find(entry => entry.url === url);
+        if (!item) continue;
+        const anchor = el('a');
+        anchor.href = item.url;
+        anchor.append(el('strong', '', title), el('span', '', description + (item.disabled ? ' Feature disabled.' : '')));
+        anchor.addEventListener('click', () => visit(item));
+        homeGrid.append(anchor);
+      }
+      if (!homeGrid.children.length) homeGrid.textContent = 'No starting points are available. Use the existing navigation.';
+      homeContinue.replaceChildren();
+      const recent = readStored(recentKey).filter(url => !url.includes('?')).map(url => items.find(item => item.url === url)).filter(Boolean).slice(0, 3);
+      if (recent.length) {
+        const heading = el('h3', '', 'Continue to recently opened');
+        const links = el('div', 'mc-start-grid');
+        recent.forEach(item => {
+          const anchor = el('a');
+          anchor.href = item.url;
+          anchor.append(el('strong', '', item.title), el('span', '', item.disabled ? 'Feature disabled' : item.description));
+          anchor.addEventListener('click', () => visit(item));
+          links.append(anchor);
+        });
+        const clear = el('button', 'mc-clear-recent', 'Clear recent workspaces');
+        clear.type = 'button';
+        clear.addEventListener('click', () => {
+          if (writeStored(recentKey, [])) {
+            renderHome(); render();
+            const heading = document.getElementById('mc-start-title');
+            if (heading) { heading.tabIndex = -1; heading.focus(); }
+          } else { renderHome(); render(); }
+        });
+        homeContinue.append(heading, links, clear);
+      }
+      if (storageWarning) homeContinue.append(el('p', 'mc-start-note', 'Browser storage is unavailable; favorites and recent work may not be saved.'));
   }
   async function load() {
     status.textContent = 'Loading workspaces...';
@@ -74,9 +176,10 @@
       const response = await fetch('/api/workspace-drawer', {credentials: 'same-origin'});
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      items = data.items; loaded = true; render();
+      items = data.items; loaded = true; render(); renderHome();
     } catch (error) {
       status.textContent = `Unable to load workspaces: ${error.message}. Close and reopen to retry.`;
+      if (homeGrid) homeGrid.textContent = `Unable to load starting points: ${error.message}. Use the existing navigation or open Workspaces to retry.`;
     }
   }
   function open() {
@@ -99,6 +202,7 @@
     if (previousFocus && previousFocus.isConnected) previousFocus.focus();
   }
   button.addEventListener('click', open);
+  if (homeGrid) load();
   close.addEventListener('click', dismiss);
   overlay.addEventListener('click', event => { if (event.target === overlay) dismiss(); });
   list.addEventListener('click', event => { if (event.target.closest('a[href]')) dismiss(); });

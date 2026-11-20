@@ -7,6 +7,47 @@ Contains page-specific HTML templates.
 # Dashboard template
 DASHBOARD_TEMPLATE = """{% extends "base.html" %}
 {% block content %}
+<section class="mc-start" aria-labelledby="mc-start-title">
+<h2 id="mc-start-title">What would you like to do?</h2>
+<p>Choose a starting point. The Workspaces menu contains all available tools, favorites, and recently opened workspaces.</p>
+<div id="mc-start-grid" class="mc-start-grid" aria-live="polite">Loading starting points...</div>
+<div id="mc-continue" aria-live="polite"></div>
+<noscript>Enable JavaScript to see available starting points, or use the existing navigation below.</noscript>
+<p class="mc-start-note">Access depends on permissions and enabled features. Git tools operate on the MasterChief repository, not a clone selected in GitHub Integration.</p>
+</section>
+<section class="mc-start" aria-labelledby="mc-context-title">
+<h2 id="mc-context-title">Your workspace &amp; next step</h2>
+<p>Git Command Center manages the local MasterChief repository. A repository selected in GitHub Integration is separate.</p>
+<button type="button" class="mc-clear-recent" id="mc-check-workspace">Check MasterChief update</button>
+<p id="mc-workspace-result" role="status" aria-live="polite">Not checked yet. This read-only check requires Source Control admin access and contacts GitHub.</p>
+<a href="/static/git-workflow-guide.html#release-journey">Open Release Journey</a>
+</section>
+<details class="section" id="mc-orientation">
+<summary><strong>Getting started: a quick tour</strong></summary>
+<ol>
+<li>Choose a task above or open <strong>Workspaces</strong> to find tools and add favorites.</li>
+<li>Use Code UI to edit MasterChief, or GitHub Integration to browse separate repositories.</li>
+<li>Use Git Command Center to review local changes; Release Journey guides an update through GitHub review and merge.</li>
+<li>Check results and repository scope before confirming any action.</li>
+</ol>
+<button type="button" class="mc-clear-recent" id="mc-dismiss-tour">Dismiss tour</button>
+<p id="mc-tour-status" role="status"></p>
+</details>
+<details class="section">
+<summary><strong>Safety &amp; recovery center</strong></summary>
+<p>Check your repository and branch first. Review all staged files, including private data, before committing. A push publishes commits but does not merge or deploy them.</p>
+<p>Before destructive operations, verify the target and a usable backup. Review pull request approvals, required checks, and branch rules on GitHub; the app cannot bypass them.</p>
+<p><a href="/static/git-workflow-guide.html#safety-and-recovery">Open safety and recovery guidance</a> · <a href="/sys/scm">Open Git Command Center</a></p>
+</details>
+<script defer src="/static/dashboard-workspace.js"></script>
+<style>
+.mc-start{background:linear-gradient(120deg,#153727,#17283c);border:1px solid #436f5a;border-radius:12px;padding:24px;margin-bottom:24px}
+.mc-start h2{color:#d8ffe6;margin:0 0 5px}.mc-start p{color:#c3d6d0;margin:6px 0 16px}.mc-start-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px}
+.mc-start-grid a{display:block;padding:14px;background:#142b31;border:1px solid #41675c;border-radius:8px;color:#e7fff3;text-decoration:none}
+.mc-start-grid a:hover,.mc-start-grid a:focus-visible{border-color:#9df2bb;outline:2px solid #9df2bb;outline-offset:2px}
+.mc-start-grid strong,.mc-start-grid span{display:block}.mc-start-grid span{color:#c2d5d3;font-size:.88rem;margin-top:5px}.mc-start .mc-start-note{font-size:.84rem;margin:14px 0 0}
+#mc-continue h3{margin:18px 0 8px;color:#d8ffe6}.mc-clear-recent{margin-top:10px;padding:7px 10px;background:#142b31;color:#e7fff3;border:1px solid #6c9982;border-radius:6px;cursor:pointer}.mc-clear-recent:focus-visible{outline:2px solid #9df2bb}
+</style>
 <div class="dashboard-grid">
 <div class="card">
 <h3>CPU Usage</h3>
@@ -32,8 +73,8 @@ DASHBOARD_TEMPLATE = """{% extends "base.html" %}
 <div class="stat-label">{{ (stats.uptime/60)|int }} minutes</div>
 </div>
 </div>
-<div class="section">
-<h3>Quick Actions</h3>
+<details class="section">
+<summary><strong>All existing quick actions</strong></summary>
 <a href="/scripts" class="btn">Script Manager</a>
 <a href="/processes" class="btn">Process Monitor</a>
 <a href="/services" class="btn">Service Monitor</a>
@@ -45,7 +86,7 @@ DASHBOARD_TEMPLATE = """{% extends "base.html" %}
 <a href="/tf_wizard" class="btn">TF Wizard</a>
 <a href="/gallery" class="btn">Art Gallery</a>
 <a href="/github" class="btn">GitHub Integration</a>
-</div>
+</details>
 {% endblock %}"""
 
 # Scripts templates
