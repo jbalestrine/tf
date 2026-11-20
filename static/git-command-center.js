@@ -116,6 +116,23 @@
     $('command-form').scrollIntoView({behavior: 'smooth', block: 'center'});
     input.focus();
   });
+  document.addEventListener('scm-journey-select', event => {
+    const command = commands.find(entry => entry.id === event.detail.action);
+    if (!command) {
+      $('result-status').textContent = 'Command unavailable. Restart MasterChief and sign in as an RBAC admin.';
+      $('result-status').scrollIntoView({behavior: 'smooth', block: 'center'});
+      return;
+    }
+    select(command);
+    for (const [name, value] of Object.entries(event.detail.values || {})) {
+      const input = [...$('fields').querySelectorAll('input,textarea')].find(field => field.name === name);
+      if (input) input.value = value;
+    }
+    updatePreview();
+    $('command-form').scrollIntoView({behavior: 'smooth', block: 'center'});
+    const first = $('fields').querySelector('input,textarea');
+    (first || $('run')).focus();
+  });
   $('command-form').onsubmit = async event => {
     event.preventDefault();
     if (!selected) return;
@@ -128,6 +145,7 @@
         body: JSON.stringify({action:command.id, values:args, confirmation:command.confirm ? command.id : null})});
       $('output').textContent = [data.stdout, data.stderr].filter(Boolean).join('\n') || '(No output)';
       $('result-status').textContent = data.ok ? 'Completed' : `Failed (exit ${data.returncode})`;
+      if (data.ok) document.dispatchEvent(new Event('scm-command-completed'));
       if (data.ok && (command.id === 'pr' || command.id === 'pr_merge')) {
         document.dispatchEvent(new Event('scm-pr-changed'));
       }

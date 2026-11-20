@@ -1,0 +1,17 @@
+.journey{background:radial-gradient(circle at 85% 0%,#1d4b52 0,transparent 38%),linear-gradient(135deg,#102337,#121d35);border-color:#38677a;overflow:hidden}
+.journey-header,.journey-top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.journey-header h2{font-size:1.55rem;margin:4px 0}.journey-kicker{font-size:.72rem;letter-spacing:.15em;font-weight:700;color:#83dcc5;margin:0}
+.journey-header p{margin:5px 0 0}.journey-top strong{overflow-wrap:anywhere;color:#c5f6e8}
+.journey-map{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:18px 0}
+.journey-node{position:relative;text-align:left;display:flex;flex-direction:column;gap:5px;background:#172b41;border-color:#44627a;min-height:110px}
+.journey-node:not(:last-child)::after{content:"";position:absolute;right:-11px;top:50%;width:10px;height:2px;background:#6fbda9;pointer-events:none}
+.journey-node strong{overflow-wrap:anywhere}.journey-node small{color:#bbcadb;font-size:.73rem}.journey-number{color:#87d8c6;font-weight:700;letter-spacing:.1em}
+.journey-node.is-next{border-color:#80dcac;box-shadow:0 0 0 2px #80dcac44}.journey-node.is-selected{background:#215046}
+.journey-detail{border:1px solid #416b7b;border-radius:10px;background:#0d1d2c;padding:20px;min-height:140px}
+.journey-detail h3{margin:8px 0;color:#e3fff8}.journey-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.journey-actions a{color:#8dd9ff}.journey-files{max-height:240px;overflow:auto;padding-left:22px}.journey-files li{overflow-wrap:anywhere;margin:8px 0}.journey-files button{margin-left:10px}
+.journey-receipt{overflow-wrap:anywhere;line-height:1.7}.journey-foot{font-size:.85rem}.journey-detail.is-arrival{border-color:#80dcac;box-shadow:inset 0 0 50px #63d99c1a}
+.journey-celebration{animation:journey-arrive 1s ease-out both}@keyframes journey-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.journey-map{grid-template-columns:repeat(3,minmax(0,1fr))}.journey-node:nth-child(3)::after{display:none}}
+@media(max-width:520px){.journey-map{grid-template-columns:repeat(2,minmax(0,1fr))}.journey-node{min-height:90px}.journey-node:nth-child(even)::after{display:none}.journey-node:nth-child(3)::after{display:block}}
+@media(prefers-reduced-motion:reduce){.journey-celebration{animation:none}}

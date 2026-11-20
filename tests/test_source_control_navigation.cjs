@@ -36,6 +36,9 @@ test('workflow guide exposes the preview and full editable file', () => {
   assert.match(text, /id="ecosystem-file"/);
   assert.match(text, /src="\/static\/git-activity-3d\.js"/);
   assert.match(text, /src="\/static\/git-file-editor-link\.js"/);
+  assert.match(text, /id="update-check-button"/);
+  assert.match(text, /id="update-check-result"/);
+  assert.match(text, /src="\/static\/git-update-check\.js"/);
 });
 
 test('both Git pages expose the executable everyday update steps and caveats', () => {
