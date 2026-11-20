@@ -9,12 +9,17 @@
       "files": [
         {
           "path": "main.py",
-          "role": "LIVE nav (this is what is rendered)",
+          "role": "Loads templates/layout.html into HTML_TEMPLATE",
           "anchor": "^HTML_TEMPLATE\\s*="
         },
         {
+          "path": "templates/layout.html",
+          "role": "Main application layout and navigation",
+          "anchor": "main-navigation"
+        },
+        {
           "path": "templates/base.py",
-          "role": "Older copy of the layout and nav (shadowed)",
+          "role": "Separate base layout and navigation copy",
           "anchor": "nav-group"
         },
         {
@@ -23,7 +28,7 @@
         }
       ],
       "urls": [],
-      "warning": "The nav is defined TWICE. main.py's HTML_TEMPLATE overrides the one imported from templates/base.py, so pages show main.py's version. Change both until they are merged."
+      "warning": "Navigation exists in both templates/layout.html and templates/base.py. Keep shared links consistent until the layouts are consolidated; standalone pages may have their own navigation."
     },
     {
       "id": "logo",

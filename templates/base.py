@@ -97,6 +97,7 @@ code{color:#4CAF50;}
 </header>
 <nav aria-label="Main navigation">
   <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
+  <a href="/static/git-workflow-guide.html#activity-status">Git File Ecosystem</a>
   <label class="nav-search"><span class="sr-only">Search pages</span><input id="nav-search" type="search" placeholder="Find a page…  Ctrl+K" autocomplete="off" aria-label="Find a page"><span id="nav-search-status" class="nav-search-status" aria-live="polite"></span></label>
 
   <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') or request.path.startswith('/chaos-monkey') or request.path.startswith('/backups') or request.path.startswith('/cicd') else '' }}">

@@ -51,6 +51,49 @@ page. Isolated app features are managed in Code Manager and also require a
 restart. Add-on process start/stop is a separate operation and does not mean
 that all features within an add-on can be toggled individually.
 
+The **Git Command Center** at `/sys/scm` provides an admin-only workflow guide
+and allowlisted Git/GitHub CLI actions for the MasterChief repository. Mutating
+actions require confirmation; high-risk recovery actions can discard work or
+rewrite history. Inspect status and staged changes before committing or pushing.
+The Command Center and Git Workflow Field Guide include an executable everyday
+walkthrough: check status, optionally stage all with `git add -A`, review status
+and staged diff, commit, then push. Stage all includes tracked edits and
+deletions plus non-ignored new files across the repository; choose individual
+paths instead when appropriate. Commits include everything already staged.
+Commands run non-interactively; configure Git and GitHub authentication outside
+the app first. PR creation and pushes affect the remote repository immediately.
+Its Source Control navigation also links to **GitHub Integration** (`/github`)
+for browsing and cloning repositories and saving scripts. Selecting or cloning
+a repository there does not change the repository used by Git Command Center.
+Both pages link to the Git Workflow Field Guide, including the everyday diagram,
+safety and recovery notes, and the downloadable four-page editable Visio file.
+The guide also runs the same admin-protected commands and shows working-tree
+and latest-commit file activity. A rotatable 3D file ecosystem complements
+the grouped file list and import relationship list; select a file to see its
+direct imports and importers. Its Python import data is static and
+best-effort: it is not a runtime dependency map, does not cover other
+languages or dynamic imports, and displays its scan and result limits.
+File links open the MasterChief Code UI for editing the local repository;
+Web IDE permission is required and deleted, binary, or non-UTF-8 files may
+not be readable. The ecosystem and its editor links do not target repositories
+selected in GitHub Integration.
+Selecting a file in the activity list or 3D map also opens an inline editor.
+Saving requires Source Control admin access and rejects a file changed since
+opening. Stage and commit are separate confirmed actions; committing includes
+all staged files, which the editor displays for review before confirmation.
+The main navigation, Git Command Center, and GitHub Integration link directly
+to the file ecosystem. Source Map reports duplicate registered route patterns
+as warnings; review their handlers before changing registration order.
+
+The **Workspaces** button opens a separate searchable slide-out navigation for
+signed-in users without replacing existing menus. It groups common destinations
+by task, folds less-used tools into expandable sections, and includes loaded
+feature navigation and installed add-ons. Pinned add-ons link to their pinned
+entry; other installed add-ons open their manager without automatically starting
+them. Links do not override permissions or feature flags. The directory uses
+curated app links and registered feature navigation, not arbitrary API routes;
+the Unified Site Map remains available for technical route discovery.
+
 On the main menu, **Build → Pinned Add-ons** includes a **Start** button next
 to each pinned add-on link. Pin an installed add-on from Add-on Modules first.
 Start checks its current service state and starts it only if stopped; the link

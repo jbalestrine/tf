@@ -1,0 +1,54 @@
+.source-control-navigation {
+  margin: 18px 0 24px;
+  padding: 18px;
+  border: 1px solid #354c65;
+  border-radius: 12px;
+  background: #111f32;
+  color: #e5edf8;
+}
+.source-control-navigation h2 {
+  margin: 0 0 4px;
+  color: #e5edf8;
+  font-size: 1.05rem;
+}
+.source-control-navigation p {
+  margin: 0 0 12px;
+  color: #bbcbdd;
+  font-size: .88rem;
+  line-height: 1.5;
+}
+.source-control-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 10px;
+}
+.source-control-links a {
+  display: block;
+  padding: 12px;
+  border: 1px solid #354c65;
+  border-radius: 8px;
+  background: #0b1728;
+  color: #8dd9ff;
+  text-decoration: none;
+}
+.source-control-links a:hover,
+.source-control-links a:focus-visible {
+  border-color: #80dcac;
+  outline: 2px solid #80dcac;
+  outline-offset: 2px;
+}
+.source-control-links a[aria-current="page"] {
+  border-color: #80dcac;
+}
+.source-control-links a[aria-current="page"] strong::after {
+  content: " (current)";
+  color: #a4e9be;
+  font-size: .78rem;
+}
+.source-control-links span {
+  display: block;
+  margin-top: 4px;
+  color: #bbcbdd;
+  font-size: .82rem;
+  line-height: 1.4;
+}

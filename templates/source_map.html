@@ -1,5 +1,6 @@
 <div class="section">
     <h2>Source Map — which file controls what?</h2>
+    <p><a href="/static/git-workflow-guide.html#activity-status">Recent file activity &amp; 3D ecosystem</a> · <a href="/sys/scm">Git Command Center</a> · <a href="/masterchief_code_ui">Code UI</a></p>
     <p style="color:#9aa4b2;margin-bottom:10px;">Type a page URL (like <code>/echo-chat</code>) or a keyword (like <code>logo</code>, <code>menu</code>, <code>version</code>) to find the files behind it. Links open the file at the right line in VS Code. The curated list is stored in <code>docs/source_map.json</code>; edit that file to add more.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
         <input id="sm-query" placeholder="/echo-chat, logo, menu, version…" style="min-width:300px;">
@@ -116,7 +117,14 @@
         const box = $('sm-health');
         box.replaceChildren();
         if (h.missing_files.length) { box.append(el('div', 'Registry points to missing files: ' + h.missing_files.map(function (m) { return m.path; }).join(', '), 'color:#f0c674;')); }
-        if (h.duplicate_routes.length) { box.append(el('div', 'Same URL defined more than once (the first one wins): ' + h.duplicate_routes.join('; '), 'color:#f0c674;')); }
+        if (h.duplicate_routes.length) {
+            const details = el('details', '', 'color:#f0c674;');
+            details.append(el('summary', h.duplicate_routes.length + ' registered route pattern(s) have duplicate method sets — review before removing handlers.'));
+            details.append(el('p', 'For identical URL patterns and methods, registration order affects which handler runs. These are warnings, not necessarily application failures.'));
+            const list = el('ul');
+            h.duplicate_routes.forEach(function (route) { list.append(el('li', route)); });
+            details.append(list); box.append(details);
+        }
     }
     async function load() {
         try {
