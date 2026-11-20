@@ -11,6 +11,7 @@ SCM_TEMPLATE = r"""<!doctype html>
 <script src="/static/git-action-receipts.js" defer></script>
 <script src="/static/git-command-center.js" defer></script>
 <script src="/static/git-pull-requests.js" defer></script>
+<script src="/static/pypi-release.js" defer></script>
 </head><body>
 <header class="header">
   <a href="/" class="brand">MasterChief</a>
@@ -32,6 +33,7 @@ SCM_TEMPLATE = r"""<!doctype html>
     <p>Inspect, prepare, save and publish. Review output and confirm every change before it runs.</p></div>
     <button id="refresh" type="button">Refresh repository</button></section>
   <div class="summary"><span id="branch">Branch: loading...</span><span id="changes">Loading changes...</span></div>
+  <div id="pypi-deploy"><noscript><section class="panel"><h2>PYPI DEPLOY</h2><p>Publishing to PyPI is separate from Git merge. Enable JavaScript for the release checklist, or consult the release section of the project README.</p></section></noscript></div>
   <div id="quick-workflow"></div>
   <div id="pull-request-overview"></div>
   <section class="panel" id="update-and-push"><h2>Update and push your app: essentials</h2>
