@@ -53,6 +53,29 @@ test('both Git pages expose the executable everyday update steps and caveats', (
   }
 });
 
+test('quick guided workflow is shared by both Git pages and exposes each action', () => {
+  for (const file of ['templates/scm.py', 'static/git-workflow-guide.html']) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.match(text, /id="quick-workflow"/);
+    assert.ok(text.indexOf('git-quick-workflow.js') < text.indexOf('git-command-center.js'));
+  }
+  const guide = fs.readFileSync(path.join(root, 'static/git-quick-workflow.js'), 'utf8');
+  for (const action of ['stage_all', 'status', 'staged_diff', 'commit', 'push', 'push_upstream',
+    'pr_view', 'pr', 'pr_merge', 'fetch', 'new_branch', 'branches', 'switch_branch']) {
+    assert.ok(guide.includes(`data-guide-command="${action}"`), `missing ${action}`);
+  }
+  assert.match(guide, /does not delete your local or remote branches/);
+  assert.match(guide, /Nothing runs when you open this guide/);
+});
+
+test('both Git pages include the shared pull request overview', () => {
+  for (const file of ['templates/scm.py', 'static/git-workflow-guide.html']) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.match(text, /id="pull-request-overview"/);
+    assert.match(text, /src="\/static\/git-pull-requests\.js"/);
+  }
+});
+
 test('development navigation links directly to the file ecosystem', () => {
   for (const file of ['templates/base.py', 'templates/layout.html', 'templates/master_menu.html',
     'templates/scm.py', 'features/templates/github_integration.html', 'templates/diagnostics.py',

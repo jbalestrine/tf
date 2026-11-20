@@ -18,7 +18,8 @@ from datetime import datetime
 from pathlib import Path
 
 # Import the GitHub integration
-from github_integration import github_integration
+from github_integration import github_integration, list_cloned_repositories
+from features.github_cli_browser import register_cli_browser
 
 # Create blueprint for this feature
 github_bp = Blueprint('github_integration', __name__, url_prefix='/api/features/github')
@@ -27,6 +28,7 @@ def register_routes(app):
     """Register GitHub integration routes"""
     print("DEBUG: Registering GitHub integration routes", file=sys.stderr)
     app.register_blueprint(github_bp)
+    register_cli_browser(app)
 
     @app.route('/github')
     def github_page():
@@ -48,7 +50,19 @@ def register_routes(app):
         if not github_integration.is_configured():
             return jsonify({'error': 'GitHub integration not configured'}), 503
         
-        repos = github_integration.get_user_repositories()
+        try:
+            repos = github_integration.get_user_repositories()
+        except RuntimeError as exc:
+            return jsonify({'error': str(exc)}), 502
+        return jsonify({'repos': repos})
+
+    @app.route('/api/features/github/cloned-repos')
+    def github_cloned_repos():
+        try:
+            repos = list_cloned_repositories(Path(os.getcwd()) / 'data' / 'github_repos')
+        except OSError:
+            app.logger.exception('Unable to list cloned repositories')
+            return jsonify({'error': 'Unable to read the cloned repositories directory; check server logs.'}), 500
         return jsonify({'repos': repos})
 
     @app.route('/api/features/github/repos/<owner>/<repo>')

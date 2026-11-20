@@ -60,11 +60,32 @@ walkthrough: check status, optionally stage all with `git add -A`, review status
 and staged diff, commit, then push. Stage all includes tracked edits and
 deletions plus non-ignored new files across the repository; choose individual
 paths instead when appropriate. Commits include everything already staged.
+Open **Quick guided Git workflow** on either Git page to check for an existing
+PR, create one if needed, review it, explicitly confirm a merge commit, and
+fetch the base before creating and switching to the next feature branch. A
+push updates an existing PR but does not create one. Review GitHub checks,
+approvals, the PR number and base before merging; a merge may be blocked or
+queued by repository policies. The workflow does not request branch deletion:
+keep local and remote branches until deliberate cleanup is appropriate, though
+GitHub settings may automatically delete a merged remote branch. Branches are
+references, not backups; verify work before switching or cleanup.
+The pull request overview shows open, closed and merged PRs in GitHub's
+most-recently-updated order, with pagination and links to review them on
+GitHub. The activity shown is from GitHub, not an app-only action history.
+Selecting an open PR prepares a confirmed merge action; it does not merge
+automatically. The list uses the repository GitHub CLI resolves from the
+local MasterChief repository and requires administrator access.
 Commands run non-interactively; configure Git and GitHub authentication outside
 the app first. PR creation and pushes affect the remote repository immediately.
 Its Source Control navigation also links to **GitHub Integration** (`/github`)
 for browsing and cloning repositories and saving scripts. Selecting or cloning
 a repository there does not change the repository used by Git Command Center.
+The Browse Files tab lists actual cloned repositories in `data/github_repos`
+and refreshes when opened. The remote browser and GitHub repository list use
+the server's GitHub CLI login and require Source Control administrator access.
+Other GitHub integration API operations may still use the app's separate
+`GITHUB_TOKEN` configuration. Errors are displayed rather than reported as an
+empty list.
 Both pages link to the Git Workflow Field Guide, including the everyday diagram,
 safety and recovery notes, and the downloadable four-page editable Visio file.
 The guide also runs the same admin-protected commands and shows working-tree
