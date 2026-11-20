@@ -16,45 +16,42 @@
   section.className = 'panel pypi-panel';
   section.setAttribute('aria-labelledby', 'pypi-title');
   section.innerHTML = `
-    <p class="pypi-kicker">PACKAGE RELEASE / AFTER MERGE</p>
+    <p class="pypi-kicker">PACKAGE RELEASE / GITHUB + PYPI</p>
     <h2 id="pypi-title">PYPI DEPLOY</h2>
-    <p><strong>A Git push or merged PR does not update PyPI.</strong> Use the existing <code>PYPI_ONLY_DEPLOY.ps1</code> PowerShell script for a separate, deliberate <strong>PyPI-only</strong> release. It does not publish to Chocolatey.</p>
-    <p class="warning"><strong>Do not rely on the automatic workflow:</strong> The checked-in PyPI GitHub Actions workflow has an invalid first key; it must be repaired and tested before using it. If repaired, a GitHub published-release event is configured to publish separately, so avoid competing uploads.</p>
-    <ol class="pypi-steps">
-      <li><strong>Choose the release:</strong> Review and merge the exact source you intend to publish. Confirm the repository and inspect the package contents for private data.</li>
-      <li><strong>Set a new version:</strong> Update <code>setup.py</code>, commit and merge it. Confirm the version is unused on PyPI; published versions cannot be overwritten.</li>
-      <li><strong>Tag the merged commit:</strong> Create and push a matching semantic tag, such as <code>v1.2.3</code> for version <code>1.2.3</code>, to the verified release repository. The script builds the specified local tag, not uncommitted changes or necessarily your current checkout. Confirm the tag points to the exact merged commit.</li>
-      <li><strong>Prepare and validate:</strong> Use a Python environment with <code>build</code> and <code>twine</code> installed, plus Git and network access. Run a dry run in PowerShell from the project directory, replacing the example tag with your actual release tag:
-        <pre><code>.\\PYPI_ONLY_DEPLOY.ps1 -Tag v1.2.3 -DryRun</code></pre>
-        The script checks whether the PyPI version is available, builds and validates artifacts, and does not upload in dry-run mode.</li>
-      <li><strong>Publish only after review:</strong> Add the PyPI token as <code>TWINE_PASSWORD</code> in the local encrypted <a href="/secrets">Vault</a>, then use your actual tag:
-        <pre><code>.\\PYPI_ONLY_DEPLOY.ps1 -Tag v1.2.3 -UseVault</code></pre>
-        If an upload fails or its outcome is uncertain, check PyPI before retrying.</li>
-      <li><strong>Verify independently:</strong> Check the expected version and artifacts on <a href="https://pypi.org/project/masterchief/" target="_blank" rel="noopener noreferrer">PyPI</a>. A merge, tag or successful dry run is not proof of publication.</li>
-    </ol>
-    <p>For a separate combined Chocolatey and PyPI release, the project also has <code>CHOCO_PYPI_DEPLOY.ps1</code>. It publishes Chocolatey first and is not atomic. Its Chocolatey builder currently uses <code>jbalestrine/masterchief</code> rather than this checkout's <code>jbalestrine/tf</code> origin; resolve that source mismatch before using it.</p>
+    <p><strong>GitHub stores your source; PyPI distributes your package.</strong> Merging on GitHub does not publish to PyPI. The tag connects the package to the exact merged commit it was built from.</p>
+    <p><strong>Each release:</strong> Change version &rarr; commit and push &rarr; merge PR &rarr; tag &rarr; dry run &rarr; publish &rarr; verify.</p>
     <div class="pypi-controls">
       <h3>Guided release: step by step</h3>
-      <p><strong>1. Prepare the version.</strong> Load the current working-copy version, review the suggested next patch or enter your own, then save it on a feature branch. This changes only <code>setup.py</code>; it does not commit or publish.</p>
+      <p><strong>1. Choose a new version.</strong> Start on a feature branch containing the latest merged changes. Load the working-copy version, then review the suggested next patch or enter your own unused version. For example, after <code>4.0.3</code> you might choose <code>4.0.4</code>. Saving edits only <code>setup.py</code> on this computer; it does not commit, push or publish.</p>
       <button id="pypi-version-load" type="button">Load current version</button>
       <p id="pypi-version-status" role="status" aria-live="polite">Load the version to begin.</p>
       <label for="pypi-version-input">New package version (for example 4.0.1)</label>
       <input id="pypi-version-input" placeholder="4.0.1" autocomplete="off" disabled>
       <button id="pypi-version-save" type="button" disabled>Save version to setup.py</button>
-      <p>Next, use the Git workflow below to stage <strong>setup.py</strong>, review, commit, push, create a PR and merge into <code>Masterchief4</code>. Check PyPI to make sure your chosen version is unused; the suggested number is not an availability check. If the base branch has changed, fetch origin before step 2.</p>
-      <p><strong>2.</strong> Check the merged version and commit. Then enter its matching tag and confirm creating and pushing it to origin. This does not edit the version or merge a PR.</p>
+      <p>Check <a href="https://pypi.org/project/masterchief/#history" target="_blank" rel="noopener noreferrer">PyPI release history</a>: the suggestion does not check availability, and published versions cannot be overwritten.</p>
+      <p><strong>2. Put the changes on GitHub.</strong> Use the <a href="#quick-workflow">Git workflow below</a> to stage and review the intended files (including <code>setup.py</code>), commit, and push your feature branch. Then create a pull request (PR) into <code>Masterchief4</code>, review it, and merge it. A PR can only include commits already pushed to GitHub: if it says &ldquo;No commits between&rdquo;, check the branch name and confirm your new commit was pushed. Keep private data and credentials out of the commit.</p>
+      <p><strong>3. Tag the merged release.</strong> After merging, fetch origin using the Git workflow, then check the merged version and commit below. Confirm the version is the one you intend to publish. Create and push its matching tag: for example, version <code>4.0.4</code> uses tag <code>v4.0.4</code>. This marks a Git commit; it does not publish to PyPI.</p>
       <button id="pypi-preview" type="button">Check merged release</button>
       <p id="pypi-preview-result" role="status" aria-live="polite">Release not checked yet.</p>
       <label for="pypi-tag">Release tag (for example v1.2.3)</label>
       <input id="pypi-tag" placeholder="v1.2.3" autocomplete="off">
       <button id="pypi-create-tag" type="button" disabled>Create and push release tag</button>
-      <p><strong>3.</strong> Run the dry run for that tag. It builds and validates without publishing.</p>
+      <p><strong>4. Practice with a dry run.</strong> This checks version availability and builds and validates the package from the tagged commit. It does not upload anything. Review the tagged source and package contents for private data before publishing.</p>
       <button id="pypi-dry-run" type="button">Run PyPI dry run</button>
-      <p><strong>4.</strong> Review the tag, commit, package contents, and dry-run result; confirm the public PyPI upload. Then verify the version on PyPI.</p>
+      <p><strong>5. Publish to PyPI.</strong> After a successful dry run, confirm the public upload. The server uses the <code>TWINE_PASSWORD</code> token stored in <a href="/secrets">Vault</a>. Do not paste tokens into source code, Git history, or this form.</p>
       <button id="pypi-publish" type="button" disabled>Publish to PyPI</button>
       <p id="pypi-result" role="status" aria-live="polite">Enter a tag and run a dry run first. Requires Source Control admin access on a Windows server.</p>
+      <p><strong>6. Verify and finish.</strong> Open the <a href="https://pypi.org/project/masterchief/" target="_blank" rel="noopener noreferrer">MasterChief page on PyPI</a> and check the version and both files (wheel and source distribution). If the upload fails, times out, or its outcome is uncertain, check PyPI before retrying. A command completion message alone is not independent verification.</p>
     </div>
-    <p>These controls run on the MasterChief server, using its Python environment and Vault. Tag creation pushes a Git tag; it does not merge PRs. Never paste tokens into source code, Git history, or this form.</p>`;
+    <details>
+      <summary>Technical details and command-line alternative</summary>
+      <p>The buttons run <code>PYPI_ONLY_DEPLOY.ps1</code> on the Windows MasterChief server using its Python environment and Vault. They require Source Control admin access, Git, network access, and <code>build</code> and <code>twine</code> in that environment. The script builds from the specified local tag, not uncommitted changes or necessarily your current checkout. If tag pushing fails, a local tag may remain; inspect local and remote tags before retrying.</p>
+      <p>To run it in PowerShell instead, replace the example tag with your actual release tag:</p>
+      <pre><code>.\\PYPI_ONLY_DEPLOY.ps1 -Tag v1.2.3 -DryRun
+.\\PYPI_ONLY_DEPLOY.ps1 -Tag v1.2.3 -UseVault</code></pre>
+      <p class="warning"><strong>Do not rely on the automatic workflow:</strong> The checked-in PyPI GitHub Actions workflow has an invalid first key; it must be repaired and tested before using it. If repaired, a GitHub published-release event is configured to publish separately, so avoid competing uploads.</p>
+      <p>The PyPI-only script does not publish to Chocolatey. The separate <code>CHOCO_PYPI_DEPLOY.ps1</code> publishes Chocolatey first and is not atomic. Its Chocolatey builder currently uses <code>jbalestrine/masterchief</code> rather than this checkout's <code>jbalestrine/tf</code> origin; resolve that source mismatch before using it.</p>
+    </details>`;
   target.append(section);
   const tagInput = section.querySelector('#pypi-tag');
   const dryRun = section.querySelector('#pypi-dry-run');
@@ -75,7 +72,7 @@
       const data = await releaseApi('/sys/api/scm/pypi-version');
       versionSnapshot = data; versionInput.value = data.suggested; versionInput.disabled = false;
       versionSave.disabled = !data.branch || data.branch === 'Masterchief4';
-      versionStatus.textContent = `Working copy: ${data.current} · branch: ${data.branch || 'detached HEAD'} · suggested next patch: ${data.suggested}. ${versionSave.disabled ? 'Switch to a feature branch before saving.' : 'Review the proposed version; its availability on PyPI is not checked.'}`;
+      versionStatus.textContent = `Working copy: ${data.current} · branch: ${data.branch || 'detached HEAD'} · suggested next patch: ${data.suggested}. ${versionSave.disabled ? 'Switch to a feature branch before saving.' : 'The suggestion is not saved yet. Review it and check PyPI for availability before saving.'}`;
     } catch (error) { versionStatus.textContent = `Unable to load version: ${error.message}`; }
     finally { versionLoad.disabled = false; }
   });
@@ -156,10 +153,10 @@
       });
       if (mode === 'dry_run') {
         verified = {tag: data.tag, commit: data.commit};
-        result.textContent = `Dry run succeeded for ${data.tag}, commit ${data.commit}. Review the tagged source and package contents before publishing.`;
+        result.textContent = `Dry run succeeded for ${data.tag}, commit ${data.commit}. Nothing was uploaded. Review the tagged source and package contents, then use Publish to PyPI.`;
       } else {
         verified = null;
-        result.textContent = `Publish command completed for ${data.tag}, commit ${data.commit}. Verify the version and artifacts on PyPI.`;
+        result.textContent = `Publish command completed for ${data.tag}, commit ${data.commit}. Open PyPI in step 6 and verify the version and both artifacts. If they are present, your release is complete; do not publish again.`;
       }
     } catch (error) {
       verified = null;

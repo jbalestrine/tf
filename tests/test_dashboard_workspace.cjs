@@ -1,6 +1,25 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {nextStep} = require('../static/dashboard-workspace.js');
+
+test('system readings appear before the workspace guidance on the dashboard', () => {
+  const template = fs.readFileSync(path.join(__dirname, '..', 'templates', 'pages.py'), 'utf8');
+  const dashboard = template.slice(template.indexOf('DASHBOARD_TEMPLATE ='), template.indexOf('# Scripts templates'));
+  const grid = dashboard.indexOf('<div class="dashboard-grid">');
+  const start = dashboard.indexOf('<section class="mc-start"');
+  assert.ok(grid >= 0 && start > grid);
+  const readings = dashboard.slice(grid, start);
+  for (const id of ['cpu-value', 'cpu-progress', 'mem-value', 'mem-progress', 'disk-value', 'disk-progress']) {
+    assert.ok(readings.includes(`id="${id}"`), `${id} must be visible before the workspace guidance`);
+  }
+  assert.match(readings, /System Uptime/);
+  assert.ok(dashboard.indexOf('mc-process-title') > grid);
+  assert.match(readings, /id="mc-process-details"/);
+  assert.match(readings, /id="mc-process-end"/);
+  assert.match(readings, /dashboard-processes\.js/);
+});
 
 function state() {
   return {branch: 'feature', worktree: 'clean', upstream: {state: 'matches'}, pull_request: {state: 'none'}};

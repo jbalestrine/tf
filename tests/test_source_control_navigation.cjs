@@ -96,6 +96,25 @@ test('both Git pages prominently expose the same PyPI release checklist', () => 
   }
 });
 
+test('PyPI guide orders the release journey and explains each separate action', () => {
+  const guide = fs.readFileSync(path.join(root, 'static/pypi-release.js'), 'utf8');
+  const steps = ['1. Choose a new version', '2. Put the changes on GitHub',
+    '3. Tag the merged release', '4. Practice with a dry run',
+    '5. Publish to PyPI', '6. Verify and finish'];
+  let previous = -1;
+  for (const step of steps) {
+    const position = guide.indexOf(step);
+    assert.ok(position > previous, `${step} missing or out of order`);
+    previous = position;
+  }
+  for (const detail of ['does not commit, push or publish', 'No commits between',
+    'does not publish to PyPI', 'Nothing was uploaded', 'both artifacts',
+    'check PyPI before retrying', 'Technical details and command-line alternative']) {
+    assert.ok(guide.includes(detail), `missing explanation: ${detail}`);
+  }
+  assert.ok(guide.indexOf('id="pypi-version-load"') < guide.indexOf('Technical details and command-line alternative'));
+});
+
 test('development navigation links directly to the file ecosystem', () => {
   for (const file of ['templates/base.py', 'templates/layout.html', 'templates/master_menu.html',
     'templates/scm.py', 'features/templates/github_integration.html', 'templates/diagnostics.py',

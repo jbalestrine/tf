@@ -2029,6 +2029,8 @@ from blueprints import (
     ops_routes,
     roku_routes,
     scm_routes,
+    dashboard_processes,
+    ubuntu_desktop,
     terraform,
     ui_pages,
     wizard,
@@ -2051,6 +2053,8 @@ app.register_blueprint(feature_routes.feature_routes_bp)
 app.register_blueprint(ops_routes.ops_bp)
 app.register_blueprint(diagnostics_routes.diagnostics_bp)
 app.register_blueprint(scm_routes.scm_bp)
+app.register_blueprint(dashboard_processes.dashboard_processes_bp)
+app.register_blueprint(ubuntu_desktop.ubuntu_desktop_bp)
 app.register_blueprint(wizard.wizard_bp)
 chatserv_routes.init_chatserv(app, Path(__file__).resolve().parent)
 

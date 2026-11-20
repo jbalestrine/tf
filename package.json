@@ -5,7 +5,12 @@
   "scripts": {
     "start": "python3 main.py",
     "test": "python3 -m pytest tests/",
-    "lint": "python3 -m flake8 core/ modules/"
+    "lint": "python3 -m flake8 core/ modules/",
+    "build:ubuntu-desktop": "esbuild static-src/ubuntu-desktop.js --bundle --minify --format=esm --outfile=static/ubuntu-desktop.js"
+  },
+  "devDependencies": {
+    "@novnc/novnc": "1.7.0",
+    "esbuild": "0.28.2"
   },
   "repository": {
     "type": "git",

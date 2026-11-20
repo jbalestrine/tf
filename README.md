@@ -28,6 +28,43 @@ This repo should be treated as a working operational platform, not a throwaway p
 
 ## Feature and module management
 
+### UBUNTU MASTERCHIEF OS
+
+The dashboard's **UBUNTU MASTERCHIEF OS** desktop connects an authenticated RBAC admin to
+the VirtualBox VM named `MasterChief Ubuntu Test`. On the Windows server, install
+VirtualBox and keep the VM's SSH key and known-hosts file in
+`%LOCALAPPDATA%\MasterChief\ubuntu-test` as `ubuntu-test-ed25519` and
+`ubuntu-known-hosts`. The VM must forward host loopback port 22242 to guest SSH
+and run its VNC desktop on guest loopback port 5901. The dashboard connects
+automatically when the VM is running. Otherwise start it with the dashboard
+button, wait for Ubuntu to boot, then choose **Connect desktop**. Choose
+**Full screen** to expand the desktop; choose **Exit full screen** or press
+Escape to return to the dashboard. The guest resolution adapts when supported.
+Disconnecting leaves the VM running. Desktop sessions end after 30 minutes and
+can be reconnected. This VM uses NAT with network access; it is not a security
+sandbox. Exposing MasterChief on a network gives an authenticated admin control
+over this desktop, so use a strong password and HTTPS for network access.
+
+The **Ubuntu app source** selector switches the guest app between the installed
+PyPI release and a separate checkout of the `Masterchief4` branch. It restarts
+the app on guest port 8080, checks its login page, and attempts to restore the
+previous service if the switch fails. Their app data directories, including
+RBAC accounts and settings, are separate; both use the same Ubuntu user, home
+directory, network and external resources. The GitHub checkout is a snapshot, not automatically
+updated; the displayed commit identifies the snapshot. Switching sources does
+not guarantee feature parity: features can also depend on configuration or
+optional packages. Existing provisioning places the checkout and its virtual
+environment under `/home/ubuntu/masterchief-github` and
+`/home/ubuntu/masterchief-github-venv`; the root-owned guest switch helper and
+service are based on `scripts/ubuntu-masterchief-source` and
+`scripts/ubuntu-masterchief-github.service`.
+
+The desktop client bundles noVNC 1.7.0 (MPL-2.0) and its included pako
+components. Their licenses and attribution are in `static/novnc-*.txt`.
+Unmodified noVNC source is available from the [noVNC 1.7.0 release](https://github.com/novnc/noVNC/tree/v1.7.0)
+and the package/version pinned in `package-lock.json`; rebuild the client with `npm ci` and
+`npm run build:ubuntu-desktop`.
+
 The **Management Center** menu links Master Menu (page flags and navigation),
 Feature Management (configured handlers), Module Management (built-in manager
 configuration), Add-on Modules (installed files and services), and Code Manager
@@ -371,6 +408,15 @@ py -3 -m venv .venv
 
 The source checkout is the recommended way to run the complete web UI. The PyPI package and CLI provide a package-based installation path; optional provider services still need configuration.
 
+The dashboard's process panel shows processes on the MasterChief server, not
+necessarily the browser's computer. It requires an authenticated RBAC admin
+and samples CPU as a percentage of total server CPU between refreshes; memory
+is resident memory. Per-process disk, network, GPU and power readings are not
+provided. Expanding the panel allows selecting a process and confirming a
+termination request. The server process and protected system PIDs cannot be
+ended from this panel; operating system permissions still apply. A termination
+request is not proof the process has exited, so refresh to check.
+
 ### Publish to PyPI only
 
 [PYPI_ONLY_DEPLOY.ps1](PYPI_ONLY_DEPLOY.ps1) builds a locally available,
@@ -395,7 +441,11 @@ key and must be repaired and tested before relying on it; if repaired, a
 published GitHub release is configured to trigger a separate PyPI upload.
 The Git Command Center and Git Workflow Guide also offer Windows-server buttons
 for a dry run and a separately confirmed publish using the server's selected
-Python interpreter and Vault. The UI requires a successful dry run first and
+Python interpreter and Vault. The guided steps distinguish saving a local
+version from committing and pushing it, merging the PR, tagging, and publishing.
+A PR needs a new commit pushed to the feature branch; saving a file alone does
+not add it to GitHub. Verify the published version and both artifacts on PyPI
+before considering the release complete. The UI requires a successful dry run first and
 rechecks the tag's commit before publishing. Its guided tag button checks the
 live `origin/Masterchief4` commit against the local tracking ref, reads the
 version from that committed `setup.py`, and creates and pushes the matching tag

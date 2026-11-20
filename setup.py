@@ -36,12 +36,14 @@ _static_files = (
     + glob.glob("static/*.svg")
     + glob.glob("static/*.png")
     + glob.glob("static/*.ico")
+    + glob.glob("static/novnc-*.txt")
 )
 
 data_files = [
     ("share/masterchief", _webapp_files),
     ("share/masterchief/static", _static_files),
     ("share/masterchief/commands", glob.glob("commands/*.txt")),
+    ("share/masterchief/templates", glob.glob("templates/*.html")),
 ]
 
 # ---------------------------------------------------------------------------
@@ -141,6 +143,7 @@ setup(
         "flask-cors>=4.0.0",
         "Flask-Login>=0.6.0",
         "Flask-SocketIO>=5.0.0",
+        "simple-websocket>=1.0.0",
         "werkzeug>=3.0.0",
         "python-socketio>=5.0.0",
         "python-engineio>=4.0.0",

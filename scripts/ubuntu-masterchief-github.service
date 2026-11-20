@@ -1,0 +1,13 @@
+[Unit]
+Description=MasterChief GitHub release branch test app
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/masterchief-github
+ExecStart=/home/ubuntu/masterchief-github-venv/bin/python /home/ubuntu/masterchief-github/main.py --host 127.0.0.1 --port 8080
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

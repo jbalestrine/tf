@@ -1,0 +1,81 @@
+#!/bin/bash
+set -euo pipefail
+
+pypi=masterchief-test.service
+github=masterchief-github.service
+
+current_source() {
+    local pypi_active github_active
+    pypi_active=$(systemctl is-active "$pypi" || true)
+    github_active=$(systemctl is-active "$github" || true)
+    if [[ $pypi_active == active && $github_active == active ]]; then
+        echo conflict
+    elif [[ $pypi_active == active ]]; then
+        echo pypi
+    elif [[ $github_active == active ]]; then
+        echo github
+    else
+        echo stopped
+    fi
+}
+
+if [[ ${1:-} == status && $# == 1 ]]; then
+    printf 'source=%s\n' "$(current_source)"
+    printf 'github_commit=%s\n' "$(git -C /home/ubuntu/masterchief-github rev-parse HEAD)"
+    exit 0
+fi
+
+if [[ $# != 2 || $1 != switch || ( $2 != pypi && $2 != github ) ]]; then
+    echo 'Usage: ubuntu-masterchief-source status | switch pypi|github' >&2
+    exit 2
+fi
+
+exec 9>/run/lock/masterchief-source.lock
+flock -n 9 || { echo 'A source switch is already in progress.' >&2; exit 1; }
+previous=$(current_source)
+if [[ $previous == conflict || $previous == stopped ]]; then
+    echo "Cannot switch while the current source is $previous; inspect the services first." >&2
+    exit 1
+fi
+if [[ $previous == "$2" ]]; then
+    printf 'Already running %s.\n' "$2"
+    exit 0
+fi
+if [[ $2 == github ]]; then
+    old=$pypi
+    new=$github
+else
+    old=$github
+    new=$pypi
+fi
+
+rollback() {
+    echo 'Switch failed; restoring the previous service.' >&2
+    systemctl stop "$new" || true
+    systemctl disable "$new" || true
+    systemctl enable "$old" || true
+    systemctl start "$old" || true
+}
+trap rollback ERR
+systemctl stop "$old"
+if [[ -n $(ss -H -ltn 'sport = :8080') ]]; then
+    echo 'Port 8080 is already in use; refusing to switch to a different port.' >&2
+    false
+fi
+systemctl start "$new"
+healthy=false
+for attempt in {1..30}; do
+    if systemctl is-active --quiet "$new" && curl --fail --silent --output /dev/null --max-time 2 http://127.0.0.1:8080/login; then
+        healthy=true
+        break
+    fi
+    sleep 1
+done
+if [[ $healthy != true ]]; then
+    echo 'The selected app did not respond on port 8080.' >&2
+    false
+fi
+systemctl disable "$old"
+systemctl enable "$new"
+trap - ERR
+printf 'Running %s. Open or refresh http://127.0.0.1:8080/ inside Ubuntu.\n' "$2"
