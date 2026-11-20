@@ -65,6 +65,18 @@ def pull_requests():
         return jsonify({'ok': False, 'error': str(exc)}), 502
 
 
+@scm_bp.route('/sys/api/scm/update-check')
+def update_check():
+    from utils.git_update_check import check_update
+    if not _enabled():
+        return jsonify({'ok': False, 'error': 'scm disabled by feature flag'}), 503
+    try:
+        return jsonify({'ok': True, **check_update(_root())})
+    except RuntimeError as exc:
+        current_app.logger.warning('Git update check failed: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 502
+
+
 @scm_bp.route('/sys/api/scm/activity-file', methods=['GET', 'POST'])
 def activity_file():
     from utils.git_activity_editor import EditConflict, load, save

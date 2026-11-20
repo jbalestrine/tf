@@ -7,10 +7,13 @@
   <link rel="stylesheet" href="/static/git-command-center.css">
   <link rel="stylesheet" href="/static/source-control-navigation.css">
   <link rel="stylesheet" href="/static/git-workflow-guide.css">
+  <link rel="stylesheet" href="/static/release-journey.css">
   <script src="/static/git-file-editor-link.js" defer></script>
   <script src="/static/git-quick-workflow.js" defer></script>
   <script src="/static/git-command-center.js" defer></script>
   <script src="/static/git-pull-requests.js" defer></script>
+  <script src="/static/git-update-check.js" defer></script>
+  <script src="/static/release-journey.js" defer></script>
   <script src="/static/git-activity-editor.js" defer></script>
   <script src="/static/git-activity-3d.js" defer></script>
   <script src="/static/git-workflow-activity.js" defer></script>
@@ -22,6 +25,21 @@
   <nav aria-label="Page links"><a href="/sys/scm">Git Command Center</a><a href="/github">GitHub Integration</a><a href="#activity-status">File Ecosystem</a></nav>
 </header>
 <main>
+  <section id="release-journey" class="journey panel" aria-labelledby="journey-title">
+    <div class="journey-header"><div><p class="journey-kicker">MISSION CONTROL / SOURCE CONTROL</p>
+      <h2 id="journey-title">Release Journey</h2>
+      <p>Follow your update from local changes to a verified merge. Existing tools stay right where they are.</p></div>
+      <button id="journey-toggle" type="button" aria-expanded="false" aria-controls="journey-panel">Open Release Journey</button>
+    </div>
+    <div id="journey-panel" hidden>
+      <p>Read-only checks refresh your progress. Actions open the existing command preview; nothing is staged, committed, pushed or merged without your confirmation.</p>
+      <div class="journey-top"><strong id="journey-branch">Checking branch...</strong><button id="journey-refresh" type="button">Refresh journey</button></div>
+      <p id="journey-status" role="status" aria-live="polite"></p>
+      <div id="journey-map" class="journey-map" role="group" aria-label="Release journey stages"></div>
+      <section id="journey-detail" class="journey-detail" aria-live="polite"></section>
+      <p class="journey-foot">GitHub may require approvals or checks; review them on GitHub. Branches are kept unless you choose otherwise. Ignored files are not included in Git status.</p>
+    </div>
+  </section>
   <div id="quick-workflow"></div>
   <div id="pull-request-overview"></div>
   <section class="panel">
@@ -36,7 +54,8 @@
       <a href="/sys/scm">Open Git Command Center</a>
     </div>
     <p>The image shows page 1. The Visio file also contains the safety, recovery, and command-reference pages; their key points are summarized below.</p>
-    <div class="guide-actions"><button type="button" data-guide-command="status">Check status</button><button type="button" data-guide-command="fetch">Fetch origin</button><button type="button" data-guide-command="new_branch">Create feature branch</button><button type="button" data-guide-command="stage">Stage file</button><button type="button" data-guide-command="commit">Commit</button><button type="button" data-guide-command="push_upstream">Push branch</button><button type="button" data-guide-command="pr">Create pull request</button></div>
+    <div class="guide-actions"><button type="button" id="update-check-button">Check update &amp; PR</button><button type="button" data-guide-command="status">Check status</button><button type="button" data-guide-command="fetch">Fetch origin</button><button type="button" data-guide-command="new_branch">Create feature branch</button><button type="button" data-guide-command="stage">Stage file</button><button type="button" data-guide-command="commit">Commit</button><button type="button" data-guide-command="push_upstream">Push branch</button><button type="button" data-guide-command="pr">Create pull request</button></div>
+    <div id="update-check-result" role="status" aria-live="polite"></div>
   </section>
   <section class="panel" id="update-and-push">
     <h2>Update and push your app: essentials</h2>
@@ -128,6 +147,7 @@
       <div>
         <h3 id="action-title">Select a command</h3>
         <p><a href="#quick-workflow">Return to quick guided workflow</a></p>
+        <p><a href="#release-journey">Return to Release Journey</a></p>
         <form id="command-form"><div id="fields"></div><label>Command preview</label><pre id="preview"></pre>
           <p id="risk" class="warning" hidden>Confirm carefully. This changes files, history or remote state and may permanently discard work.</p>
           <button type="submit" id="run" disabled>Run command</button></form>

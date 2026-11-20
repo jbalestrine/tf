@@ -88,6 +88,19 @@ Other GitHub integration API operations may still use the app's separate
 empty list.
 Both pages link to the Git Workflow Field Guide, including the everyday diagram,
 safety and recovery notes, and the downloadable four-page editable Visio file.
+The guide's **Check update & PR** button reports local uncommitted changes,
+compares HEAD directly with its configured remote upstream, and finds the
+latest-created same-repository PR for the current branch in the GitHub
+CLI-resolved repository; fork-based PRs are not included.
+It performs read-only network checks without fetching; a different remote HEAD
+does not identify whether the branch is ahead or behind. A merged PR with a
+different head does not establish that the current commit was merged.
+The optional **Release Journey** visualizes the same workflow as workshop,
+checkpoint, launch, review, merge, and arrival. Opening or refreshing it
+performs read-only status and network checks; action buttons prepare the
+existing confirmed commands. The completion receipt requires GitHub to report
+a merged PR and matching commit information; it is not a deployment status.
+Refresh after changes outside the app. PRs from forks are not included.
 The guide also runs the same admin-protected commands and shows working-tree
 and latest-commit file activity. A rotatable 3D file ecosystem complements
 the grouped file list and import relationship list; select a file to see its
