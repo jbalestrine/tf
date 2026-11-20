@@ -65,10 +65,10 @@
         <div class="card">
             <h3>Repository Management</h3>
             <div class="tabs">
-                <button class="tab-button active" onclick="switchTab('clone')">Clone Repository</button>
-                <button class="tab-button" onclick="switchTab('browse')">Browse Files</button>
-                <button class="tab-button" onclick="switchTab('remote')">Browse Remote Repo</button>
-                <button class="tab-button" onclick="switchTab('editor')">Code Editor</button>
+                <button class="tab-button active" data-tab="clone" onclick="switchTab('clone')">Clone Repository</button>
+                <button class="tab-button" data-tab="browse" onclick="switchTab('browse')">Browse Files</button>
+                <button class="tab-button" data-tab="remote" onclick="switchTab('remote')">Browse Remote Repo</button>
+                <button class="tab-button" data-tab="editor" onclick="switchTab('editor')">Code Editor</button>
             </div>
 
             <div id="clone-tab" class="tab-content active">
@@ -89,6 +89,7 @@
                         <option value="">Choose a repository...</option>
                     </select>
                     <button onclick="loadRepos()" class="btn btn-info">Refresh</button>
+                    <p id="local-repos-status" role="status" aria-live="polite"></p>
                 </div>
                 <div id="file-browser">
                     <div class="breadcrumb" id="breadcrumb">Root</div>
@@ -97,6 +98,7 @@
             </div>
 
             <div id="remote-tab" class="tab-content">
+                <p>Remote browsing uses the server's signed-in GitHub CLI account and requires Source Control administrator access.</p>
                 <div class="form-group">
                     <label for="remote-repo-url">Custom Repository URL</label>
                     <input type="url" id="remote-repo-url" placeholder="https://github.com/owner/repo.git">
@@ -108,6 +110,7 @@
                         <option value="">Choose a repository...</option>
                     </select>
                     <button onclick="loadRemoteRepos()" class="btn btn-info">Load Repos</button>
+                    <p id="remote-repos-status" role="status" aria-live="polite"></p>
                 </div>
                 <div id="remote-file-browser">
                     <div class="breadcrumb" id="remote-breadcrumb">Root</div>
@@ -150,7 +153,8 @@
             
             // Show selected tab
             document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
+            document.querySelector(`.tab-button[data-tab="${tabName}"]`).classList.add('active');
+            if (tabName === 'browse') loadRepos();
         }
 
         function showStatus(message, type = 'info') {
@@ -185,22 +189,33 @@
         });
 
         async function loadRepos() {
+            const select = document.getElementById('repo-select');
+            const status = document.getElementById('local-repos-status');
+            status.textContent = 'Loading cloned repositories...';
             try {
-                // This would need a new API endpoint to list cloned repos
-                // For now, we'll simulate
-                const select = document.getElementById('repo-select');
-                select.innerHTML = '<option value="">Choose a repository...</option>';
-                
-                // Add some example repos
-                const repos = ['masterchief', 'terraform-modules'];
-                repos.forEach(repo => {
+                const response = await fetch('/api/features/github/cloned-repos');
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+                if (!Array.isArray(data.repos)) throw new Error('Invalid repository list from server.');
+                const selected = select.value;
+                select.replaceChildren(new Option('Choose a repository...', ''));
+                data.repos.forEach(repo => {
                     const option = document.createElement('option');
                     option.value = repo;
                     option.textContent = repo;
                     select.appendChild(option);
                 });
+                if (data.repos.includes(selected)) select.value = selected;
+                else {
+                    currentRepo = '';
+                    currentPath = '';
+                    document.getElementById('file-list').replaceChildren();
+                    document.getElementById('breadcrumb').textContent = 'Root';
+                }
+                status.textContent = data.repos.length ? `${data.repos.length} cloned repositories found.` : 'No cloned repositories found.';
             } catch (error) {
                 console.error('Error loading repos:', error);
+                status.textContent = `Unable to load cloned repositories: ${error.message}. Restart MasterChief if the endpoint is unavailable.`;
             }
         }
 
@@ -216,8 +231,9 @@
             if (!currentRepo) return;
             
             try {
-                const response = await fetch(`/api/features/github/files/${currentRepo}?path=${encodeURIComponent(currentPath)}`);
+                const response = await fetch(`/api/features/github/files/${encodeURIComponent(currentRepo)}?path=${encodeURIComponent(currentPath)}`);
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
                 
                 const fileList = document.getElementById('file-list');
                 const breadcrumb = document.getElementById('breadcrumb');
@@ -256,6 +272,7 @@
                 });
             } catch (error) {
                 console.error('Error loading files:', error);
+                document.getElementById('file-list').textContent = `Unable to load files: ${error.message}`;
             }
         }
 
@@ -266,8 +283,9 @@
 
         async function loadFile(filePath) {
             try {
-                const response = await fetch(`/api/features/github/file-content/${currentRepo}?file_path=${encodeURIComponent(filePath)}`);
+                const response = await fetch(`/api/features/github/file-content/${encodeURIComponent(currentRepo)}?file_path=${encodeURIComponent(filePath)}`);
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
                 
                 document.getElementById('file-content').value = data.content;
                 document.getElementById('save-filename').value = filePath.split('/').pop();
@@ -309,36 +327,48 @@
         }
 
         async function loadGitHubRepos() {
+            const reposDiv = document.getElementById('github-repos');
+            reposDiv.textContent = 'Loading GitHub repositories...';
             try {
-                const response = await fetch('/api/features/github/repos');
+                const response = await fetch('/api/features/github/cli/repos');
                 const data = await response.json();
-                
-                const reposDiv = document.getElementById('github-repos');
-                reposDiv.innerHTML = '<h4>Your Repositories</h4>';
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+                if (!Array.isArray(data.repos)) throw new Error('Invalid repository list from server.');
+                reposDiv.replaceChildren();
+                const heading = document.createElement('h4');
+                heading.textContent = 'Your Repositories';
+                reposDiv.appendChild(heading);
                 
                 if (data.repos && data.repos.length > 0) {
                     data.repos.forEach(repo => {
                         const div = document.createElement('div');
                         div.className = 'file-item';
-                        div.innerHTML = `
-                            <strong>${repo.name}</strong> - ${repo.description || 'No description'}
-                            <br><small>⭐ ${repo.stars || 0} • ${repo.language || 'Unknown'}</small>
-                        `;
+                        const name = document.createElement('strong');
+                        name.textContent = repo.name;
+                        const details = document.createElement('small');
+                        details.textContent = `⭐ ${repo.stars || 0} • ${repo.language || 'Unknown'}`;
+                        div.append(name, document.createTextNode(` - ${repo.description || 'No description'}`), document.createElement('br'), details);
                         reposDiv.appendChild(div);
                     });
                 } else {
-                    reposDiv.innerHTML += '<p>No repositories found or GitHub not configured.</p>';
+                    const empty = document.createElement('p');
+                    empty.textContent = 'No GitHub repositories found.';
+                    reposDiv.appendChild(empty);
                 }
             } catch (error) {
                 console.error('Error loading GitHub repos:', error);
-                document.getElementById('github-repos').innerHTML = '<p>Error loading repositories.</p>';
+                reposDiv.textContent = `Unable to load GitHub repositories: ${error.message}. Check administrator access and the server's GitHub CLI login.`;
             }
         }
 
         async function loadRemoteRepos() {
+            const status = document.getElementById('remote-repos-status');
+            status.textContent = 'Loading GitHub repositories...';
             try {
-                const response = await fetch('/api/features/github/repos');
+                const response = await fetch('/api/features/github/cli/repos');
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+                if (!Array.isArray(data.repos)) throw new Error('Invalid repository list from server.');
                 
                 const select = document.getElementById('remote-repo-select');
                 select.innerHTML = '<option value="">Choose a repository...</option>';
@@ -346,26 +376,31 @@
                 if (data.repos && data.repos.length > 0) {
                     data.repos.forEach(repo => {
                         const option = document.createElement('option');
-                        option.value = repo.full_name + '.git';
-                        option.textContent = repo.full_name + '.git';
+                        option.value = repo.full_name;
+                        option.textContent = repo.full_name;
                         select.appendChild(option);
                     });
                 }
+                status.textContent = data.repos.length ? `${data.repos.length} GitHub repositories found.` : 'No GitHub repositories found.';
             } catch (error) {
                 console.error('Error loading remote repos:', error);
+                status.textContent = `Unable to load GitHub repositories: ${error.message}. Check administrator access and the server's GitHub CLI login.`;
             }
         }
 
         function loadFromCustomURL() {
             const url = document.getElementById('remote-repo-url').value;
-            const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
-            if (!match) {
+            let parsed;
+            try { parsed = new URL(url); } catch { parsed = null; }
+            const match = parsed && parsed.protocol === 'https:' && parsed.hostname.toLowerCase() === 'github.com'
+                ? /^\/([^/]+)\/([^/]+?)\/?$/.exec(parsed.pathname) : null;
+            if (!match || parsed.search || parsed.hash) {
                 alert('Invalid GitHub URL. Please enter a URL like https://github.com/owner/repo');
                 return;
             }
             const owner = match[1];
-            const repo = match[2];
-            currentRemoteRepo = { full_name: `${owner}/${repo}.git` };
+            const repo = match[2].replace(/\.git$/, '');
+            currentRemoteRepo = { full_name: `${owner}/${repo}` };
             currentRemotePath = '';
             loadRemoteFiles();
         }
@@ -386,23 +421,32 @@
             
             try {
                 const [owner, name] = currentRemoteRepo.full_name.split('/');
-                const response = await fetch(`/api/features/github/repos/${owner}/${name}/contents?path=${encodeURIComponent(currentRemotePath)}`);
+                const response = await fetch(`/api/features/github/cli/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents?path=${encodeURIComponent(currentRemotePath)}`);
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
                 
                 const fileList = document.getElementById('remote-file-list');
                 const breadcrumb = document.getElementById('remote-breadcrumb');
                 
-                // Update breadcrumb
-                let breadcrumbHtml = '<a href="#" onclick="navigateRemoteTo(\'\')">Root</a>';
+                breadcrumb.replaceChildren();
+                const rootLink = document.createElement('a');
+                rootLink.href = '#';
+                rootLink.textContent = 'Root';
+                rootLink.onclick = event => { event.preventDefault(); navigateRemoteTo(''); };
+                breadcrumb.appendChild(rootLink);
                 if (currentRemotePath) {
                     const parts = currentRemotePath.split('/');
                     let path = '';
-                    parts.forEach((part, index) => {
+                    parts.forEach(part => {
                         path += (path ? '/' : '') + part;
-                        breadcrumbHtml += ` / <a href="#" onclick="navigateRemoteTo('${path}')">${part}</a>`;
+                        const destination = path;
+                        const link = document.createElement('a');
+                        link.href = '#';
+                        link.textContent = part;
+                        link.onclick = event => { event.preventDefault(); navigateRemoteTo(destination); };
+                        breadcrumb.append(' / ', link);
                     });
                 }
-                breadcrumb.innerHTML = breadcrumbHtml;
                 
                 // Clear file list
                 fileList.innerHTML = '';
@@ -411,10 +455,14 @@
                 data.contents.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'file-item ' + (item.type === 'dir' ? 'dir' : 'file');
-                    div.innerHTML = `
-                        <span>${item.type === 'dir' ? '📁' : '📄'} ${item.name}</span>
-                        ${item.type === 'file' ? `<small>(${formatSize(item.size)}) - ${item.last_modified}</small>` : ''}
-                    `;
+                    const label = document.createElement('span');
+                    label.textContent = `${item.type === 'dir' ? '📁' : '📄'} ${item.name}`;
+                    div.appendChild(label);
+                    if (item.type === 'file') {
+                        const details = document.createElement('small');
+                        details.textContent = ` (${formatSize(item.size)}) - ${item.last_modified}`;
+                        div.appendChild(details);
+                    }
                     
                     if (item.type === 'dir') {
                         div.onclick = () => navigateRemoteTo(item.path);
@@ -426,7 +474,7 @@
                 });
             } catch (error) {
                 console.error('Error loading remote files:', error);
-                document.getElementById('remote-file-list').innerHTML = '<div class="status error">Error loading files. Check if GitHub is configured.</div>';
+                document.getElementById('remote-file-list').textContent = `Unable to load remote files: ${error.message}. Check administrator access and the server's GitHub CLI login.`;
             }
         }
 
@@ -444,12 +492,12 @@
             
             // Check if file extension is allowed
             if (!allowedExtensions.includes(fileExtension)) {
-                showStatus('Cannot load binary or unsupported file type: .' + fileExtension + '. Only source/text files can be edited.', 'error');
+                document.getElementById('remote-repos-status').textContent = 'Cannot load binary or unsupported file type: .' + fileExtension + '. Only source/text files can be edited.';
                 return;
             }
             
             try {
-                const response = await fetch(`/api/features/github/repos/${owner}/${name}/file-content?file_path=${encodeURIComponent(filePath)}`);
+                const response = await fetch(`/api/features/github/cli/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/file-content?file_path=${encodeURIComponent(filePath)}`);
                 const data = await response.json();
                 
                 if (!response.ok) {
@@ -464,7 +512,7 @@
                 switchTab('editor');
             } catch (error) {
                 console.error('Error loading remote file:', error);
-                showStatus('Error loading file: ' + error.message, 'error');
+                document.getElementById('remote-file-list').textContent = `Unable to load remote file: ${error.message}`;
             }
         }
 

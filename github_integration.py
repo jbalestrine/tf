@@ -22,6 +22,22 @@ from auth_config import auth_config
 
 logger = logging.getLogger(__name__)
 
+
+def list_cloned_repositories(root: Path) -> List[str]:
+    """List local clone folders without following directory symlinks."""
+    try:
+        entries = list(root.iterdir())
+    except FileNotFoundError:
+        return []
+    return sorted(
+        (entry.name for entry in entries
+         if not entry.is_symlink() and entry.is_dir()
+         and not (entry / ".git").is_symlink()
+         and ((entry / ".git").is_dir() or (entry / ".git").is_file())),
+        key=str.casefold,
+    )
+
+
 class GitHubIntegration:
     """GitHub API integration for repository and user management"""
 
@@ -108,7 +124,7 @@ class GitHubIntegration:
         """Get repositories for a user"""
         try:
             if not self.is_configured():
-                return []
+                raise RuntimeError("GitHub integration is not configured.")
 
             if username:
                 user = self.github.get_user(username)
@@ -135,10 +151,10 @@ class GitHubIntegration:
 
         except GithubException as e:
             logger.error(f"Error getting user repositories: {e}")
-            return []
+            raise RuntimeError("GitHub repository listing failed; check the app's GitHub credentials and server logs.") from e
         except Exception as e:
             logger.error(f"Error in get_user_repositories: {e}")
-            return []
+            raise RuntimeError("GitHub repository listing failed; check the app's GitHub credentials and server logs.") from e
 
     # Repository Operations
     def get_repository(self, owner: str, repo: str) -> Optional[Dict[str, Any]]:
@@ -386,7 +402,7 @@ class GitHubIntegration:
                     
                 files.append({
                     'name': item.name,
-                    'path': str(item.relative_to(repo_path)),
+                    'path': item.relative_to(repo_path).as_posix(),
                     'is_dir': item.is_dir(),
                     'size': item.stat().st_size if item.is_file() else 0,
                     'modified': item.stat().st_mtime

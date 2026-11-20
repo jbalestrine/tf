@@ -7,7 +7,9 @@ SCM_TEMPLATE = r"""<!doctype html>
 <link rel="stylesheet" href="/static/git-command-center.css">
 <link rel="stylesheet" href="/static/source-control-navigation.css">
 <script src="/static/git-file-editor-link.js" defer></script>
+<script src="/static/git-quick-workflow.js" defer></script>
 <script src="/static/git-command-center.js" defer></script>
+<script src="/static/git-pull-requests.js" defer></script>
 </head><body>
 <header class="header">
   <a href="/" class="brand">MasterChief</a>
@@ -29,6 +31,8 @@ SCM_TEMPLATE = r"""<!doctype html>
     <p>Inspect, prepare, save and publish. Review output and confirm every change before it runs.</p></div>
     <button id="refresh" type="button">Refresh repository</button></section>
   <div class="summary"><span id="branch">Branch: loading...</span><span id="changes">Loading changes...</span></div>
+  <div id="quick-workflow"></div>
+  <div id="pull-request-overview"></div>
   <section class="panel" id="update-and-push"><h2>Update and push your app: essentials</h2>
     <p>Save your edits first. Each button selects an action below; review its preview, click <strong>Run command</strong>, confirm when prompted, and check the output before continuing.</p>
     <ol>
@@ -59,10 +63,12 @@ SCM_TEMPLATE = r"""<!doctype html>
       <div id="command-list"></div></section>
     <div class="side">
       <section class="panel"><h2 id="action-title">Select a command</h2><p id="action-hint">Commands run in the MasterChief repository.</p>
+        <p><a href="#quick-workflow">Return to quick guided workflow</a></p>
         <form id="command-form"><div id="fields"></div><label>Command preview</label><pre id="preview"></pre>
           <p id="risk" class="warning" hidden>Confirm carefully. This changes files, Git history, or remote state. High-risk actions can permanently discard work.</p>
           <button type="submit" id="run" disabled>Run command</button></form></section>
       <section class="panel"><div class="section-title"><h2>Output</h2><span id="result-status" role="status" aria-live="polite">Ready</span></div>
+        <p id="pr-result-link" hidden><a target="_blank" rel="noopener noreferrer">Open pull request on GitHub</a></p>
         <pre id="output">Command output will appear here.</pre></section>
     </div>
   </div>

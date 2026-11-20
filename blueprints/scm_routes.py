@@ -48,6 +48,23 @@ def file_activity():
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
+@scm_bp.route('/sys/api/scm/pull-requests')
+def pull_requests():
+    from utils.git_command_center import list_pull_requests
+    if not _enabled():
+        return jsonify({'ok': False, 'error': 'scm disabled by feature flag'}), 503
+    page = request.args.get('page', '1')
+    if not page.isascii() or not page.isdecimal() or len(page) > 5:
+        return jsonify({'ok': False, 'error': 'Page must be an integer between 1 and 10000.'}), 400
+    try:
+        return jsonify({'ok': True, **list_pull_requests(_root(), int(page))})
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError as exc:
+        current_app.logger.warning('GitHub pull request listing failed: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 502
+
+
 @scm_bp.route('/sys/api/scm/activity-file', methods=['GET', 'POST'])
 def activity_file():
     from utils.git_activity_editor import EditConflict, load, save

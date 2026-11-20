@@ -50,7 +50,11 @@
       stage: 'Stages the whole selected path. Review its contents and any already-staged files before committing.',
       commit: 'Creates a local commit containing all staged changes. Review staged files and their contents first.',
       push: 'Publishes committed changes to the current upstream. Uncommitted changes are not pushed.',
-      push_upstream: 'Publishes the specified branch to origin and sets its upstream. Uncommitted changes are not pushed.'
+      push_upstream: 'Publishes the specified branch to origin and sets its upstream. Uncommitted changes are not pushed.',
+      pr: 'Creates a pull request on GitHub. First check whether an open pull request already exists for this branch.',
+      pr_merge: 'Merges the specified pull request on GitHub using a merge commit. Verify the PR number, base, reviews and checks first. Repository policies may block or queue the merge.',
+      new_branch: 'Creates and switches to a new branch at the specified ref. Check for uncommitted changes first and fetch the base before using an origin ref.',
+      switch_branch: 'Switches branches. Check for uncommitted changes first; Git may carry them to the destination.'
     };
     $('risk').textContent = warnings[command.id] || (command.group === 'High risk'
       ? 'High-risk action: this can permanently discard work or rewrite history. Verify the target and backups first.'
@@ -58,7 +62,7 @@
     for (const field of command.fields) {
       const label = document.createElement('label'), input = document.createElement(field === 'body' ? 'textarea' : 'input');
       label.textContent = field; input.name = field; input.required = true;
-      input.placeholder = field === 'ref' ? 'e.g. origin/Masterchief4' : field;
+      input.placeholder = field === 'ref' ? 'e.g. origin/Masterchief4' : field === 'pr_number' ? 'e.g. 3' : field;
       label.append(input); $('fields').append(label); input.addEventListener('input', updatePreview);
     }
     $('run').disabled = false; updatePreview(); renderList();
@@ -99,17 +103,47 @@
       $('command-form').scrollIntoView({behavior: 'smooth', block: 'center'});
     });
   }
+  document.addEventListener('scm-select-pr-merge', event => {
+    const command = commands.find(entry => entry.id === 'pr_merge');
+    if (!command) {
+      $('result-status').textContent = 'Merge command unavailable. Restart MasterChief and sign in as an RBAC admin.';
+      return;
+    }
+    select(command);
+    const input = $('fields').querySelector('[name="pr_number"]');
+    input.value = String(event.detail.number);
+    updatePreview();
+    $('command-form').scrollIntoView({behavior: 'smooth', block: 'center'});
+    input.focus();
+  });
   $('command-form').onsubmit = async event => {
     event.preventDefault();
     if (!selected) return;
     const command = selected, args = values();
     if (command.confirm && !window.confirm(`Run this operation in the MasterChief repository?\n\n${$('preview').textContent}\n\nReview the target and any risk before continuing.`)) return;
     $('run').disabled = true; $('result-status').textContent = 'Running...';
+    $('pr-result-link').hidden = true;
     try {
       const data = await api('/sys/api/scm/commands', {method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({action:command.id, values:args, confirmation:command.confirm ? command.id : null})});
       $('output').textContent = [data.stdout, data.stderr].filter(Boolean).join('\n') || '(No output)';
       $('result-status').textContent = data.ok ? 'Completed' : `Failed (exit ${data.returncode})`;
+      if (data.ok && (command.id === 'pr' || command.id === 'pr_merge')) {
+        document.dispatchEvent(new Event('scm-pr-changed'));
+      }
+      if (command.id === 'pr_view' && data.ok) {
+        try {
+          const pr = JSON.parse(data.stdout);
+          const url = new URL(pr.url);
+          if (url.protocol !== 'https:' || url.hostname !== 'github.com') throw new Error('Unexpected pull request URL.');
+          const link = $('pr-result-link').querySelector('a');
+          link.href = url.href;
+          link.textContent = `Open PR #${pr.number} on GitHub (${pr.state})`;
+          $('pr-result-link').hidden = false;
+        } catch (error) {
+          $('result-status').textContent = `Completed, but could not display PR link: ${error.message}`;
+        }
+      }
       await refresh();
     } catch (error) { $('result-status').textContent = 'Failed'; $('output').textContent = error.message; }
     finally { $('run').disabled = false; }

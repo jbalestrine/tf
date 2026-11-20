@@ -8,7 +8,9 @@
   <link rel="stylesheet" href="/static/source-control-navigation.css">
   <link rel="stylesheet" href="/static/git-workflow-guide.css">
   <script src="/static/git-file-editor-link.js" defer></script>
+  <script src="/static/git-quick-workflow.js" defer></script>
   <script src="/static/git-command-center.js" defer></script>
+  <script src="/static/git-pull-requests.js" defer></script>
   <script src="/static/git-activity-editor.js" defer></script>
   <script src="/static/git-activity-3d.js" defer></script>
   <script src="/static/git-workflow-activity.js" defer></script>
@@ -20,6 +22,8 @@
   <nav aria-label="Page links"><a href="/sys/scm">Git Command Center</a><a href="/github">GitHub Integration</a><a href="#activity-status">File Ecosystem</a></nav>
 </header>
 <main>
+  <div id="quick-workflow"></div>
+  <div id="pull-request-overview"></div>
   <section class="panel">
     <h2>Everyday development</h2>
     <p>Follow the flow from a fresh feature branch through review and merge. The example uses <code>origin/Masterchief4</code>; verify your intended base branch before running commands.</p>
@@ -92,6 +96,7 @@
         <li>Branches are references, not separate app folders. A deleted remote branch does not delete the local branch.</li>
         <li>Verify work is merged or backed up before branch cleanup. Squash merges may make safe deletion refuse.</li>
         <li>Ignore rules do not protect already-tracked files. Review private data and credentials before staging or pushing.</li>
+        <li>Branches are pointers to commits, not backups. Keep both local and remote branches unless cleanup is intentional; GitHub repository settings may automatically delete merged remote branches. After a confirmed merge, fetch and create the next feature branch from the updated base.</li>
       </ul>
       <div class="guide-actions"><button type="button" data-guide-command="branches">Branches</button><button type="button" data-guide-command="remotes">Remotes</button><button type="button" data-guide-command="staged_diff">Review staged changes</button><button type="button" data-guide-command="delete_branch">Delete merged branch</button><button type="button" data-guide-command="prune">Prune remote references</button></div>
     </article>
@@ -122,10 +127,13 @@
       <div><label for="command-search">Find a command</label><input id="command-search" type="search" placeholder="Search commands"><div id="command-list"></div></div>
       <div>
         <h3 id="action-title">Select a command</h3>
+        <p><a href="#quick-workflow">Return to quick guided workflow</a></p>
         <form id="command-form"><div id="fields"></div><label>Command preview</label><pre id="preview"></pre>
           <p id="risk" class="warning" hidden>Confirm carefully. This changes files, history or remote state and may permanently discard work.</p>
           <button type="submit" id="run" disabled>Run command</button></form>
-        <h3>Output <span id="result-status" role="status" aria-live="polite">Ready</span></h3><pre id="output">Command output will appear here.</pre>
+        <h3>Output <span id="result-status" role="status" aria-live="polite">Ready</span></h3>
+        <p id="pr-result-link" hidden><a target="_blank" rel="noopener noreferrer">Open pull request on GitHub</a></p>
+        <pre id="output">Command output will appear here.</pre>
       </div>
     </div>
     <button id="refresh" type="button">Refresh repository status</button>
