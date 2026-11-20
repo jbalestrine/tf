@@ -22,7 +22,7 @@ def test_injection_only_for_regular_html():
 
 def test_catalog_uses_real_pages_features_and_installed_addons(tmp_path):
     app = Flask(__name__, root_path=str(tmp_path))
-    for path in ["/", "/sys/scm", "/pipelines", "/ext/feature/"]:
+    for path in ["/", "/sys/scm", "/pipelines", "/scripts", "/echo-chat", "/ext/feature/"]:
         app.add_url_rule(path, endpoint=path, view_func=lambda: "ok")
     upload = tmp_path / "uploads"
     (upload / "extracted" / "Pinned").mkdir(parents=True)
@@ -39,6 +39,9 @@ def test_catalog_uses_real_pages_features_and_installed_addons(tmp_path):
     items = catalog(app)
     urls = {item["url"] for item in items}
     assert "/sys/scm" in urls and "/static/git-workflow-guide.html#activity-status" in urls
+    assert "/static/git-workflow-guide.html#release-journey" in urls
+    assert next(item for item in items if item["url"] == "/scripts")["group"] == "Automate & AI"
+    assert next(item for item in items if item["url"] == "/echo-chat")["group"] == "Automate & AI"
     assert "/ext/feature/" in urls
     assert "/addons/modules/Pinned/manager" in urls
     assert "/addons/modules/Other%20Addon/manager" in urls

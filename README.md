@@ -122,11 +122,36 @@ as warnings; review their handlers before changing registration order.
 The **Workspaces** button opens a separate searchable slide-out navigation for
 signed-in users without replacing existing menus. It groups common destinations
 by task, folds less-used tools into expandable sections, and includes loaded
-feature navigation and installed add-ons. Pinned add-ons link to their pinned
+feature navigation and installed add-ons. The dashboard offers task-based
+starting points, system metrics, and the original quick actions. Use the star
+beside a workspace to add or remove a favorite. Favorites and the last eight
+workspaces opened through the drawer or dashboard are stored in that browser,
+not synchronized between devices; clear recent workspaces from the dashboard.
+Saved destinations are shown only when they still appear in the current
+catalog. Browser storage restrictions are reported in the interface.
+Links containing query parameters are not saved as favorites or recent
+workspaces, to avoid retaining potentially sensitive parameters.
+Pinned add-ons link to their pinned
 entry; other installed add-ons open their manager without automatically starting
 them. Links do not override permissions or feature flags. The directory uses
 curated app links and registered feature navigation, not arbitrary API routes;
 the Unified Site Map remains available for technical route discovery.
+
+The dashboard's **Your workspace & next step** check is read-only and runs only
+when requested. It requires Source Control admin access and contacts GitHub;
+its result is a snapshot, not an automatic monitor. It checks the local
+MasterChief repository, not a clone selected in GitHub Integration. Remote
+differences do not establish which side is ahead, and fork-based pull requests
+and ignored files are excluded. The expandable tour can be reopened after
+dismissal, and the safety center links to recovery guidance.
+
+The Git Command Center and workflow guide show **command receipts** for
+confirmed commands executed through their shared command panel in the current
+browser tab. Receipts show the branch observed before execution and the outcome;
+an interrupted request is explicitly unconfirmed. They are stored in session
+storage and disappear when the tab closes; they are not a complete audit log,
+do not include actions through other app interfaces or outside the app, and
+should not be used to verify a merge. Storage errors are displayed.
 
 On the main menu, **Build → Pinned Add-ons** includes a **Start** button next
 to each pinned add-on link. Pin an installed add-on from Add-on Modules first.

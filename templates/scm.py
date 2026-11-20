@@ -8,6 +8,7 @@ SCM_TEMPLATE = r"""<!doctype html>
 <link rel="stylesheet" href="/static/source-control-navigation.css">
 <script src="/static/git-file-editor-link.js" defer></script>
 <script src="/static/git-quick-workflow.js" defer></script>
+<script src="/static/git-action-receipts.js" defer></script>
 <script src="/static/git-command-center.js" defer></script>
 <script src="/static/git-pull-requests.js" defer></script>
 </head><body>

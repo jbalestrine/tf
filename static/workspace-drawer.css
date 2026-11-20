@@ -17,6 +17,7 @@ body:has(.mc-drawer-launch) #masterchief-site-brand img{max-width:100%}
 .mc-drawer-label{display:block;color:#e5edf8;font-weight:600;margin:12px 0}
 .mc-drawer-search{display:block;width:100%;margin-top:5px;border:1px solid #607c94;border-radius:7px;padding:10px;background:#0b1524;color:#fff;font:inherit}
 .mc-drawer-link{display:block;color:#e5edf8;text-decoration:none;padding:9px 10px;border:1px solid transparent;border-radius:7px}
+.mc-drawer-row{display:flex;align-items:center;gap:4px}.mc-drawer-row .mc-drawer-link{flex:1;min-width:0}.mc-drawer-favorite{flex:none;color:#f8d77b;border:1px solid #496276;border-radius:6px;background:#172b3e;font-size:1.15rem;cursor:pointer;padding:5px 9px}.mc-drawer-favorite:focus-visible{outline:2px solid #86efac}
 .mc-drawer-link:hover,.mc-drawer-link:focus-visible,.mc-drawer-link[aria-current=page]{background:#203b50;border-color:#76cfa0;outline:none}
 .mc-drawer-link strong,.mc-drawer-link span{display:block}
 .mc-drawer-link span{font-size:.8rem;color:#b8c9da}
