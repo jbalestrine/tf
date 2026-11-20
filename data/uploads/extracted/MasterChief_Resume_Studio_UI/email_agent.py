@@ -45,6 +45,22 @@ class AutoMode(BaseModel):
     enabled: bool
 
 
+class ScanOptions(BaseModel):
+    keywords: str | None = Field(default=None, max_length=1000)
+    all_unread: bool = False
+
+
+class ManualReply(BaseModel):
+    body: str = Field(min_length=1, max_length=20000)
+    attachments: list[str] = Field(default_factory=list, max_length=20)
+
+
+class ReplyTemplate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    body: str = Field(min_length=1, max_length=20000)
+    attachments: list[str] = Field(default_factory=list, max_length=20)
+
+
 def configuration():
     settings = {}
     path = BASE / ".env"
@@ -137,7 +153,7 @@ def plain_body(message):
     return "\n".join(chunks)[:100000]
 
 
-def candidate(message, address, keywords):
+def candidate(message, address, keywords, all_unread=False):
     sender_name, sender = parseaddr(message.get("From", ""))
     sender = sender.strip().lower()
     if (not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", sender)
@@ -152,7 +168,7 @@ def candidate(message, address, keywords):
         return None
     subject = str(message.get("Subject", ""))[:500]
     body = plain_body(message)
-    if not any(word in (subject + "\n" + body).casefold() for word in keywords):
+    if not all_unread and not any(word in (subject + "\n" + body).casefold() for word in keywords):
         return None
     company_match = re.search(r"(?im)^\s*company\s*:\s*([^\r\n]{1,120})", body)
     role_match = re.search(r"(?im)^\s*(?:role|position|job title)\s*:\s*([^\r\n]{1,150})", body)
@@ -265,7 +281,135 @@ def send(item_id, company, role, auto=False):
 def status():
     with LOCK:
         state = state_read()
-        return {"auto_send": auto_enabled(state, configuration()), "messages": state["messages"]}
+        config = configuration()
+        try:
+            attachments = available_attachments()
+        except OSError as exc:
+            raise HTTPException(500, "Could not read the Generated Artifacts directory.") from exc
+        return {"auto_send": auto_enabled(state, config), "messages": state["messages"],
+                "default_keywords": config.get("EMAIL_KEYWORDS", DEFAULT_KEYWORDS),
+                "templates": state.get("reply_templates", []), "attachments": attachments}
+
+
+def available_attachments():
+    dist = BASE / "dist"
+    if not dist.exists():
+        return []
+    return sorted(path.name for path in dist.iterdir()
+                  if path.is_file() and not path.is_symlink() and path.suffix.lower() in (".pdf", ".docx"))
+
+
+def attachment_contents(names):
+    if len(set(names)) != len(names):
+        raise ValueError("Duplicate attachments are not allowed.")
+    try:
+        return _attachment_contents(names)
+    except OSError as exc:
+        raise ValueError("Could not read a selected attachment. Check Generated Artifacts and try again.") from exc
+
+
+def _attachment_contents(names):
+    available = set(available_attachments())
+    contents = []
+    total = 0
+    for name in names:
+        if name not in available or Path(name).name != name or "/" in name or "\\" in name:
+            raise ValueError(f"Attachment is unavailable: {name}")
+        original = BASE / "dist" / name
+        if original.is_symlink():
+            raise ValueError(f"Attachment is unavailable: {name}")
+        path = original.resolve()
+        if path.parent != (BASE / "dist").resolve():
+            raise ValueError("Invalid attachment path.")
+        if path.stat().st_size > 15 * 1024 * 1024 - total:
+            raise ValueError("Attachments exceed the 15 MB total limit.")
+        data = path.read_bytes()
+        total += len(data)
+        if total > 15 * 1024 * 1024:
+            raise ValueError("Attachments exceed the 15 MB total limit.")
+        contents.append((name, data))
+    return contents
+
+
+@router.post("/templates")
+def save_template(payload: ReplyTemplate):
+    name, body = payload.name.strip(), payload.body.strip()
+    if not name or not body or any(ch in name for ch in "/\\\r\n"):
+        raise HTTPException(400, "Template name and message are required; names cannot contain slashes or line breaks.")
+    try:
+        attachment_contents(payload.attachments)
+        with LOCK:
+            state = state_read()
+            templates = state.setdefault("reply_templates", [])
+            if any(t["name"].casefold() == name.casefold() for t in templates):
+                raise ValueError("A template with that name already exists.")
+            if len(templates) >= 50:
+                raise ValueError("At most 50 templates can be saved.")
+            templates.append({"name": name, "body": body, "attachments": payload.attachments})
+            state_write(state)
+        return {"name": name}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.delete("/templates/{name}")
+def delete_template(name: str):
+    with LOCK:
+        state = state_read()
+        templates = state.get("reply_templates", [])
+        remaining = [entry for entry in templates if entry["name"] != name]
+        if len(remaining) == len(templates):
+            raise HTTPException(404, "Template not found.")
+        state["reply_templates"] = remaining
+        state_write(state)
+    return {"deleted": name}
+
+
+@router.post("/reply/{item_id}")
+def manual_reply(item_id: str, payload: ManualReply):
+    body = payload.body.strip()
+    if not body:
+        raise HTTPException(400, "Reply text is required.")
+    try:
+        with LOCK:
+            state = state_read()
+            item = load_item(state, item_id)
+            if item["status"] != "queued":
+                raise ValueError("This message is no longer awaiting approval.")
+            address, password = credentials(configuration())
+            contents = attachment_contents(payload.attachments)
+            outgoing = EmailMessage()
+            outgoing["From"] = address
+            outgoing["To"] = item["sender"]
+            outgoing["Subject"] = "Re: " + re.sub(r"(?i)^re:\s*", "", item["subject"])
+            outgoing["In-Reply-To"] = item["message_id"]
+            outgoing["References"] = item["message_id"]
+            outgoing["Message-ID"] = make_msgid()
+            outgoing.set_content(body)
+            for name, content in contents:
+                maintype, subtype = ("application", "pdf") if name.lower().endswith(".pdf") else (
+                    "application", "vnd.openxmlformats-officedocument.wordprocessingml.document")
+                outgoing.add_attachment(content, maintype=maintype, subtype=subtype, filename=name)
+            item.update(status="sending", attempted_at=datetime.now(timezone.utc).isoformat(),
+                        automatic=False, attachments=payload.attachments,
+                        outgoing_message_id=outgoing["Message-ID"])
+            state_write(state)
+            try:
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as smtp:
+                    smtp.ehlo()
+                    smtp.starttls(context=ssl.create_default_context())
+                    smtp.ehlo()
+                    smtp.login(address, password)
+                    smtp.send_message(outgoing)
+            except (OSError, smtplib.SMTPException):
+                item["status"] = "uncertain"
+                state_write(state)
+                raise ValueError("Delivery could not be confirmed. Check Gmail Sent before taking further action; automatic retry is disabled.")
+            item.update(status="sent", sent_at=datetime.now(timezone.utc).isoformat(), crm_status="not logged")
+            state_write(state)
+            return item
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.post("/mode")
@@ -277,12 +421,14 @@ def set_mode(payload: AutoMode):
         return {"auto_send": payload.enabled}
 
 
-def scan_inbox():
+def scan_inbox(options=None):
     with LOCK:
+        options = options or ScanOptions()
         config = configuration()
         address, password = credentials(config)
-        keywords = [k.strip().casefold() for k in config.get("EMAIL_KEYWORDS", DEFAULT_KEYWORDS).split(",") if k.strip()]
-        if not keywords:
+        source = options.keywords if options.keywords is not None else config.get("EMAIL_KEYWORDS", DEFAULT_KEYWORDS)
+        keywords = [k.strip().casefold() for k in source.split(",") if k.strip()]
+        if not keywords and not options.all_unread:
             raise ValueError("EMAIL_KEYWORDS must contain at least one keyword.")
         state = state_read()
         known = {item["id"] for item in state["messages"]}
@@ -305,8 +451,8 @@ def scan_inbox():
                         raise ValueError("Gmail returned an incomplete message.")
                     if len(raw) > 5 * 1024 * 1024:
                         continue
-                    item = candidate(BytesParser(policy=policy.default).parsebytes(raw), address, keywords)
-                    if item and item["id"] not in known and not within_cooldown(state, item["sender"]):
+                    item = candidate(BytesParser(policy=policy.default).parsebytes(raw), address, keywords, options.all_unread)
+                    if item and item["id"] not in known:
                         state["messages"].append(item)
                         known.add(item["id"])
                         added.append(item)
@@ -314,7 +460,7 @@ def scan_inbox():
         except (OSError, imaplib.IMAP4.error) as exc:
             raise ValueError("Gmail scan failed. Check connection and app-password configuration.") from exc
         failures = []
-        if auto_enabled(state, config):
+        if options.keywords is None and not options.all_unread and auto_enabled(state, config):
             for item in added:
                 if item["company"] and item["role_title"]:
                     try:
@@ -325,9 +471,9 @@ def scan_inbox():
 
 
 @router.post("/scan")
-def scan():
+def scan(options: ScanOptions | None = None):
     try:
-        return scan_inbox()
+        return scan_inbox(options)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

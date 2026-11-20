@@ -1,0 +1,69 @@
+.management-navigation {
+  display: block;
+  position: static;
+  top: auto;
+  z-index: auto;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid #334a67;
+  border-radius: 12px;
+  background: #111f32;
+  color: #e2e8f0;
+}
+.management-navigation .management-nav-title {
+  margin: 0 0 4px;
+  color: #e2e8f0;
+  font-size: 1.1rem;
+}
+.management-navigation .management-nav-intro {
+  margin: 0 0 12px;
+  color: #cbd5e1;
+  font-size: .88rem;
+}
+.management-navigation .management-nav-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.management-navigation .management-nav-list li {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #334a67;
+  border-radius: 8px;
+  background: #0b1728;
+}
+.management-navigation .management-nav-list a {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #7dd3fc;
+  font-weight: 700;
+  text-decoration: none;
+}
+.management-navigation .management-nav-list a:hover,
+.management-navigation .management-nav-list a:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+  text-decoration: underline;
+}
+.management-navigation .management-nav-list a[aria-current="page"]::after {
+  content: " (current)";
+  color: #86efac;
+  font-size: .8rem;
+}
+.management-navigation .management-nav-list span {
+  display: block;
+  margin-top: 5px;
+  color: #cbd5e1;
+  font-size: .8rem;
+  line-height: 1.4;
+}

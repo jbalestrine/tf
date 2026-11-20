@@ -93,16 +93,31 @@ rest of the unauthenticated dashboard: run it on a trusted network, preferably
 bound to `127.0.0.1`, not exposed to the internet.
 
 Scanning is manual: **Scan Inbox Now** reads up to 200 unread messages without
-marking them read. It checks subjects and plain-text bodies (or extracts text
+marking them read. Enter comma-separated custom keywords for a scan, or select
+**Include unread messages without keyword matching**. Leave both blank/off to
+use the configured `EMAIL_KEYWORDS` defaults. Custom and all-unread scans never
+trigger auto-send, even when it is enabled. Scans check subjects and plain-text bodies (or extract text
 from HTML when no plain-text body is present), ignores messages
 over 5 MB, and skips mailing lists, automatic senders, messages without valid
-Message-IDs and messages already processed. Review company and role before
-approving. Replies are limited to one sent or attempted message per sender in
-30 days. Architect roles receive executive DOCX and portfolio PDF; DevOps,
+Message-IDs and messages already processed. Messages outside the latest 200
+unread messages are not scanned. Review company and role before approving an
+automated recruiting reply. Those replies are limited to one sent or attempted
+message per sender in 30 days. Architect roles receive executive DOCX and portfolio PDF; DevOps,
 SRE and platform engineer roles receive the master DOCX. Other roles require
-manual correction. Documents and the tailored cover letter are generated in
+manual correction for that recruiting workflow. Documents and the tailored cover letter are generated in
 memory from the currently saved active profile, not from shared `dist` files.
 Unsaved edits are not included.
+
+For any queued message, **Write a manual reply and choose attachments** allows
+an editable message and any available PDF/DOCX files in `dist/`, including
+non-resume documents. These files are attached exactly as saved, not rebuilt
+from the active profile; they may contain sensitive personal data, so review
+them before confirming. The total attachment
+limit is 15 MB. Built-in responses can be edited, and custom templates can be
+saved with attachment selections for reuse. Templates are stored unencrypted in
+`processed_emails.json`; missing attachments must be reselected. Manual replies
+are individually confirmed, bypass the per-sender cooldown, and do not create a
+CRM entry. Each queued message can still be sent only once.
 
 Auto-send defaults off. Enabling it sends real emails during subsequent scans
 without individual approval whenever a message has explicit `Company:` and
@@ -138,3 +153,22 @@ its requirements on first start, then binds to the dynamically assigned port
 on `127.0.0.1`. The static add-on page redirects to the running service; it
 does not provide an API itself. An internet connection or package mirror is
 needed for first-time setup. The add-on is accessible only on the host machine.
+If the connection page says to start the service, use **Start** in Addons Modules
+and then select **Retry connection**. The assigned local port can change when
+the add-on restarts. Do not edit the static page: profiles, builds and the email
+agent require the running service.
+# Visual resume editor
+
+Open the **Visual Resume Editor** tab to create a resume from scratch or import
+a DOCX or text-based PDF. The editor works on a separate copy; it does not
+change the source file, active profile, or the resume-as-code build pipeline.
+Generated DOCX and PDF files also offer an **Edit copy** action.
+
+Import extracts text only: layout, images, tables and formatting can change.
+Scanned/image-only and encrypted PDFs cannot be imported. Review the imported
+copy and resulting download carefully. The editor supports paragraphs,
+headings, bold, italics, underline and bullet lists; other pasted formatting is
+not preserved. Use **Download DOCX** or **Download PDF** for a new file.
+There is no automatic save or server-side document storage: download your work
+before leaving. The PDF font has limited character coverage; export reports
+an error instead of silently omitting unsupported characters.

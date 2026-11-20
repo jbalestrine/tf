@@ -1,0 +1,54 @@
+<link rel="stylesheet" href="/ext/archetype_studio/assets/studio.css">
+<section class="studio" aria-label="Archetype Studio">
+  <header class="studio-header">
+    <div><p class="eyebrow">MASTERCHIEF / DESIGN WORKSPACE</p><h1>Archetype Studio</h1><p>Sketch architecture, map relationships, and keep your ideas editable.</p></div>
+    <div class="actions">
+      <button id="template" type="button">Hub &amp; spoke</button>
+      <button id="download" type="button">Download JSON</button>
+      <label class="button">Open JSON<input id="open" type="file" accept=".json,application/json" hidden></label>
+      <button id="save" class="primary" type="button">Save to server</button>
+      <button id="load" type="button">Open from server</button>
+      <button id="iac-preview" type="button">Review IaC</button>
+    </div>
+  </header>
+  <div class="studio-layout">
+    <aside class="panel library">
+      <div class="section-title"><h2>Stencil library</h2><span>CLICK TO ADD</span></div>
+      <input id="search" type="search" placeholder="Search stencils" aria-label="Search stencils">
+      <div id="palette"></div>
+      <div class="import"><label class="button">Import SVG / PNG<input id="icon-file" type="file" accept=".svg,.png,image/svg+xml,image/png" hidden></label>
+        <p>For official Azure artwork, download SVGs from <a href="https://learn.microsoft.com/en-us/azure/architecture/icons/" target="_blank" rel="noopener noreferrer">Microsoft's icon library</a> and import them here. Imported icons stay in the diagram.</p></div>
+    </aside>
+    <main class="workspace">
+      <div class="toolbar"><div><button id="select" class="active" type="button">Select</button><button id="connect" type="button">Connect</button><button id="pan" type="button">Pan</button></div><div><button id="zoom-out" type="button" aria-label="Zoom out">−</button><span id="zoom-label">100%</span><button id="zoom-in" type="button" aria-label="Zoom in">+</button><button id="fit" type="button">Reset view</button></div></div>
+      <div id="viewport" tabindex="0" aria-label="Architecture whiteboard"><svg id="board" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#b9c9dc"/></pattern><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="#527596"/></marker></defs><g id="scene"><rect x="-10000" y="-10000" width="20000" height="20000" fill="url(#grid)"/><g id="edges"></g><g id="nodes"></g></g></svg></div>
+      <div class="statusbar"><span id="status" role="status">Ready. Click a stencil to add it; drag it to move.</span><span>Wheel: zoom · Pan tool: drag canvas</span></div>
+    </main>
+    <aside class="panel inspector">
+      <div class="section-title"><h2>Inspector</h2><span>EDIT DETAILS</span></div>
+      <p id="empty">Select a shape or connection to edit it.</p>
+      <div id="node-editor" hidden>
+        <label>Label<input id="label" maxlength="160"></label>
+        <label>Width<input id="width" type="number" min="60" max="2000"></label>
+        <label>Height<input id="height" type="number" min="40" max="2000"></label>
+        <div id="iac-fields"></div>
+        <button id="delete" class="danger" type="button">Delete selected</button>
+      </div>
+      <div id="edge-editor" hidden>
+        <label>Connection label<input id="edge-label" maxlength="160"></label>
+        <label><input id="edge-dashed" type="checkbox"> Dashed line</label>
+        <button id="delete-edge" class="danger" type="button">Delete connection</button>
+      </div>
+      <div class="notice"><strong>Infrastructure preview</strong><p>Configure supported shapes, then select Review IaC. Lines are visual only. Visio artwork export and VSSX import are not yet available.</p></div>
+    </aside>
+  </div>
+</section>
+<dialog id="iac-dialog" class="studio-dialog iac-dialog">
+  <h2>Review Terraform configuration</h2>
+  <p>Validated export blocks incomplete and unsupported resources. Draft exports only complete supported shapes; omissions are listed in the included report.</p>
+  <label>Export mode <select id="iac-mode"><option value="validated">Validated</option><option value="draft">Draft</option></select></label>
+  <button id="iac-check" type="button">Check diagram</button>
+  <pre id="iac-report" aria-live="polite"></pre>
+  <div class="dialog-actions"><button id="iac-close" type="button">Close</button><button id="iac-download" type="button" disabled>Download ZIP</button></div>
+</dialog>
+<script src="/ext/archetype_studio/assets/studio.js" defer></script>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GitHub Integration - MasterChief</title>
+    <link rel="stylesheet" href="/static/source-control-navigation.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #e0e0e0; line-height: 1.6; }
@@ -49,6 +50,17 @@
             <h1>GitHub Integration</h1>
             <p class="subtitle">Clone repositories, browse files, and edit code</p>
         </header>
+
+        <nav class="source-control-navigation" aria-label="Source Control workspaces">
+            <h2>Source Control</h2>
+            <p>Two specialized workspaces. Choosing a repository here does not change the Git Command Center repository.</p>
+            <div class="source-control-links">
+                <a href="/sys/scm"><strong>Git Command Center</strong><span>Manage the local MasterChief repository, Git workflow and pull requests. Requires RBAC admin access.</span></a>
+                <a href="/github" aria-current="page"><strong>GitHub Integration</strong><span>Browse and clone repositories, explore files and save scripts.</span></a>
+                <a href="/static/git-workflow-guide.html#activity-status"><strong>File Ecosystem</strong><span>Explore and edit changed files in the local MasterChief repository.</span></a>
+            </div>
+        </nav>
+        <p style="margin:0 0 20px"><a href="/static/git-workflow-guide.html" style="color:#8dd9ff">Git workflow field guide</a> · <a href="/static/git-workflow-guide.html#activity-status" style="color:#8dd9ff">MasterChief file activity &amp; 3D ecosystem</a> · <a href="/masterchief_code_ui" style="color:#8dd9ff">MasterChief Code UI</a></p>
 
         <div class="card">
             <h3>Repository Management</h3>

@@ -24,15 +24,21 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#0b1220;color:#d
 <div class="layout">
     <aside class="sidebar">
         <div class="brand">Master Menu</div>
-        <div class="side-note">Intentional navigation by focus. Toggle flags to disable or enable modules safely.</div>
+        <div class="side-note">Navigate by focus and manage page and feature flags. These flags are separate from module settings and add-on service controls.</div>
         <div class="quick">
             <a href="/">Dashboard</a>
             <a href="/manager">Manager Portal</a>
             <a href="/echo-chat">Echo Chat</a>
             <a href="/modules">Modules</a>
+            <a href="/sys/scm">Git Command Center</a>
+            <a href="/static/git-workflow-guide.html#activity-status">Git Workflow &amp; File Ecosystem</a>
+            <a href="/masterchief_code_ui">Code UI</a>
         </div>
     </aside>
     <main class="main">
+        <link rel="stylesheet" href="/static/css/management-navigation.css">
+        <nav class="management-navigation" data-management-page="master-menu" aria-label="Management Center"><a href="/master-menu">Management Center</a></nav>
+        <script src="/static/js/management-navigation.js" defer></script>
         <div class="actions">
             <h2 style="margin:0">Platform Focus Map</h2>
             <button id="save-flags" class="btn">Save Feature Flags</button>

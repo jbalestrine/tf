@@ -30,6 +30,12 @@ def test_registry_files_exist():
     assert any(c["id"] == "logo" for c in sm.components())
 
 
+def test_nav_registry_identifies_the_actual_layout():
+    nav = next(c for c in SourceMap(_app(), ROOT).components() if c["id"] == "nav-menu")
+    assert any(f["path"] == "templates/layout.html" for f in nav["files"])
+    assert "main.py's version" not in nav["warning"]
+
+
 def test_rejects_empty_query():
     try:
         SourceMap(_app(), ROOT).lookup("  ")

@@ -111,6 +111,7 @@ from utils.ide_files import resolve_project_file
 from utils.code_archetypes import with_archetype_client as _with_archetype_client
 from core.remote_text import is_allowed_sender, is_twilio_enabled, verify_twilio_signature
 from core.site_branding import add_global_site_brand
+from core.workspace_drawer import add_workspace_drawer
 from utils.terraform import EnterpriseTerraformGenerator
 from templates.base import HTML_TEMPLATE
 from templates.pages import (
@@ -235,6 +236,8 @@ def _add_cors_headers(response):
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Expose-Headers'] = 'Content-Type, Authorization, X-Requested-With'
     response = add_global_site_brand(response)
+    if current_user.is_authenticated and request.method == 'GET':
+        response = add_workspace_drawer(response)
     if response.mimetype == 'text/html' and response.status_code != 304 and not response.is_streamed:
         body = response.get_data()
         modified = False
@@ -2416,13 +2419,23 @@ def api_code_archetypes():
 @app.route('/api/modules/toggle', methods=['POST'])
 @requires_permission('dashboard')
 def api_modules_toggle():
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
     module = request.form.get('module')
     if module not in ENABLED_MODULES:
         return jsonify({'ok': False, 'error': 'Module not found'}), 400
-    ENABLED_MODULES[module]['enabled'] = not ENABLED_MODULES[module]['enabled']
-    # Save to file
-    app.config['MODULES_CONFIG'].write_text(json.dumps(ENABLED_MODULES, indent=2), encoding='utf-8')
-    return jsonify({'ok': True, 'enabled': ENABLED_MODULES[module]['enabled']})
+    if module == 'rbac' and ENABLED_MODULES[module]['enabled']:
+        return jsonify({'ok': False, 'error': 'The core RBAC module cannot be disabled here.'}), 400
+    old_enabled = ENABLED_MODULES[module]['enabled']
+    ENABLED_MODULES[module]['enabled'] = not old_enabled
+    try:
+        app.config['MODULES_CONFIG'].write_text(json.dumps(ENABLED_MODULES, indent=2), encoding='utf-8')
+    except OSError:
+        ENABLED_MODULES[module]['enabled'] = old_enabled
+        app.logger.exception('Failed to save module settings')
+        return jsonify({'ok': False, 'error': 'Could not save module settings.'}), 500
+    return jsonify({'ok': True, 'enabled': ENABLED_MODULES[module]['enabled'], 'restart_required': True})
 
 @app.route('/api/test')
 def api_test():
@@ -9879,6 +9892,21 @@ def _admin_post_guard():
     return None
 
 
+app.config['SCM_ADMIN_GET_GUARD'] = lambda: _admin_page_or_error(request.path != '/sys/scm')
+app.config['SCM_ADMIN_POST_GUARD'] = _admin_post_guard
+
+
+@app.route('/api/workspace-drawer')
+@login_required
+def workspace_drawer_catalog():
+    from utils.workspace_drawer import catalog
+    try:
+        return jsonify({'ok': True, 'items': catalog(app)})
+    except (OSError, RuntimeError) as exc:
+        app.logger.warning('Workspace drawer catalog failed: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
 def _render_admin_fragment(template_name, **context):
     content = render_template(template_name, **context)
     return render_template_string(
@@ -12887,6 +12915,9 @@ def sys_export_active():
 @app.route('/sys/scm')
 def sys_scm():
     """Source control manager — git status, commit, push, pull."""
+    denied = _admin_page_or_error(False)
+    if denied is not None:
+        return denied
     try:
         from templates.scm import SCM_TEMPLATE
         return render_template_string(SCM_TEMPLATE)
@@ -12897,6 +12928,9 @@ def sys_scm():
 @app.route('/sys/api/scm/status')
 def sys_scm_status():
     """Return current git status, branch, and last 20 commits."""
+    denied = _admin_page_or_error(True)
+    if denied is not None:
+        return denied
     import subprocess
     def _run(cmd):
         try:
@@ -12930,6 +12964,9 @@ def sys_scm_status():
 @app.route('/sys/api/scm/commit', methods=['POST'])
 def sys_scm_commit():
     """Stage selected files and create a commit."""
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
     import subprocess
     data = request.get_json(silent=True) or {}
     message = (data.get('message') or '').strip()
@@ -12947,9 +12984,7 @@ def sys_scm_commit():
             if rc != 0:
                 return jsonify({'ok': False, 'error': 'Stage failed for ' + f_norm + ': ' + out}), 500
     else:
-        out, rc = _run(['git', 'add', '-A'])
-        if rc != 0:
-            return jsonify({'ok': False, 'error': 'Stage all failed: ' + out}), 500
+        return jsonify({'ok': False, 'error': 'Select at least one file explicitly.'}), 400
     # Verify something is actually staged before committing
     staged_check, _ = _run(['git', 'diff', '--cached', '--name-only'])
     if not staged_check.strip():
@@ -12966,6 +13001,9 @@ def sys_scm_commit():
 @app.route('/sys/api/scm/push', methods=['POST'])
 def sys_scm_push():
     """Push current branch to origin."""
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
     import subprocess
     br = subprocess.run(['git', 'branch', '--show-current'],
                         capture_output=True, text=True, cwd=app.root_path)
@@ -12979,6 +13017,9 @@ def sys_scm_push():
 @app.route('/sys/api/scm/pull', methods=['POST'])
 def sys_scm_pull():
     """Pull latest from remote."""
+    denied = _admin_post_guard()
+    if denied is not None:
+        return denied
     import subprocess
     r = subprocess.run(['git', 'pull'],
                         capture_output=True, text=True, cwd=app.root_path, timeout=60)
@@ -12990,6 +13031,9 @@ def sys_scm_pull():
 from managers.feature_loader import load_features as _load_features
 _load_features(app, Path(__file__).parent, HTML_TEMPLATE, _admin_page_or_error, _admin_post_guard,
                audit=lambda action, **details: _echo_operator_audit(action, **details))
+from managers.management_inventory import register_inventory as _register_inventory
+_register_inventory(app, Path(__file__).parent, get_feature_manager() if FEATURE_MANAGER_AVAILABLE else None,
+                    ENABLED_MODULES, managers, _admin_page_or_error)
 
 
 if __name__=='__main__':

@@ -1,0 +1,8 @@
+{
+  "title": "Archetype Studio",
+  "description": "Interactive architecture whiteboard with reusable diagrams.",
+  "version": "0.1.0",
+  "core": false,
+  "enabled": true,
+  "nav": {"label": "Archetype Studio", "href": "/ext/archetype_studio/", "icon": "✦"}
+}

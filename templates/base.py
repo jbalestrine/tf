@@ -35,6 +35,14 @@ nav a:hover,nav a.active{background:linear-gradient(135deg,#4CAF50,#2e7d32);colo
 .nav-search-status{font-size:0.78rem;color:#94a3b8;white-space:nowrap;}
 .nav-group-content a[hidden],nav > a[hidden],.nav-group[hidden]{display:none!important;}
 .nav-group-content .nav-subgroup-label{padding:9px 14px 4px;color:#94a3b8;text-transform:uppercase;font-size:0.72rem;font-weight:700;letter-spacing:.08em;}
+.pinned-addon[hidden]{display:none!important}
+.pinned-addon-actions{display:flex;align-items:center;gap:6px;padding-right:8px}
+.nav-group-content .pinned-addon-actions a{flex:1;min-width:0;overflow-wrap:anywhere}
+.pinned-addon-start{flex:none;padding:5px 10px;border:1px solid #477c60;border-radius:6px;background:#163a2a;color:#c5f6d4;cursor:pointer;font-size:.8rem}
+.pinned-addon-start:hover:not(:disabled),.pinned-addon-start:focus-visible{background:#276547;outline:2px solid #86efac}
+.pinned-addon-start:disabled{opacity:.6;cursor:wait}
+.pinned-addon-status{padding:0 12px;color:#cbd5e1;font-size:.78rem;line-height:1.4;overflow-wrap:anywhere}
+.pinned-addon-status:not(:empty){padding-bottom:8px}
 .nav-group-content a:focus-visible,nav > a:focus-visible{outline:2px solid #86efac;outline-offset:2px;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 @media(max-width:720px){nav{position:relative;top:auto;padding:8px;gap:6px}.nav-search{flex:1 0 100%;margin:0 0 4px}.nav-search input{max-width:none}.nav-group{flex:1 1 auto}.nav-group>summary.dropbtn{width:100%;text-align:center}.nav-group[open] .nav-group-content{position:relative;left:auto;top:auto;min-width:100%;max-height:50vh;box-shadow:none;margin-top:4px}}
@@ -89,6 +97,7 @@ code{color:#4CAF50;}
 </header>
 <nav aria-label="Main navigation">
   <a href="/" class="{{ 'active' if request.path=='/' else '' }}">Dashboard</a>
+  <a href="/static/git-workflow-guide.html#activity-status">Git File Ecosystem</a>
   <label class="nav-search"><span class="sr-only">Search pages</span><input id="nav-search" type="search" placeholder="Find a page…  Ctrl+K" autocomplete="off" aria-label="Find a page"><span id="nav-search-status" class="nav-search-status" aria-live="polite"></span></label>
 
   <details class="nav-group {{ 'active' if request.path.startswith('/master-menu') or request.path.startswith('/manager') or request.path.startswith('/site-map') or request.path.startswith('/sys/') or request.path.startswith('/cloud') or request.path.startswith('/notifications') or request.path.startswith('/scripts') or request.path.startswith('/processes') or request.path.startswith('/services') or request.path.startswith('/chaos-monkey') or request.path.startswith('/backups') or request.path.startswith('/cicd') else '' }}">
@@ -134,7 +143,13 @@ code{color:#4CAF50;}
       {% if ui_modules is defined and ui_modules %}
       <div class="nav-subgroup-label">Pinned Add-ons</div>
       {% for _mod_name, _mod in ui_modules.items() %}
-      <a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Add-on module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
+      <div class="pinned-addon" data-addon-name="{{ _mod_name }}">
+        <div class="pinned-addon-actions">
+          <a href="{{ _mod.url }}" class="{{ 'active' if _mod.url in request.path else '' }}" title="Add-on module: {{ _mod_name }}">{{ _mod.icon }} {{ _mod_name }}</a>
+          <button type="button" class="pinned-addon-start" aria-label="Start {{ _mod_name }}">Start</button>
+        </div>
+        <div class="pinned-addon-status" role="status" aria-live="polite"></div>
+      </div>
       {% endfor %}
       {% endif %}
     </div>
@@ -259,5 +274,6 @@ function refreshIndex(){
     }).catch(e=>{ alert('Refresh error: '+e); });
 }
 </script>
+<script src="/static/pinned-addons.js" defer></script>
 </body>
 </html>"""

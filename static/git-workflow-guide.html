@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Git Workflow Field Guide · MasterChief</title>
+  <link rel="stylesheet" href="/static/git-command-center.css">
+  <link rel="stylesheet" href="/static/source-control-navigation.css">
+  <link rel="stylesheet" href="/static/git-workflow-guide.css">
+  <script src="/static/git-file-editor-link.js" defer></script>
+  <script src="/static/git-command-center.js" defer></script>
+  <script src="/static/git-activity-editor.js" defer></script>
+  <script src="/static/git-activity-3d.js" defer></script>
+  <script src="/static/git-workflow-activity.js" defer></script>
+</head>
+<body>
+<header class="header">
+  <a href="/" class="brand">MasterChief</a>
+  <div><p class="eyebrow">SOURCE CONTROL</p><h1>Git Workflow Field Guide</h1></div>
+  <nav aria-label="Page links"><a href="/sys/scm">Git Command Center</a><a href="/github">GitHub Integration</a><a href="#activity-status">File Ecosystem</a></nav>
+</header>
+<main>
+  <section class="panel">
+    <h2>Everyday development</h2>
+    <p>Follow the flow from a fresh feature branch through review and merge. The example uses <code>origin/Masterchief4</code>; verify your intended base branch before running commands.</p>
+    <a class="guide-image" href="/static/git-workflow-everyday.png" target="_blank" rel="noopener">
+      <img src="/static/git-workflow-everyday.png" alt="Git workflow: start from the merged app, edit and inspect, stage and commit, push the feature branch, create and review a pull request, then start the next task.">
+    </a>
+    <div class="guide-actions">
+      <a href="/static/git-workflow-everyday.png" target="_blank" rel="noopener">Open full-size diagram</a>
+      <a href="/static/git-workflow-guide.vsdx" download>Download the four-page editable Visio guide</a>
+      <a href="/sys/scm">Open Git Command Center</a>
+    </div>
+    <p>The image shows page 1. The Visio file also contains the safety, recovery, and command-reference pages; their key points are summarized below.</p>
+    <div class="guide-actions"><button type="button" data-guide-command="status">Check status</button><button type="button" data-guide-command="fetch">Fetch origin</button><button type="button" data-guide-command="new_branch">Create feature branch</button><button type="button" data-guide-command="stage">Stage file</button><button type="button" data-guide-command="commit">Commit</button><button type="button" data-guide-command="push_upstream">Push branch</button><button type="button" data-guide-command="pr">Create pull request</button></div>
+  </section>
+  <section class="panel" id="update-and-push">
+    <h2>Update and push your app: essentials</h2>
+    <p>Save your edits first. These actions run in the local MasterChief repository. Each button selects a command below; check its preview, choose <strong>Run command</strong>, confirm when prompted, and check the output before continuing.</p>
+    <ol>
+      <li><strong>Check your branch and changes:</strong> run <code>git status</code>. “Up to date” only compares commits; your edited and new files may still be uncommitted. <button type="button" data-guide-command="status">1. Check status</button></li>
+      <li><strong>Stage changes:</strong> run <code>git add -A</code> to stage all tracked edits and deletions and non-ignored new files. To include only certain files, use <strong>Stage a selected path</strong> instead. <button type="button" data-guide-command="stage_all">2. Stage all changes</button> <button type="button" data-guide-command="stage">Stage one path instead</button></li>
+      <li><strong>Review what will be committed:</strong> run <code>git status</code>, then <code>git diff --staged</code> to inspect tracked staged content. Review new files too, and check for credentials or private data. <button type="button" data-guide-command="status">3. Check staged files</button> <button type="button" data-guide-command="staged_diff">Review staged diff</button></li>
+      <li><strong>Commit:</strong> select <strong>Commit staged files</strong>, enter a meaningful message, and run <code>git commit -m "Describe your changes"</code>. The commit includes every staged change. <button type="button" data-guide-command="commit">4. Commit staged files</button></li>
+      <li><strong>Push:</strong> run <code>git push</code> if your branch already has an upstream. Otherwise choose <strong>Push branch and set upstream</strong> and enter your branch name. Push sends commits, not unstaged or uncommitted edits. <button type="button" data-guide-command="push">5. Push current upstream</button> <button type="button" data-guide-command="push_upstream">Set upstream and push</button></li>
+    </ol>
+    <p class="warning"><strong>Important:</strong> <code>git add -A</code> stages changes across the entire repository, including deletions and files you might not intend to publish. Ignored untracked files are not included. Previously staged files are included in the commit too. If you want only certain files, stage them individually and review the complete staged set before committing. A commit is local until pushed; pushing does not merge a pull request.</p>
+  </section>
+  <section class="panel">
+    <h2>Repository activity and file relationships</h2>
+    <p>Changes in the working tree and files in the latest commit, grouped by directory. Relationships show statically resolved Python imports only; dynamic imports and other languages are not included. An import does not prove runtime execution.</p>
+    <p>Select a file in the list or 3D map to edit it below. You can also open it in the full Code UI. Deleted, binary, and non-UTF-8 files cannot be edited here.</p>
+    <button id="activity-refresh" type="button">Refresh activity</button>
+    <p id="activity-status" role="status">Loading activity...</p>
+    <div id="activity-groups"></div>
+    <h3>3D file ecosystem</h3>
+    <p>Changed files are green; connected files are blue. Drag to rotate, use the mouse wheel to zoom, and select a file to highlight its direct connections. Lines represent static Python imports, not all possible relationships.</p>
+    <div class="ecosystem-controls">
+      <label for="ecosystem-file">Focus on a file</label>
+      <select id="ecosystem-file" disabled><option value="">All files</option></select>
+      <button id="ecosystem-reset" type="button" disabled>Reset view</button>
+    </div>
+    <canvas id="ecosystem-canvas" aria-label="Rotatable 3D map of changed files and their resolved Python import connections. Use the file selector for accessible connection details."></canvas>
+    <div id="ecosystem-detail" aria-live="polite">Load activity to view the 3D ecosystem.</div>
+    <section id="activity-editor" class="activity-editor" aria-labelledby="editor-title">
+      <h3 id="editor-title">File editor</h3>
+      <p id="editor-path">Choose a file above to open it.</p>
+      <p id="editor-status" role="status" aria-live="polite">No file open.</p>
+      <label for="editor-content">File contents</label>
+      <textarea id="editor-content" spellcheck="false" disabled></textarea>
+      <div class="guide-actions">
+        <button id="editor-save" type="button" disabled>Save file</button>
+        <button id="editor-stage" type="button" disabled>Stage this file</button>
+        <button id="editor-review" type="button">Review staged changes</button>
+      </div>
+      <p>Save writes to disk. Stage adds the whole selected file. A commit includes <strong>all staged files</strong>, not just the selected file. Review before committing.</p>
+      <label for="editor-message">Commit message</label>
+      <input id="editor-message" maxlength="4000" placeholder="Describe the changes">
+      <button id="editor-commit" type="button">Review staged files for commit</button>
+      <h4>Staged changes and command output</h4>
+      <pre id="editor-output">No commands run yet.</pre>
+    </section>
+    <h3>Python import relationships</h3>
+    <div id="activity-graph"></div>
+    <p><a href="/sys/diagnostics">Open Diagnostics</a> · <a href="/source-map">Open Source Map</a></p>
+  </section>
+  <section class="guide-grid">
+    <article class="panel">
+      <h2>Safety and branches</h2>
+      <ul>
+        <li>Check status, staged changes, branch tracking and remote destinations before switching or pushing.</li>
+        <li>Branches are references, not separate app folders. A deleted remote branch does not delete the local branch.</li>
+        <li>Verify work is merged or backed up before branch cleanup. Squash merges may make safe deletion refuse.</li>
+        <li>Ignore rules do not protect already-tracked files. Review private data and credentials before staging or pushing.</li>
+      </ul>
+      <div class="guide-actions"><button type="button" data-guide-command="branches">Branches</button><button type="button" data-guide-command="remotes">Remotes</button><button type="button" data-guide-command="staged_diff">Review staged changes</button><button type="button" data-guide-command="delete_branch">Delete merged branch</button><button type="button" data-guide-command="prune">Prune remote references</button></div>
+    </article>
+    <article class="panel">
+      <h2>Recovery and caveats</h2>
+      <ul>
+        <li>A commit includes only staged changes. Use <code>git add -A</code> to stage all changes or stage selected paths, then review <code>git status</code> and <code>git diff --staged</code> before committing. Push sends commits, not unsaved or uncommitted edits.</li>
+        <li>Inspect pending changes before switching or discarding. Reflog can help locate commits but is not a backup.</li>
+        <li>Revert creates a new commit; merge commits require special handling. Reverting does not remove secrets from history.</li>
+        <li>Resolve and stage conflicts before continuing a merge or rebase. Aborting can discard progress.</li>
+        <li>Reset hard, force-delete and force-push can discard work or rewrite history. Verify targets and backups first.</li>
+      </ul>
+      <div class="guide-actions"><button type="button" data-guide-command="reflog">Reflog</button><button type="button" data-guide-command="show_stat">Inspect commit</button><button type="button" data-guide-command="revert">Revert commit</button><button type="button" data-guide-command="rebase_continue">Continue rebase</button><button type="button" data-guide-command="rebase_abort">Abort rebase</button><button type="button" data-guide-command="merge_abort">Abort merge</button><button type="button" data-guide-command="reset_hard">Reset hard</button><button type="button" data-guide-command="force_delete">Force-delete branch</button><button type="button" data-guide-command="force_push">Force-push with lease</button></div>
+    </article>
+  </section>
+  <section class="panel">
+    <h2>Command reference</h2>
+    <p>Inspect with <code>git status</code>, <code>git branch -vv</code>, <code>git remote -v</code>, <code>git diff</code> and <code>git diff --staged</code>. Use <code>git reflog</code> and <code>git show --stat &lt;commit&gt;</code> to investigate prior work.</p>
+    <p>Prepare with <code>git fetch origin</code> and <code>git switch -c &lt;name&gt; origin/Masterchief4</code>; then stage, review, commit, push and create a pull request. Replace placeholders and check the target branch.</p>
+    <p>The <a href="/sys/scm">Git Command Center</a> has executable commands, previews and confirmations. It operates on the MasterChief repository, not a repository selected in GitHub Integration.</p>
+  </section>
+  <section class="panel" id="interactive-commands">
+    <h2>Run workflow commands</h2>
+    <p>Use the same protected, confirmed commands as Git Command Center. Commands operate on the MasterChief repository, not a selected GitHub repository.</p>
+    <div class="summary"><span id="branch">Branch: loading...</span><span id="changes">Loading changes...</span></div>
+    <details><summary>Working tree and recent commits</summary><div id="file-list"></div><pre id="commit-list"></pre></details>
+    <div class="workspace">
+      <div><label for="command-search">Find a command</label><input id="command-search" type="search" placeholder="Search commands"><div id="command-list"></div></div>
+      <div>
+        <h3 id="action-title">Select a command</h3>
+        <form id="command-form"><div id="fields"></div><label>Command preview</label><pre id="preview"></pre>
+          <p id="risk" class="warning" hidden>Confirm carefully. This changes files, history or remote state and may permanently discard work.</p>
+          <button type="submit" id="run" disabled>Run command</button></form>
+        <h3>Output <span id="result-status" role="status" aria-live="polite">Ready</span></h3><pre id="output">Command output will appear here.</pre>
+      </div>
+    </div>
+    <button id="refresh" type="button">Refresh repository status</button>
+  </section>
+</main>
+</body>
+</html>

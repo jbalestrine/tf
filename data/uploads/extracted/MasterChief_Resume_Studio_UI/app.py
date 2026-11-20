@@ -48,6 +48,7 @@ import studio_tools
 import techlearn_router
 import profile_store
 import email_agent
+import visual_resume
 
 BASE_DIR = Path(__file__).resolve().parent
 RESUME_YAML = BASE_DIR / "resume.yaml"
@@ -138,6 +139,10 @@ class BuildRequest(BaseModel):
     role_title: str = "Senior DevOps Engineer / Enterprise Cloud Architect"
 
 
+class VisualResumePayload(BaseModel):
+    html: str
+
+
 def create_backup() -> None:
     if RESUME_YAML.exists():
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -149,6 +154,37 @@ def serve_ui():
     if not INDEX_HTML.exists():
         raise HTTPException(status_code=404, detail="index.html not found")
     return INDEX_HTML.read_text(encoding="utf-8")
+
+
+@app.get("/visual-resume.js")
+def visual_resume_script():
+    return FileResponse(BASE_DIR / "visual-resume.js", media_type="application/javascript")
+
+
+@app.post("/api/visual-resume/import")
+async def visual_resume_import(file: UploadFile = File(...)):
+    content = await file.read(profile_store.MAX_UPLOAD + 1)
+    if len(content) > profile_store.MAX_UPLOAD:
+        raise HTTPException(413, "File exceeds the 5 MB upload limit.")
+    try:
+        text = await run_in_threadpool(profile_store.extract_text, file.filename or "", content)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    html = "".join(f"<p>{escape(line) or '<br>'}</p>" for line in text.splitlines())
+    return {"html": html, "warning": "Imported as text only. Layout, images, tables and formatting may change. The original is unchanged."}
+
+
+@app.post("/api/visual-resume/export/{format}")
+def visual_resume_export(format: str, payload: VisualResumePayload):
+    if format not in {"docx", "pdf"}:
+        raise HTTPException(400, "Choose DOCX or PDF.")
+    try:
+        result = visual_resume.docx_bytes(payload.html) if format == "docx" else visual_resume.pdf_bytes(payload.html)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if format == "docx" else "application/pdf"
+    return Response(result, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="resume-edited.{format}"',
+                                                              "Cache-Control": "no-store"})
 
 
 @app.get("/api/resume")

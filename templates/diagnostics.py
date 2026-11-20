@@ -303,6 +303,7 @@ td.link:hover{text-decoration:underline}
   <a class="header-btn" href="/sys/api/export-active" title="Download all active app files as ZIP">📦 Export ZIP</a>
   <a class="header-btn" href="/sys/ops" title="Unified operations cockpit">🧭 Ops Center</a>
   <a class="header-btn" href="/sys/scm" title="Source control manager">🗂 SCM</a>
+  <a class="header-btn" href="/static/git-workflow-guide.html#activity-status" title="Recent changes and Python import relationships">File activity &amp; relationships</a>
   <button class="header-btn primary" onclick="startScan()">⟳ Scan Workspace</button>
 </div>
 

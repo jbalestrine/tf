@@ -160,6 +160,125 @@ class EmailAgentTests(unittest.TestCase):
             self.assertEqual(send.call_count, 1)
             self.assertTrue(send.call_args.kwargs["auto"])
 
+    def test_custom_scan_is_manual_even_when_auto_send_is_enabled(self):
+        email = message(subject="Quarterly review", body="Company: Example\nRole: Cloud Architect\nReview", mid="<work@example.com>")
+        client = mock.MagicMock()
+        client.__enter__.return_value = client
+        client.select.return_value = ("OK", [])
+        client.uid.side_effect = lambda operation, *args: (
+            ("OK", [b"1"]) if operation == "search" else ("OK", [(b"header", email.as_bytes())]))
+        agent.state_write({"messages": [], "auto_send": True})
+        with mock.patch.object(agent.imaplib, "IMAP4_SSL", return_value=client), mock.patch.object(agent, "send") as send:
+            self.assertEqual(agent.scan_inbox(agent.ScanOptions(keywords="quarterly"))["added"], 1)
+            send.assert_not_called()
+        self.assertEqual(agent.state_read()["messages"][0]["subject"], "Quarterly review")
+
+    def test_all_unread_keeps_sender_safety_filters(self):
+        self.assertIsNotNone(agent.candidate(message(subject="work", body="hello"), "owner@gmail.com", [], True))
+        self.assertIsNone(agent.candidate(message(sender="noreply@example.com"), "owner@gmail.com", [], True))
+
+    def test_all_unread_scan_is_manual_and_limited_to_latest_200(self):
+        client = mock.MagicMock()
+        client.__enter__.return_value = client
+        client.select.return_value = ("OK", [])
+        client.uid.side_effect = lambda operation, *args: (
+            ("OK", [b" ".join(str(i).encode() for i in range(201))]) if operation == "search" else
+            ("OK", [(b"header", message(subject="Unrelated", mid="<" + args[0].decode() + "@example.com>").as_bytes())]))
+        agent.state_write({"messages": [], "auto_send": True})
+        with mock.patch.object(agent.imaplib, "IMAP4_SSL", return_value=client), mock.patch.object(agent, "send") as send:
+            result = agent.scan_inbox(agent.ScanOptions(all_unread=True))
+            self.assertEqual((result["added"], result["scan_limit"]), (200, 200))
+            send.assert_not_called()
+        self.assertNotIn(mock.call("fetch", b"0", "(BODY.PEEK[])"), client.uid.call_args_list)
+
+    def test_manual_reply_and_reusable_templates(self):
+        item = self.queued()
+        dist = Path(self.tmp.name) / "dist"
+        dist.mkdir()
+        (dist / "Resume.docx").write_bytes(b"selected resume")
+        (dist / "Portfolio.pdf").write_bytes(b"selected pdf")
+        smtp = mock.MagicMock()
+        smtp.__enter__.return_value = smtp
+        with mock.patch.object(agent, "BASE", Path(self.tmp.name)), \
+                mock.patch.object(agent.smtplib, "SMTP", return_value=smtp), \
+                mock.patch.object(agent.studio_tools, "add_submission") as crm:
+            agent.save_template(agent.ReplyTemplate(name="Work reply", body="Hello!", attachments=["Resume.docx"]))
+            self.assertEqual(agent.status()["templates"][0]["attachments"], ["Resume.docx"])
+            with self.assertRaises(agent.HTTPException):
+                agent.save_template(agent.ReplyTemplate(name="Work reply", body="duplicate"))
+            with self.assertRaises(agent.HTTPException):
+                agent.save_template(agent.ReplyTemplate(name="invalid/name", body="Hello"))
+            state = agent.state_read()
+            state["messages"].append({**item, "id": "previous", "status": "sent",
+                                      "attempted_at": agent.datetime.now(agent.timezone.utc).isoformat()})
+            agent.state_write(state)
+            result = agent.manual_reply(item["id"], agent.ManualReply(body="My own message", attachments=["Resume.docx", "Portfolio.pdf"]))
+            sent = smtp.send_message.call_args.args[0]
+            self.assertEqual(sent.get_body().get_content().strip(), "My own message")
+            self.assertEqual([part.get_filename() for part in sent.iter_attachments()], ["Resume.docx", "Portfolio.pdf"])
+            self.assertEqual(result["crm_status"], "not logged")
+            crm.assert_not_called()
+            with self.assertRaises(agent.HTTPException):
+                agent.manual_reply(item["id"], agent.ManualReply(body="Again"))
+            agent.delete_template("Work reply")
+            self.assertEqual(agent.status()["templates"], [])
+            agent.save_template(agent.ReplyTemplate(name="R\u00e9sum\u00e9 & notes", body="Hello"))
+            agent.delete_template("R\u00e9sum\u00e9 & notes")
+            self.assertEqual(agent.status()["templates"], [])
+
+    def test_manual_attachment_validation_and_uncertain_delivery(self):
+        item = self.queued()
+        dist = Path(self.tmp.name) / "dist"
+        dist.mkdir()
+        (dist / "Resume.pdf").write_bytes(b"pdf")
+        smtp = mock.MagicMock()
+        smtp.__enter__.return_value = smtp
+        smtp.send_message.side_effect = smtplib.SMTPException("mock failure")
+        with mock.patch.object(agent, "BASE", Path(self.tmp.name)), mock.patch.object(agent.smtplib, "SMTP", return_value=smtp):
+            for name in ("../Resume.pdf", "missing.pdf"):
+                with self.assertRaises(agent.HTTPException):
+                    agent.manual_reply(item["id"], agent.ManualReply(body="Hello", attachments=[name]))
+            with self.assertRaises(agent.HTTPException) as error:
+                agent.manual_reply(item["id"], agent.ManualReply(body="Hello", attachments=["Resume.pdf"]))
+            self.assertIn("could not be confirmed", error.exception.detail)
+            with self.assertRaises(agent.HTTPException):
+                agent.manual_reply(item["id"], agent.ManualReply(body="Hello"))
+            self.assertEqual(smtp.send_message.call_count, 1)
+            self.assertEqual(agent.state_read()["messages"][0]["status"], "uncertain")
+
+    def test_attachment_size_and_duplicate_limits(self):
+        dist = Path(self.tmp.name) / "dist"
+        dist.mkdir()
+        (dist / "Resume.pdf").write_bytes(b"pdf")
+        with (dist / "large.docx").open("wb") as file:
+            file.seek(15 * 1024 * 1024)
+            file.write(b"x")
+        with mock.patch.object(agent, "BASE", Path(self.tmp.name)):
+            with self.assertRaisesRegex(ValueError, "Duplicate"):
+                agent.attachment_contents(["Resume.pdf", "Resume.pdf"])
+            with self.assertRaisesRegex(ValueError, "15 MB"):
+                agent.attachment_contents(["large.docx"])
+
+    def test_attachment_symlink_is_not_selectable(self):
+        dist = Path(self.tmp.name) / "dist"
+        dist.mkdir()
+        target = Path(self.tmp.name) / "outside.pdf"
+        target.write_bytes(b"private")
+        try:
+            (dist / "link.pdf").symlink_to(target)
+        except OSError:
+            self.skipTest("Creating symlinks requires Windows developer mode or privilege.")
+        with mock.patch.object(agent, "BASE", Path(self.tmp.name)):
+            self.assertNotIn("link.pdf", agent.available_attachments())
+            with self.assertRaisesRegex(ValueError, "unavailable"):
+                agent.attachment_contents(["link.pdf"])
+
+    def test_scan_route_accepts_default_body(self):
+        with mock.patch.dict(os.environ, {"MASTERCHIEF_PUBLIC_ONLY": ""}), \
+                mock.patch.object(agent, "scan_inbox", return_value={"added": 0}) as scan:
+            self.assertEqual(request("POST", "/api/email/scan", origin="http://localhost:8080"), 200)
+            self.assertEqual(scan.call_args.args[0], agent.ScanOptions())
+
     def test_local_same_origin_and_public_guard(self):
         with mock.patch.dict(os.environ, {"MASTERCHIEF_PUBLIC_ONLY": ""}):
             self.assertEqual(request("GET", "/api/email"), 200)
@@ -168,6 +287,8 @@ class EmailAgentTests(unittest.TestCase):
             self.assertEqual(request("GET", "/api/email", origin="http://attacker.example"), 403)
             self.assertEqual(request("POST", "/api/email/mode"), 403)
             self.assertEqual(request("POST", "/api/email/mode", origin="http://attacker.example"), 403)
+            self.assertEqual(request("POST", "/api/email/reply/example", origin="http://attacker.example"), 403)
+            self.assertEqual(request("POST", "/api/email/templates", client="192.0.2.1"), 403)
             self.assertEqual(request("GET", "/api/email", extra=((b"x-forwarded-for", b"127.0.0.1"),)), 403)
             self.assertEqual(request("POST", "/api/email/mode", origin="http://localhost:8080"), 422)
         with mock.patch.dict(os.environ, {"MASTERCHIEF_PUBLIC_ONLY": "1"}):
